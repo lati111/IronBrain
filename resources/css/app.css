@@ -1,0 +1,24 @@
+:root:root {
+    --bs-body-font-family: 'Platform';
+    --main-red: #FF0000;
+    --sub-red: #7f0000;
+    --main-grey: #B3B3B3;
+    --main-black: #000000;
+}
+
+#logo {
+    margin-top: -0.25rem;
+}
+
+.nav-link {
+    color: var(--main-red) !important;
+}
+
+.nav-link:hover {
+    color: var(--sub-red) !important;
+}
+
+.underlined {
+    border-color: lightgray;
+    border-bottom: 1px solid;
+}
