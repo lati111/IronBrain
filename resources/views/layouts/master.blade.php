@@ -6,29 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="Lati111">
-    <title>IronBrain | Home</title>
+    <title>IronBrain | @yield('htmlTitle')</title>
 
     @vite('resources/css/app.css')
     <link href="{{ asset('css/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+    @yield('header')
 </head>
 
 <body>
-    <header class="p-3 mb-3 border-bottom">
+    {{--| header |--}}
+    <header class="p-3 mb-3 border-bottom bg-body-tertiary">
         <div class="container">
-            <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+            <div class="flex items-center justify-center flex-wrapjustify-content-lg-start">
                 {{--| logo |--}}
                 <a href="/"
-                    class="d-flex align-items-center link-body-emphasis text-decoration-none">
+                    class="flex items-center link-body-emphasis text-decoration-none">
                     <img src="{{ asset('img/logo_cropped.svg') }}" alt="IronBrain" class="" width="160"
                         height="40" role="img" aria-label="IronBrain" id="logo"/>
                 </a>
 
                 {{--| nav items |--}}
-                <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0">
-                    <li><a href="/" class="nav-link px-2 link-secondary">Overview</a></li>
-                    <li><a href="#" class="nav-link px-2 link-body-emphasis">Inventory</a></li>
-                    <li><a href="#" class="nav-link px-2 link-body-emphasis">Customers</a></li>
-                    <li><a href="#" class="nav-link px-2 link-body-emphasis">Products</a></li>
+                <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2">
+                    <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li>
+                    {{-- <li><a href="#" class="nav-link interactive px-2 link-body-emphasis">Inventory</a></li>
+                    <li><a href="#" class="nav-link interactive px-2 link-body-emphasis">Customers</a></li>
+                    <li><a href="#" class="nav-link interactive px-2 link-body-emphasis">Products</a></li> --}}
                 </ul>
 
                 {{--| search bar |--}}
@@ -37,10 +39,10 @@
                 </form> --}}
 
                 {{--| account icon |--}}
-                <div class="flex-shrink-0 dropdown">
-                    <a href="#" class="d-block link-dark text-decoration-none dropdown-toggle"
+                <div class="dropdown flex justify-center">
+                    <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
                         data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="" alt="Profile Picture" width="32" height="32" class="rounded-circle">
+                        <img src="https://cdn.discordapp.com/avatars/233948668447817728/b41993097639122be18c0f2ada8bac79?size=1024" alt="" width="32" height="32" class="rounded-circle">
                     </a>
 
                     {{--| account dropdown |--}}
@@ -57,8 +59,13 @@
             </div>
         </div>
     </header>
+
+    <main>
+        @yield('content')
+    </main>
 </body>
 
 <script src="{{ asset('js/bootstrap/bootstrap.bundle.min.js') }}"></script>
+@yield('script')
 
 </html>

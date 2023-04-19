@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root:root {
     --bs-body-font-family: 'Platform';
     --main-red: #FF0000;
@@ -10,11 +14,16 @@
     margin-top: -0.25rem;
 }
 
-.nav-link {
+.title {
+    color: var(--main-red) !important;
+    font-weight: bold !important;
+}
+
+.interactive {
     color: var(--main-red) !important;
 }
 
-.nav-link:hover {
+.interactive:hover {
     color: var(--sub-red) !important;
 }
 
