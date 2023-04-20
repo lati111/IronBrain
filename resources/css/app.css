@@ -23,7 +23,7 @@
     color: var(--main-red) !important;
 }
 
-.interactive:hover {
+.interactive:hover, .interactive.active {
     color: var(--sub-red) !important;
 }
 

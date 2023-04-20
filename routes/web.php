@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Config\ProjectController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,3 +16,7 @@ use App\Http\Controllers\HomeController;
 */
 
 Route::get('/', [HomeController::class, 'show'])->name("home.show");
+
+Route::prefix('/config')->group(function() {
+    Route::get('/projects', [ProjectController::class, 'overview'])->name("config.projects.overview");
+});
