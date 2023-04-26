@@ -33,7 +33,9 @@
                 <th scope="col" class="text-center">Description</th>
                 {{-- <th scope="col" class="text-center">Permission</th> --}}
                 <th scope="col" class="text-center">Route</th>
-                <th scope="col" class="text-center interactive">Add Project</th>
+                <th scope="col" class="text-center">
+                    <a href="{{route('config.projects.new')}}" class="interactive no-underline">Add Project</a>
+                </th>
             </tr>
         </thead>
         <tbody>
