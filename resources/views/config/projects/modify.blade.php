@@ -81,7 +81,7 @@
         </div>
 
         {{--| form |--}}
-        <form id="form" action="{{ route('config.projects.overview') }}" method="POST" enctype="multipart/form-data  style="width: 75%">
+        <form id="form" action="{{ route('config.projects.save') }}" method="POST" enctype="multipart/form-data  style="width: 75%">
             @isset($id)
                 <input type="hidden" name="id" value="{{$id}}">
             @endisset

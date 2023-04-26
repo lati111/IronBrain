@@ -20,4 +20,5 @@ Route::get('/', [HomeController::class, 'show'])->name("home.show");
 Route::prefix('/config')->group(function() {
     Route::get('/projects', [ProjectController::class, 'overview'])->name("config.projects.overview");
     Route::get('/projects/new', [ProjectController::class, 'new'])->name("config.projects.new");
+    Route::post('/projects/save', [ProjectController::class, 'save'])->name("config.projects.save");
 });

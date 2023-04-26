@@ -31,3 +31,7 @@ input.underlined, select.underlined, textarea.underlined {
     border: none !important;
     border-bottom: 1px var(--main-grey) solid !important;
 }
+
+.error-toast {
+    border-color: var(--main-red);
+}

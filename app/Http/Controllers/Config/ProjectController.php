@@ -28,7 +28,7 @@ class ProjectController
         ]);
     }
 
-    public function saveProject(Request $request) {
+    public function save(Request $request) {
         $data = $request->validate([
             'id' => 'nullable|exists:project,id',
             'thumbnail' => 'required|mimes:png,jpg,jpeg,svg,webp|max:240',
