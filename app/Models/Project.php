@@ -12,6 +12,4 @@ class Project extends Model
     use HasTimestamps;
 
     protected $table = 'project';
-    protected $primaryKey = 'id';
-    protected $keyType = 'id';
 }

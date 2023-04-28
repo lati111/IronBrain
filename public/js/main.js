@@ -1,11 +1,14 @@
 function init() {
     setTimeout(() => {
         const errorToasts = document.querySelectorAll(".error-toast");
-        const messageToasts = document.querySelectorAll(".message-toast");
+        for (let i = 0; i < errorToasts.length; i++) {
+            const toast = errorToasts[i];
+            toast.remove();
+        }
 
-        const toasts = errorToasts.concat(messageToasts)
-        for (let i = 0; i < toasts.length; i++) {
-            const toast = toasts[i];
+        const messageToasts = document.querySelectorAll(".message-toast");
+        for (let i = 0; i < messageToasts.length; i++) {
+            const toast = messageToasts[i];
             toast.remove();
         }
     }, 5000);

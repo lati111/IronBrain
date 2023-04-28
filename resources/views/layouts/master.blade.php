@@ -22,6 +22,14 @@
                 @slot('class') error-toast @endslot
             @endcomponent
         @endif
+        @foreach ($errors->all() as $error)
+            @component('components.toast')
+                @slot('id') error-toast-{{$loop->index + 1}} @endslot
+                @slot('text') {{$error}} @endslot
+                @slot('class') error-toast @endslot
+            @endcomponent
+        @endforeach
+
         @if ($message = Session::get('message'))
             @component('components.toast')
                 @slot('id') message-toast-0 @endslot

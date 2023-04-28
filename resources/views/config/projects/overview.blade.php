@@ -43,7 +43,7 @@
                 <td>
                     <img
                         style="height: 48px"
-                        src="{{asset("img/project/sprites/".$project["thumbnail"])}}"
+                        src="{{asset("img/project/thumbnail/".$project["thumbnail"])}}"
                         alt="{{$project["thumbnail"]}}"
                     />
                 </td>

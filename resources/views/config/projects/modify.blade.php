@@ -81,15 +81,19 @@
         </div>
 
         {{--| form |--}}
-        <form id="form" action="{{ route('config.projects.save') }}" method="POST" enctype="multipart/form-data  style="width: 75%">
+        <form id="form" action="{{ route('config.projects.save') }}" method="POST" enctype="multipart/form-data"  style="width: 75%">
+            @csrf
             @isset($id)
                 <input type="hidden" name="id" value="{{$id}}">
             @endisset
+            @if(old('id') !== null)
+                <input type="hidden" name="id" value="{{old('id')}}">
+            @endif
 
             <div class="grid grid-cols-2 gap-4">
                 <div class="flex flex-col gap-4">
                     {{--| name field |--}}
-                    <input type="text" name="name" class="smallInput underlined" placeholder="Name" required>
+                    <input type="text" name="name" class="smallInput underlined" placeholder="Name" value="{{old('name')}}">
 
                     {{--| image uploader |--}}
                     <div class="flex flex-col justify-center">
@@ -97,14 +101,19 @@
                             <div id="fileUploader" class="file-drop-area file-area dashed-border">
                                 <span class="choose-file-button interactive">Choose thumbnail</span>
                                 <span class="file-message">or drag and drop image</span>
-                                <input id="fileInput" class="file-input" type="file" name="thumbnail" onchange="preview()" required>
+                                <input id="fileInput" class="file-input" type="file" name="thumbnail"
+                                    onchange="preview()" required>
                             </div>
                         </div>
 
                         <div class="flex justify-center">
-                            <div id="filePreview" class="relative justify-center file-area dashed-border hidden">
+                            <div id="filePreview"
+                                class="relative justify-center file-area dashed-border
+                                @if(old('thumbnail') === null) hidden @endif"
+                            />
                                 <span onclick="clearImage()" class="interactive absolute top-1 right-1">remove</span>
-                                <img id="frame" src="{{asset('img/project/sprites/pksanc.jpg')}}" class="img-fluid file-area p-1 " />
+                                <img id="frame" class="img-fluid file-area p-1"{{old('thumbnail')}}
+                                    @isset($thumbnail) src="{{asset('img/project/sprites/'.$thumbnail)}}" @endisset                                />
                             </div>
                         </div>
                     </div>
@@ -117,12 +126,12 @@
                     </select>
 
                     {{--| route field |--}}
-                    <input type="text" name="route" class="smallInput underlined" placeholder="Route" required>
+                    <input type="text" name="route" class="smallInput underlined" placeholder="Route" value="{{old('route')}}" required>
 
                     {{--| description field |--}}
                     <textarea name="description" class="mediumInput underlined"
                         style="height: 90px !important" placeholder="Description" required
-                    /></textarea>
+                    />{{old('description')}}</textarea>
                 </div>
             </div>
 

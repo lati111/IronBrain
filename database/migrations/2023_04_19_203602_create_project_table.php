@@ -17,8 +17,12 @@ return new class extends Migration
             $table->text('description');
             $table->string('thumbnail');
             $table->string('route')->nullable();
-            $table->integer('nav_order')->unique()->nullable();
+            $table->string('permission')->nullable();
+            $table->boolean('visible')->default(true);
+            $table->boolean('active')->default(true);
             $table->timestamps();
+
+            $table->foreign('permission')->references('permission')->on('permission')->onUpdate('no action')->onDelete('restrict');
         });
     }
 

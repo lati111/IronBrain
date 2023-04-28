@@ -23,7 +23,7 @@
             <div class="container flex justify-center">
                 <div class="w-96">
                     <div class="card shadow-sm">
-                        <img src="{{asset("img/project/sprites/".$project["thumbnail"])}}" alt="{{$project["name"]}}">
+                        <img src="{{asset("img/project/thumbnail/".$project["thumbnail"])}}" alt="{{$project["name"]}}">
                         <div class="card-body">
                             <h4 class="title text-center">{{$project["name"]}}</h4>
                             <p class="card-text text-center">{{$project["description"]}}</p>
