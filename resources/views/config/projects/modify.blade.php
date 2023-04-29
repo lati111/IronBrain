@@ -81,65 +81,81 @@
         </div>
 
         {{--| form |--}}
-        <form id="form" action="{{ route('config.projects.save') }}" method="POST" enctype="multipart/form-data"  style="width: 75%">
-            @csrf
-            @isset($id)
-                <input type="hidden" name="id" value="{{$id}}">
-            @endisset
-            @if(old('id') !== null)
-                <input type="hidden" name="id" value="{{old('id')}}">
-            @endif
+        <div class="flex flex-row justify-center mb-3">
+            <form id="form" action="{{ route('config.projects.save') }}" method="POST" enctype="multipart/form-data"  style="width: 620%">
+                @csrf
+                @isset($project)
+                    <input type="hidden" name="id" value="{{$project->id}}">
+                @endisset
+                @if(old('id') !== null)
+                    <input type="hidden" name="id" value="{{old('id')}}">
+                @endif
 
-            <div class="grid grid-cols-2 gap-4">
-                <div class="flex flex-col gap-4">
-                    {{--| name field |--}}
-                    <input type="text" name="name" class="smallInput underlined" placeholder="Name" value="{{old('name')}}">
+                <div class="grid grid-cols-2 gap-4" style="width: 620px">
+                    <div class="flex flex-col gap-4">
+                        {{--| name field |--}}
+                        <input type="text" name="name" class="smallInput underlined" placeholder="Name"
+                            @isset($project) value="{{$project->thumbnail}}" @endisset
+                            @if(old('name') === null) value="{{old('name')}}" @endif
+                        />
 
-                    {{--| image uploader |--}}
-                    <div class="flex flex-col justify-center">
-                        <div class="flex justify-center">
-                            <div id="fileUploader" class="file-drop-area file-area dashed-border">
-                                <span class="choose-file-button interactive">Choose thumbnail</span>
-                                <span class="file-message">or drag and drop image</span>
-                                <input id="fileInput" class="file-input" type="file" name="thumbnail"
-                                    onchange="preview()" required>
+                        {{--| image uploader |--}}
+                        <div class="flex flex-col justify-center">
+                            <div class="flex justify-center">
+                                <div id="fileUploader" class="file-drop-area file-area dashed-border
+                                    @if($project->thumbnail !== null) hidden @endif"
+                                >
+                                    <span class="choose-file-button interactive">Choose thumbnail</span>
+                                    <span class="file-message">or drag and drop image</span>
+                                    <input id="fileInput" class="file-input" type="file" name="thumbnail"
+                                        @isset($project) old-thumbnail="{{$project->thumbnail}}" @endisset
+                                        onchange="preview()" required
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="flex justify-center">
-                            <div id="filePreview"
-                                class="relative justify-center file-area dashed-border
-                                @if(old('thumbnail') === null) hidden @endif"
-                            />
-                                <span onclick="clearImage()" class="interactive absolute top-1 right-1">remove</span>
-                                <img id="frame" class="img-fluid file-area p-1"{{old('thumbnail')}}
-                                    @isset($thumbnail) src="{{asset('img/project/sprites/'.$thumbnail)}}" @endisset                                />
+                            <div class="flex justify-center">
+                                <div id="filePreview"
+                                    class="relative justify-center file-area dashed-border
+                                    @if($project->thumbnail === null) hidden @endif"
+                                >
+                                    <span onclick="clearImage()" class="interactive absolute top-1 right-1">remove</span>
+                                    <img id="frame" class="img-fluid file-area p-1"
+                                        @isset($project) src="{{asset('img/project/thumbnail/'.$project->thumbnail)}}" @endisset
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="flex flex-col gap-4">
+                        {{--| permission field |--}}
+                        <select id="permissionSelect" name="permission" class="mediumInput underlined py-0">
+                            <option value="">No permission</option>
+                        </select>
+
+                        {{--| route field |--}}
+                        <input type="text" name="route" class="smallInput underlined" placeholder="Route" required
+                            @isset($project) value="{{$project->route}}" @endisset
+                            @if(old('route') === null) value="{{old('route')}}" @endif
+                        />
+
+                        {{--| description field |--}}
+                        <textarea name="description" class="mediumInput underlined"
+                            style="height: 90px !important" placeholder="Description" required
+                        />
+                            @isset($project) {{$project->description}} @endisset
+                            @if(old('description') === null) {{old('description')}} @endif
+                        </textarea>
+                    </div>
                 </div>
 
-                <div class="flex flex-col gap-4">
-                    {{--| permission field |--}}
-                    <select id="permissionSelect" name="permission" class="mediumInput underlined py-0">
-                        <option value="">No permission</option>
-                    </select>
-
-                    {{--| route field |--}}
-                    <input type="text" name="route" class="smallInput underlined" placeholder="Route" value="{{old('route')}}" required>
-
-                    {{--| description field |--}}
-                    <textarea name="description" class="mediumInput underlined"
-                        style="height: 90px !important" placeholder="Description" required
-                    />{{old('description')}}</textarea>
+                {{--| submitter |--}}
+                <div class="flex flex-col mt-3">
+                    <input type="button" class="interactive" onclick="validate(this.closest('form'))" value="Save Project">
                 </div>
-            </div>
-
-            {{--| submitter |--}}
-            <div class="flex flex-col mt-3">
-                <input type="submit" class="interactive" value="Save Project">
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -147,6 +163,34 @@
 
 @section('script')
 <script>
+    function validate() {
+        if (fileUploader.classList.contains('hidden') === true) {
+            if (form.querySelector('input[name="thumbnail"]').hasAttribute('old-thumbnail') === false) {
+                clearImage();
+            }
+        } else if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
+            return false;
+        }
+
+        if (form.querySelector('input[name="name"]').checkValidity() === false) {
+            return false;
+        }
+
+        if (form.querySelector('input[name="route"]').checkValidity() === false) {
+            return false;
+        }
+
+        if (form.querySelector('select[name="permission"]').checkValidity() === false) {
+            return false;
+        }
+
+        if (form.querySelector('textarea[name="description"]').checkValidity() === false) {
+            return false;
+        }
+
+        form.submit();
+    }
+
     function preview() {
         frame.src = URL.createObjectURL(event.target.files[0]);
         fileUploader.classList.add('hidden')

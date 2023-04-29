@@ -52,7 +52,9 @@
                 {{-- <td class="text-center">{{$project["permission"]}}</td> --}}
                 <td class="text-center">{{$project["route"]}}</td>
                 <td>
-                    <div class="text-center interactive">edit</div>
+                    <div class="text-center">
+                        <a href="{{route("config.projects.modify", $project["id"])}}" class="interactive">edit</a>
+                    </div>
                     <div class="text-center interactive">delete</div>
                 </td>
             </tr>

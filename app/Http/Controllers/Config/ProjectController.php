@@ -24,29 +24,36 @@ class ProjectController
         ]);
     }
 
-    public function showModify()
+    public function new()
     {
+        return view('config.projects.modify');
+    }
+
+    public function modify(int $id)
+    {
+        $project = Project::find($id);
+        if ($project === null) {
+            // todo custom error screen
+            return redirect(route('config.projects.overview'))->with("error", "That route does not exist");
+        }
+
         return view('config.projects.modify', [
+            'project' => $project,
         ]);
     }
 
-    public function new()
+    public function save(Request $request)
     {
-        return $this->showModify();
-    }
-
-    public function save(Request $request) {
         $validator = Validator::make($request->all(), [
             'id' => 'nullable|exists:project,id',
-            'thumbnail' => 'required|mimes:png,jpg,jpeg,svg,webp|max:240',
+            'thumbnail' => 'nullable|mimes:png,jpg,jpeg,svg,webp|max:240',
             'name' => 'required|string|max:64',
             'route' => 'required|string|max:255',
             'description' => 'required|string',
             'permission' => 'nullable|string"exists:permission,permission',
         ]);
 
-        if ($validator->fails())
-        {
+        if ($validator->fails()) {
             return back()
                 ->withInput($request->all())
                 ->withErrors($validator);
@@ -54,8 +61,8 @@ class ProjectController
 
         if (Route::has($request->route) === false) {
             return back()
-            ->withInput($request->all())
-            ->with('error', "Route does not exist");
+                ->withInput($request->all())
+                ->with('error', "Route does not exist");
         }
 
         $project = null;
@@ -63,17 +70,24 @@ class ProjectController
             $project = Project::find($request->id);
         } else {
             $project = new Project();
+            if ($request->thumbnail) {
+                return back()
+                    ->withInput($request->all())
+                    ->with('error', 'Thumbnail is required');
+            }
         }
 
-        $filename = sprintf(
-            '%s.%s',
-            $request->name,
-            $request->thumbnail->extension()
-        );
-        $request->thumbnail->storeAs('project/thumbnail/' . $filename);
+        if ($request->thumbnail !== null) {
+            $filename = sprintf(
+                '%s.%s',
+                $request->name,
+                $request->thumbnail->extension()
+            );
+            $request->thumbnail->storeAs('project/thumbnail/' . $filename);
+            $project->thumbnail = $filename;
+        }
 
         $project->name = $request->name;
-        $project->thumbnail = $filename;
         $project->route = $request->route;
         $project->description = $request->description;
         $project->permission = $request->permission;
