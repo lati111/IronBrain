@@ -70,7 +70,7 @@ class ProjectController
             $project = Project::find($request->id);
         } else {
             $project = new Project();
-            if ($request->thumbnail) {
+            if ($request->thumbnail === null) {
                 return back()
                     ->withInput($request->all())
                     ->with('error', 'Thumbnail is required');
@@ -94,5 +94,16 @@ class ProjectController
         $project->save();
 
         return redirect(route('config.projects.overview'))->with("message", "Changes saved");
+    }
+
+    public function delete(int $id) {
+        $project = Project::find($id);
+        if ($project !== null) {
+            $project->delete();
+            return redirect(route('config.projects.overview'))->with("message", "Project was deleted");
+        } else {
+            // todo custom error screen
+            return redirect(route('config.projects.overview'))->with("error", "Invalid project");
+        }
     }
 }

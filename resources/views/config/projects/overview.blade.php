@@ -49,21 +49,33 @@
                 </td>
                 <td class="text-center">{{$project["name"]}}</td>
                 <td class="text-center">{{$project["description"]}}</td>
-                {{-- <td class="text-center">{{$project["permission"]}}</td> --}}
                 <td class="text-center">{{$project["route"]}}</td>
                 <td>
                     <div class="text-center">
                         <a href="{{route("config.projects.modify", $project["id"])}}" class="interactive">edit</a>
                     </div>
-                    <div class="text-center interactive">delete</div>
+                    <div class="text-center">
+                        <form action="{{route("config.projects.delete", $project["id"])}}" method="POST">
+                            @csrf
+                            <span
+                                onclick="store_form(this.closest('form'))" class="interactive"
+                                data-modal-target="delete_modal" data-modal-toggle="delete_modal"
+                                />delete</span>
+                        </form>
+                    </div>
                 </td>
             </tr>
             @endforeach
         </tbody>
     </table>
-
-
 </div>
+
+
+{{--| delete model |--}}
+@component('components.delete_model')
+    @slot('text') Are you sure you want to delete this project? @endslot
+    @slot('confirmFunction') submit_stored_form() @endslot
+@endcomponent
 
 
 {{--| pagination |--}}
@@ -125,4 +137,5 @@
 
 @section('script')
 <script src="{{ asset('js/pagination.js') }}"></script>
+<script src="{{ asset('js/config/project/overview.js') }}"></script>
 @stop

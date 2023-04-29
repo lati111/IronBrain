@@ -76,7 +76,11 @@
         {{--| title |--}}
         <div class="flex flex-row justify-center mb-3">
             <h3 class="title">
-                Add New Project
+                @if(isset($project))
+                    Modify Project
+                @else
+                    Add New Project
+                @endif
             </h3>
         </div>
 
@@ -103,7 +107,7 @@
                         <div class="flex flex-col justify-center">
                             <div class="flex justify-center">
                                 <div id="fileUploader" class="file-drop-area file-area dashed-border
-                                    @if($project->thumbnail !== null) hidden @endif"
+                                    @if(isset($project)) hidden @endif"
                                 >
                                     <span class="choose-file-button interactive">Choose thumbnail</span>
                                     <span class="file-message">or drag and drop image</span>
@@ -116,8 +120,8 @@
 
                             <div class="flex justify-center">
                                 <div id="filePreview"
-                                    class="relative justify-center file-area dashed-border
-                                    @if($project->thumbnail === null) hidden @endif"
+                                    @if(!isset($project)) class="hidden @else class="flex @endif
+                                    relative justify-center file-area dashed-border"
                                 >
                                     <span onclick="clearImage()" class="interactive absolute top-1 right-1">remove</span>
                                     <img id="frame" class="img-fluid file-area p-1"
@@ -143,10 +147,7 @@
                         {{--| description field |--}}
                         <textarea name="description" class="mediumInput underlined"
                             style="height: 90px !important" placeholder="Description" required
-                        />
-                            @isset($project) {{$project->description}} @endisset
-                            @if(old('description') === null) {{old('description')}} @endif
-                        </textarea>
+                        >@if(isset($project)){{$project->description}}@elseif(old('description') === null){{old('description')}}@endif</textarea>
                     </div>
                 </div>
 
@@ -166,7 +167,7 @@
     function validate() {
         if (fileUploader.classList.contains('hidden') === true) {
             if (form.querySelector('input[name="thumbnail"]').hasAttribute('old-thumbnail') === false) {
-                clearImage();
+                // clearImage();
             }
         } else if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
             return false;

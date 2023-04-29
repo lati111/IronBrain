@@ -20,11 +20,21 @@
 }
 
 .interactive {
+    text-decoration: none;
     color: var(--main-red) !important;
 }
 
 .interactive:hover, .interactive.active {
     color: var(--sub-red) !important;
+}
+
+.cancel_interactive {
+    text-decoration: none;
+    color: var(--main-grey) !important;
+}
+
+.cancel_interactive:hover, .cancel_interactive.active {
+    color: var(--main-black) !important;
 }
 
 input.underlined, select.underlined, textarea.underlined {
