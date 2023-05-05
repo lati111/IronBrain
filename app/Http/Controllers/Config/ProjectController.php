@@ -39,7 +39,7 @@ class ProjectController extends Controller
         }
 
         return view('config.projects.modify', array_merge($this->getBaseVariables(), [
-            "project" => $project,
+            'project' => $project,
         ]));
     }
 

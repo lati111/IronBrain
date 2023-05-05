@@ -70,6 +70,14 @@
 
 @section('content')
 
+{{--| delete modal |--}}
+@component('components.delete_model')
+    @slot('text') Are you sure you want to delete this project? @endslot
+    @slot('confirmFunction') submit_stored_form() @endslot
+@endcomponent
+
+<span class="hidden" data-modal-target="delete_modal" data-modal-toggle="delete_modal"></span>
+
 {{--| pagination form |--}}
 <div class="flex justify-center">
     <div>
@@ -226,13 +234,49 @@
                 </div>
             </form>
         </div>
+
+        {{--| submenu table |--}}
+        <div class="flex flex-row justify-center mb-3">
+            @component('components.datatable.table')
+                @slot('headers')
+                    @component('components.datatable.header')
+                        @slot('columnId')name @endslot
+                        @slot('content')name @endslot
+                    @endcomponent
+                    @component('components.datatable.header')
+                        @slot('columnId')route @endslot
+                        @slot('content')route @endslot
+                    @endcomponent
+                    @component('components.datatable.header')
+                        @slot('columnId')order @endslot
+                        @slot('content')order @endslot
+                    @endcomponent
+                    @component('components.datatable.header')
+                        @slot('columnId')actions @endslot
+                        @slot('content')
+                            <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline">Add Project</a>
+                        @endslot
+                    @endcomponent
+                @endslot
+                @slot('dataUrl'){{route('config.projects.submenu.overview.datatable', $project->id)}} @endslot
+            @endcomponent
+        </div>
     </div>
 </div>
 
 @stop
 
 @section('script')
+<script src="{{ asset('js/components/datatable.js') }}"></script>
+<script type="module">
+    function test() {
+        console.log('test')
+    }
+
+    window.test = test
+</script>
 <script>
+    test()
     function validate() {
         if (fileUploader.classList.contains('hidden') === true) {
             if (form.querySelector('input[name="thumbnail"]').hasAttribute('old-thumbnail') === false) {
