@@ -1,4 +1,4 @@
-@extends('layout.master')
+@extends('layouts.master')
 
 @section('htmlTitle', 'Home')
 @section('title', 'Home')

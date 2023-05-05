@@ -99,8 +99,8 @@
                     <div class="flex flex-col gap-4">
                         {{--| name field |--}}
                         <input type="text" name="name" class="smallInput underlined" placeholder="Name"
-                            @isset($project) value="{{$project->thumbnail}}" @endisset
-                            @if(old('name') === null) value="{{old('name')}}" @endif
+                            @isset($project) value="{{$project->name}}" @endisset
+                            @if(old('name') !== null) value="{{old('name')}}" @endif
                         />
 
                         {{--| image uploader |--}}
@@ -119,15 +119,42 @@
                             </div>
 
                             <div class="flex justify-center">
-                                <div id="filePreview"
-                                    @if(!isset($project)) class="hidden @else class="flex @endif
-                                    relative justify-center file-area dashed-border"
-                                >
-                                    <span onclick="clearImage()" class="interactive absolute top-1 right-1">remove</span>
-                                    <img id="frame" class="img-fluid file-area p-1"
-                                        @isset($project) src="{{asset('img/project/thumbnail/'.$project->thumbnail)}}" @endisset
+                                @if ((isset($project) === true && $project->inOverview === true) || old('inOverview') === "on")
+                                    <div id="filePreview"
+                                        @if(!isset($project)) class="hidden @else class="flex @endif
+                                        relative justify-center file-area dashed-border"
                                     />
-                                </div>
+                                        <span onclick="clearImage()" class="interactive absolute top-1 right-1 removeButton">remove</span>
+
+                                        <span class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 disabledBlurb hidden">thumbnail is disabled</span>
+
+                                        <img id="frame" class="img-fluid file-area p-1"
+                                            @if(isset($project) && $project->thumbnail !== null)
+                                                src="{{asset('img/project/thumbnail/'.$project->thumbnail)}}"
+                                            @else
+                                                src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                                            @endif
+                                        />
+                                    </div>
+                                @else
+                                    <div id="filePreview"
+                                        @if(!isset($project)) class="hidden @else class="flex @endif
+                                        relative justify-center file-area dashed-border"
+                                    />
+                                        <span onclick="clearImage()" class="interactive absolute top-1 right-1 bg-white px-1 removeButton hidden">remove</span>
+
+                                        <span class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 disabledBlurb">thumbnail is disabled</span>
+
+                                        <img id="frame" class="img-fluid file-area p-1"
+                                            @if(isset($project) && $project->thumbnail !== null)
+                                                src="{{asset('img/project/thumbnail/'.$project->thumbnail)}}"
+                                            @else
+                                                src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                                            @endif
+                                        />
+                                    </div>
+                                @endif
+
                             </div>
                         </div>
                     </div>
@@ -141,15 +168,57 @@
                         {{--| route field |--}}
                         <input type="text" name="route" class="smallInput underlined" placeholder="Route" required
                             @isset($project) value="{{$project->route}}" @endisset
-                            @if(old('route') === null) value="{{old('route')}}" @endif
+                            @if(old('route') !== null) value="{{old('route')}}" @endif
                         />
 
                         {{--| description field |--}}
                         <textarea name="description" class="mediumInput underlined"
                             style="height: 90px !important" placeholder="Description" required
-                        >@if(isset($project)){{$project->description}}@elseif(old('description') === null){{old('description')}}@endif</textarea>
+                        >@if(isset($project)){{$project->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
                     </div>
                 </div>
+
+                <div class="flex flex-row justify-around mt-3 pl-6">
+                    {{--| in project checkbox |--}}
+                    <div class="flex items-center justify-center">
+                        <input id="inOverviewCheckbox" type="checkbox" name="inOverview" class="w-4 h-4 text-red-600 focus:ring-red-500"
+                            @if(old('inNav') === true)
+                                checked
+                            @elseif (isset($project) === true)
+                                @if ($project->inOverview === 1) checked @endif
+                            @else
+                                checked
+                            @endif
+                            onchange="toggleThumbnailField()">
+                        <label for="default-checkbox" class="ml-2 text-sm" name="inOverview">Visible in overview?</label>
+                    </div>
+
+                    {{--| in nav checkbox |--}}
+                    <div class="flex items-center justify-center">
+                        <input id="inNavCheckbox" type="checkbox" name="inNav" class="w-4 h-4 text-red-600 focus:ring-red-500" onchange="toggleOrderField()"
+                            @isset($project) @if ($project->inNav === 1) checked @endif @endisset
+                            @if(old('inNav') === true) checked @endif
+                            />
+                        <label for="default-checkbox" class="ml-2 text-sm" name="inNav">Visible in navigation?</label>
+                    </div>
+
+                    {{--| navigation order field |--}}
+                    <div id="orderField" class="flex items-center justify-center gap-2 m-0
+                        @if(isset($project))
+                            @if ($project->inNav === false) invisible" @endif
+                        @elseif(old('inNav') !== true)
+                            invisible"
+                        @endif
+
+                    />
+                        <label for="default-checkbox" class="ml-2 text-sm" name="order">Navigation order:</label>
+                        <input type="number" name="order" class="w-16 h-4 pr-0 underlined"
+                            @isset($project) value="{{$project->order}}" @endisset
+                            @if(old('route') !== null) value="{{old('order')}}" @endif
+                            />
+                    </div>
+                </div>
+
 
                 {{--| submitter |--}}
                 <div class="flex flex-col mt-3">
@@ -190,6 +259,30 @@
         }
 
         form.submit();
+    }
+
+    function toggleOrderField() {
+        if (inNavCheckbox.checked) {
+            orderField.classList.remove("invisible");
+        } else {
+            orderField.classList.add("invisible");
+        }
+    }
+
+    function toggleThumbnailField() {
+        if (inOverviewCheckbox.checked) {
+            filePreview.classList.replace('flex', 'hidden');
+            filePreview.classList.add('disabled');
+            filePreview.querySelector(".disabledBlurb").classList.add('hidden')
+            filePreview.querySelector(".removeButton").classList.remove('hidden')
+            fileUploader.classList.remove('hidden')
+        } else {
+            fileUploader.classList.add('hidden')
+            filePreview.classList.add('remove');
+            filePreview.querySelector(".disabledBlurb").classList.remove('hidden')
+            filePreview.querySelector(".removeButton").classList.add('hidden')
+            filePreview.classList.replace('hidden', 'flex')
+        }
     }
 
     function preview() {

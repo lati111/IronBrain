@@ -22,10 +22,12 @@
 .interactive {
     text-decoration: none;
     color: var(--main-red) !important;
+    accent-color: var(--main-red) !important;
 }
 
-.interactive:hover, .interactive.active {
+.interactive:hover, .interactive.active, .interactive:focus {
     color: var(--sub-red) !important;
+    accent-color: var(--sub-red) !important;
 }
 
 .cancel_interactive {

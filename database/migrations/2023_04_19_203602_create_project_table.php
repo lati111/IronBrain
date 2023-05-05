@@ -15,10 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('name', 64);
             $table->text('description');
-            $table->string('thumbnail');
+            $table->string('thumbnail')->nullable();
             $table->string('route')->nullable();
             $table->string('permission')->nullable();
-            $table->boolean('visible')->default(true);
+            $table->integer('order')->nullable()->unique();
+            $table->boolean('inOverview')->default(true);
+            $table->boolean('inNav')->default(false);
             $table->boolean('active')->default(true);
             $table->timestamps();
 

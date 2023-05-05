@@ -1,6 +1,6 @@
 @extends('layouts.master')
 
-@section('htmlTitle', 'Project Overview')
+@section('htmlTitle', 'Navigation Overview')
 
 @section('header')
 <style>
@@ -14,7 +14,7 @@
 @section('content')
 
 {{--| pagination form |--}}
-<form id="paginationForm" action="{{ route('config.projects.overview') }}" method="GET" enctype="multipart/form-data">
+<form id="paginationForm" action="{{ route('config.nav.overview') }}" method="GET" enctype="multipart/form-data">
     @if ($page > 1)
         <input type="hidden" name="page" value="{{$page}}">
     @endif
@@ -30,36 +30,35 @@
             <tr>
                 <th scope="col" class="text-center">Thumbnail</th>
                 <th scope="col" class="text-center">Name</th>
-                <th scope="col" class="text-center">Description</th>
                 <th scope="col" class="text-center">Route</th>
-                <th scope="col" class="text-center">Nav Order</th>
+                <th scope="col" class="text-center">Order</th>
                 <th scope="col" class="text-center">
-                    <a href="{{route('config.projects.new')}}" class="interactive no-underline">Add Project</a>
+                    <a href="{{route('config.nav.new')}}" class="interactive no-underline">Add Navigation</a>
                 </th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($projects as $project)
+            @foreach ($navs as $nav)
             <tr class="">
                 <td>
-                    @if($project["thumbnail"] !== null)
+                    <div class="flex justify-center">
                         <img
-                            style="height: 48px"
-                            src="{{asset("img/project/thumbnail/".$project["thumbnail"])}}"
-                            alt="{{$project["thumbnail"]}}"
-                        />
-                    @endif
+                        style="height: 48px"
+                        class="text-center"
+                        src="{{asset("img/project/thumbnail/".$nav->Project->thumbnail)}}"
+                        alt="{{$nav["thumbnail"]}}"
+                    />
+                    </div>
                 </td>
-                <td class="text-center">{{$project["name"]}}</td>
-                <td class="text-center">{{$project["description"]}}</td>
-                <td class="text-center">{{$project["route"]}}</td>
-                <td class="text-center">{{$project["order"]}}</td>
+                <td class="text-center">{{$nav->Project->name}}</td>
+                <td class="text-center">{{$nav->Project->route}}</td>
+                <td class="text-center">{{$nav->order}}</td>
                 <td>
                     <div class="text-center">
-                        <a href="{{route("config.projects.modify", $project["id"])}}" class="interactive">edit</a>
+                        <a href="{{route("config.nav.modify", $nav["projectId"])}}" class="interactive">edit</a>
                     </div>
                     <div class="text-center">
-                        <form action="{{route("config.projects.delete", $project["id"])}}" method="POST">
+                        <form action="{{route("config.nav.delete", $nav["projectId"])}}" method="POST">
                             @csrf
                             <span
                                 onclick="store_form(this.closest('form'))" class="interactive"
@@ -77,7 +76,7 @@
 
 {{--| delete model |--}}
 @component('components.delete_model')
-    @slot('text') Are you sure you want to delete this project? @endslot
+    @slot('text') Are you sure you want to delete this nav? @endslot
     @slot('confirmFunction') submit_stored_form() @endslot
 @endcomponent
 
@@ -85,7 +84,7 @@
 {{--| pagination |--}}
 <div class="flex justify-center">
     <div class="flex flex-row justify-between">
-        @if (ceil($projectCount / $perPage) > 20)
+        @if (ceil($navCount / $perPage) > 20)
             @if ($page > 5)
                 <button class='interactive px-1 w-8' onclick='openPage(1)'>1</button>
                 <span class="text-sub text-center px-1 w-8">...</span>
@@ -108,25 +107,25 @@
             <button class='interactive active px-1 w-8' onclick='openPage({{$page}})'><b>{{$page}}</b></button>
 
             @for ($i = $page + 1; $i < $page + 4; $i++)
-                @if ($i < ceil($projectCount / $perPage) + 1)
+                @if ($i < ceil($navCount / $perPage) + 1)
                     <button class='interactive px-1 w-8' onclick='openPage({{$i}})'>{{$i}}</button>
                 @else
                     <span class='px-1 w-8'></span>
                 @endif
             @endfor
 
-            @if ($page < ceil($projectCount / $perPage) - 4)
+            @if ($page < ceil($navCount / $perPage) - 4)
                 <span class="text-sub text-center px-1 w-8">...</span>
-                <button class='interactive px-1 w-8' onclick='openPage({{ceil($projectCount / $perPage)}})'>{{ceil($projectCount / $perPage)}}</button>
-            @elseif ($page = (ceil($projectCount / $perPage) - 5))
-                <button class='interactive px-1 w-8' onclick='openPage({{ceil($projectCount / $perPage)}})'>{{ceil($projectCount / $perPage)}}</button>
+                <button class='interactive px-1 w-8' onclick='openPage({{ceil($navCount / $perPage)}})'>{{ceil($navCount / $perPage)}}</button>
+            @elseif ($page = (ceil($navCount / $perPage) - 5))
+                <button class='interactive px-1 w-8' onclick='openPage({{ceil($navCount / $perPage)}})'>{{ceil($navCount / $perPage)}}</button>
                 <span class='px-1 w-8'></span>
             @else
                 <span class='px-1 w-8'></span>
                 <span class='px-1 w-8'></span>
             @endif
         @else
-            @for ($i = 1; $i < ceil($projectCount / $perPage) + 1; $i++)
+            @for ($i = 1; $i < ceil($navCount / $perPage) + 1; $i++)
                 @if ($page == $i)
                     <button class='interactive active px-1 w-8' onclick='openPage({{$i}})'><b>{{$i}}</b></button>
                 @else

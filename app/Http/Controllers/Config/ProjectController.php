@@ -51,6 +51,7 @@ class ProjectController
             'route' => 'required|string|max:255',
             'description' => 'required|string',
             'permission' => 'nullable|string"exists:permission,permission',
+            'order' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -70,14 +71,14 @@ class ProjectController
             $project = Project::find($request->id);
         } else {
             $project = new Project();
-            if ($request->thumbnail === null) {
+            if ($request->thumbnail === null && $request->inOverview === "on") {
                 return back()
                     ->withInput($request->all())
                     ->with('error', 'Thumbnail is required');
             }
         }
 
-        if ($request->thumbnail !== null) {
+        if ($request->thumbnail !== null && $request->inOverview === "on") {
             $filename = sprintf(
                 '%s.%s',
                 $request->name,
@@ -87,10 +88,27 @@ class ProjectController
             $project->thumbnail = $filename;
         }
 
+        if ($request->inNav === "on") {
+            $project->order = $request->order;
+        }
+
         $project->name = $request->name;
         $project->route = $request->route;
         $project->description = $request->description;
         $project->permission = $request->permission;
+
+        if ($request->inOverview === "on") {
+            $project->inOverview = true;
+        } else if ($request->inOverview === null) {
+            $project->inOverview = false;
+        }
+
+        if ($request->inNav === "on") {
+            $project->inNav = true;
+        } else if ($request->inNav === null) {
+            $project->inNav = false;
+        }
+
         $project->save();
 
         return redirect(route('config.projects.overview'))->with("message", "Changes saved");
