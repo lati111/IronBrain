@@ -27,6 +27,7 @@ function closeModal() {
 }
 
 function store_form(form:HTMLFormElement) {
+
     stored_form = form;
 }
 

@@ -24,7 +24,7 @@ Route::prefix('/config')->group(function() {
             Route::get('/new', [SubmenuController::class, 'new'])->name("config.projects.submenu.new");
             Route::get('/modify/{id}', [SubmenuController::class, 'modify'])->name("config.projects.submenu.modify");
             Route::post('/save', [SubmenuController::class, 'save'])->name("config.projects.submenu.save");
-            Route::get('/delete/{id}', [SubmenuController::class, 'delete'])->name("config.projects.submenu.delete");
+            Route::post('/delete/{id}', [SubmenuController::class, 'delete'])->name("config.projects.submenu.delete");
 
             Route::get('/overview/datatable', [SubmenuController::class, 'overviewDataTable'])->name("config.projects.submenu.overview.datatable");
         });

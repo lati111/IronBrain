@@ -13,6 +13,9 @@ class SubmenuController extends Controller
 {
     public function overviewDataTable(Request $request, int $projectId)
     {
+        $token = $request->session()->token();
+        $token = csrf_token();
+
         $project = Project::find($projectId);
         if ($project === null) {
             // todo custom error
@@ -26,6 +29,7 @@ class SubmenuController extends Controller
             "</div>".
             "<div class='text-center'>".
                 "<form action='%s' method='POST'>".
+                    "<input type='hidden' name='_token' value='%s'/>".
                     "<span ".
                         "onclick='store_form(this.closest(`form`)); openModal(`delete_modal`)' class='interactive'".
                         "/>delete</span>".
@@ -47,7 +51,8 @@ class SubmenuController extends Controller
                 sprintf(
                     $actionHTML,
                     route('config.projects.submenu.modify', [$projectId, $submenu->id]),
-                    route('config.projects.submenu.delete', [$projectId, $submenu->id])
+                    route('config.projects.submenu.delete', [$projectId, $submenu->id]),
+                    $token
                 ),
             ];
         }
@@ -116,5 +121,13 @@ class SubmenuController extends Controller
     }
 
     public function delete(int $projectId, int $id) {
+        $submenu = Submenu::find($id);
+        if ($submenu !== null) {
+            $submenu->delete();
+            return redirect(route('config.projects.modify', $projectId))->with("message", "Submenu was deleted");
+        } else {
+            // todo custom error screen
+            return redirect(route('config.projects.modify', $projectId))->with("error", "Invalid submenu");
+        }
     }
 }

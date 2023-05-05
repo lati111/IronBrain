@@ -20,8 +20,8 @@
                         d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">{{ $text }}</h3>
-                <button onclick="closeModal()" type="button" class="mr-2 px-5 py-2.5 interactive"
-                    @isset($confirmFunction) onclick="{{$confirmFunction}}" @endisset
+                <button type="button" class="mr-2 px-5 py-2.5 interactive"
+                    onclick="closeModal(); @isset($confirmFunction) {{$confirmFunction}} @endisset"
                 />
                     Yes, I'm sure
                 </button>
