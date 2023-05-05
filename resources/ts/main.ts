@@ -1,5 +1,3 @@
-let stored_form:HTMLFormElement;
-
 function init() {
     setTimeout(() => {
         const errorToasts = document.querySelectorAll(".error-toast");
@@ -14,17 +12,6 @@ function init() {
             toast.remove();
         }
     }, 5000);
-
-    // if (window.datatableInit) {
-    //     window.datatableInit();
-    // }
 }
 
-function store_form(form:HTMLFormElement) {
-    stored_form = form;
-}
-
-function submit_stored_form() {
-    stored_form.submit();
-}
-window.init = init;
+(<any>window).init = init;

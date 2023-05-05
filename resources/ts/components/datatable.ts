@@ -8,14 +8,14 @@ async function datatableInit() {
     });
 }
 
-async function loadDataTable(datatable) {
-    const url =  datatable.getAttribute('data-content-url');
+async function loadDataTable(datatable: Element) {
+    const url =  datatable.getAttribute('data-content-url')!;
     const data = await getData(url);
 
-    const tbody = datatable.querySelector('tbody');
+    const tbody = datatable.querySelector('tbody')!;
     tbody.innerHTML = "";
 
-    data.forEach(rowData => {
+    data.forEach((rowData: any[]) => {
         const row = document.createElement('tr')
         rowData.forEach(content => {
             const cell = document.createElement('td');

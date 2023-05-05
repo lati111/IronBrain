@@ -24,9 +24,8 @@ class NavController extends Controller
             "</div>".
             "<div class='text-center'>".
                 "<form action='%s' method='POST'>".
-                    "<span".
-                        "onclick='store_form(this.closest(`form`))' class='interactive'".
-                        "data-modal-target='delete_modal' data-modal-toggle='delete_modal'".
+                    "<span ".
+                        "onclick='store_form(this.closest(`form`)); openModal(`delete_modal`)' class='interactive'".
                         "/>delete</span>".
                 "</form>".
             "</div>".

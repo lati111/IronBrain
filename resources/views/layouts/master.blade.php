@@ -62,7 +62,7 @@
                 <div class="dropdown flex justify-center">
                     <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
                         data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="https://cdn.discordapp.com/avatars/233948668447817728/b41993097639122be18c0f2ada8bac79?size=1024" alt="" width="32" height="32" class="rounded-circle">
+                        {{-- <img src="https://cdn.discordapp.com/avatars/233948668447817728/b41993097639122be18c0f2ada8bac79?size=1024" alt="" width="32" height="32" class="rounded-circle"> --}}
                     </a>
 
                     {{--| account dropdown |--}}

@@ -1,24 +1,10 @@
 @extends('layouts.master')
 
 @section('htmlTitle', 'Add Project')
+@section('onloadFunction') datatableInit() @stop
 
 @section('header')
 <style>
-    .smallInput {
-        height: 24px;
-        width: 300px
-    }
-
-    .mediumInput {
-        height: 24px;
-        width: 300px;
-    }
-
-    .dashed-border {
-        border: 1px dashed var(--main-grey);
-        border-radius: 3px;
-    }
-
     .file-drop-area {
         position: relative;
         display: flex;
@@ -68,8 +54,6 @@
 </style>
 @stop
 
-@section('onloadFunction') datatableInit() @stop
-
 
 @section('content')
 
@@ -79,7 +63,7 @@
     @slot('confirmFunction') submit_stored_form() @endslot
 @endcomponent
 
-<span class="hidden" data-modal-target="delete_modal" data-modal-toggle="delete_modal"></span>
+
 
 {{--| pagination form |--}}
 <div class="flex justify-center">
@@ -270,14 +254,14 @@
 @stop
 
 @section('script')
-@vite(['resources/ts/components/datatable.ts'])
+@vite([
+    'resources/ts/main.ts',
+    'resources/ts/components/datatable.ts',
+    'resources/ts/components/modal.ts'
+])
 <script>
     function validate() {
-        if (fileUploader.classList.contains('hidden') === true) {
-            if (form.querySelector('input[name="thumbnail"]').hasAttribute('old-thumbnail') === false) {
-                // clearImage();
-            }
-        } else if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
+        if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
             return false;
         }
 
