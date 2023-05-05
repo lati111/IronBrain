@@ -47,10 +47,6 @@
         height: 140px !important;
         width: 300px !important;
     }
-
-    .hidden {
-        display: none !important;
-    }
 </style>
 @stop
 
@@ -62,7 +58,6 @@
     @slot('text') Are you sure you want to delete this project? @endslot
     @slot('confirmFunction') submit_stored_form() @endslot
 @endcomponent
-
 
 
 {{--| pagination form |--}}
@@ -241,7 +236,7 @@
                     @component('components.datatable.header')
                         @slot('columnId')actions @endslot
                         @slot('content')
-                            <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline">Add Project</a>
+                            <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline">Add Submenu</a>
                         @endslot
                     @endcomponent
                 @endslot

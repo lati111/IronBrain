@@ -44,6 +44,10 @@ input.underlined, select.underlined, textarea.underlined {
     border-bottom: 1px var(--main-grey) solid !important;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .error-toast {
     border-color: var(--main-red);
 }
@@ -56,6 +60,11 @@ input.underlined, select.underlined, textarea.underlined {
 .mediumInput {
     height: 24px;
     width: 300px;
+}
+
+.largeInput {
+    height: 24px;
+    width: 425px;
 }
 
 .dashed-border {

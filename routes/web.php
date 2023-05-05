@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Config\NavController;
+use App\Http\Controllers\Config\SubmenuController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Config\ProjectController;
@@ -21,10 +21,12 @@ Route::prefix('/config')->group(function() {
 
         //| submenu
         Route::prefix('/{projectId}/submenu')->group(function() {
-            Route::get('/overview/datatable', [NavController::class, 'getSubmenuCollection'])->name("config.projects.submenu.overview.datatable");
-            Route::get('/new', [NavController::class, 'new'])->name("config.projects.submenu.new");
-            Route::get('/modify/{id}', [NavController::class, 'modify'])->name("config.projects.submenu.modify");
-            Route::get('/delete/{id}', [NavController::class, 'delete'])->name("config.projects.submenu.delete");
+            Route::get('/new', [SubmenuController::class, 'new'])->name("config.projects.submenu.new");
+            Route::get('/modify/{id}', [SubmenuController::class, 'modify'])->name("config.projects.submenu.modify");
+            Route::post('/save', [SubmenuController::class, 'save'])->name("config.projects.submenu.save");
+            Route::get('/delete/{id}', [SubmenuController::class, 'delete'])->name("config.projects.submenu.delete");
+
+            Route::get('/overview/datatable', [SubmenuController::class, 'overviewDataTable'])->name("config.projects.submenu.overview.datatable");
         });
     });
 
