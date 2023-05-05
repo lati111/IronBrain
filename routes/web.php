@@ -1,16 +1,21 @@
 <?php
 
-use App\Http\Controllers\Config\SubmenuController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Config\ProjectController;
+use App\Http\Controllers\Config\SubmenuController;
 
 Route::get('/', [HomeController::class, 'show'])->name("home.show");
 
+//| authentication
+Route::prefix('/auth')->group(function() {
+    Route::get('/signup', [AuthController::class, 'showSignup'])->name("auth.signup.show");
+    Route::post('/signup/save', [AuthController::class, 'saveSignup'])->name("auth.signup.save");
+});
+
 //| config
 Route::prefix('/config')->group(function() {
-    Route::get('/', [HomeController::class, 'show'])->name("config.overview");
-
     //| project
     Route::prefix('/projects')->group(function() {
         Route::get('/', [ProjectController::class, 'overview'])->name("config.projects.overview");
