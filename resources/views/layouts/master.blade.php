@@ -55,7 +55,22 @@
                 <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2">
                     <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li>
                     @foreach ($navCollection as $nav)
-                        <li><a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary">{{$nav->name}}</a></li>
+                        <li>
+                            @if(count($nav->Submenu) > 0)
+                                <span class="nav-link interactive px-2 link-secondary dropdown-toggle"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                />{{$nav->name}}</span>
+
+                                <ul class="dropdown-menu interactive px-2 link-secondary">
+                                    @foreach ($nav->Submenu as $submenu)
+                                        <li><a class="dropdown-item" href="{{route($submenu->route)}}">{{$submenu->name}}</a></li>
+                                    @endforeach
+                                </ul>
+                            @else
+                                <a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary">{{$nav->name}}</a>
+                            @endif
+
+                        </li>
                     @endforeach
                 </ul>
 
