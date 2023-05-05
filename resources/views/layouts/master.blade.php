@@ -8,12 +8,12 @@
     <meta name="author" content="Lati111">
     <title>IronBrain | @yield('htmlTitle')</title>
 
-    @vite(['resources/css/app.css','resources/js/app.js'])
+    @vite(['resources/css/app.css','resources/ts/app.ts'])
     <link href="{{ asset('css/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     @yield('header')
 </head>
 
-<body onload="init()" class="relative">
+<body onload="init(); @yield('onloadFunction')" class="relative">
     <div class="absolute flex flex-col gap-2 top-3 left-3 w-64">
         @if ($error = Session::get('error'))
             @component('components.toast')
@@ -85,7 +85,7 @@
     </main>
 </body>
 
-<script src="{{ asset('js/main.js') }}"></script>
+@vite(['resources/ts/main.ts'])
 <script src="{{ asset('js/bootstrap/bootstrap.bundle.js') }}"></script>
 @yield('script')
 

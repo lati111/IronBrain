@@ -1,4 +1,4 @@
-let stored_form = null;
+let stored_form:HTMLFormElement;
 
 function init() {
     setTimeout(() => {
@@ -15,30 +15,16 @@ function init() {
         }
     }, 5000);
 
-    if (window.datatableInit) {
-        datatableInit();
-    }
+    // if (window.datatableInit) {
+    //     window.datatableInit();
+    // }
 }
 
-async function getData(url = "", data = {}) {
-    const response = await fetch(url, {
-      method: "GET",
-      mode: "no-cors",
-      cache: "no-cache",
-      credentials: "same-origin",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      redirect: "follow",
-      referrerPolicy: "no-referrer",
-    });
-    return response.json();
-}
-
-function store_form(form) {
+function store_form(form:HTMLFormElement) {
     stored_form = form;
 }
 
 function submit_stored_form() {
     stored_form.submit();
 }
+window.init = init;

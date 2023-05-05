@@ -1,3 +1,5 @@
+import {getData} from '../ajax.js';
+
 async function datatableInit() {
     const datatableCollection = document.querySelectorAll('table.datatable');
 
@@ -7,8 +9,8 @@ async function datatableInit() {
 }
 
 async function loadDataTable(datatable) {
-    url =  datatable.getAttribute('data-content-url');
-    data = await getData(url);
+    const url =  datatable.getAttribute('data-content-url');
+    const data = await getData(url);
 
     const tbody = datatable.querySelector('tbody');
     tbody.innerHTML = "";
@@ -25,3 +27,4 @@ async function loadDataTable(datatable) {
     });
 }
 
+(<any>window).datatableInit = datatableInit;

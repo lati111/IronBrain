@@ -68,6 +68,9 @@
 </style>
 @stop
 
+@section('onloadFunction') datatableInit() @stop
+
+
 @section('content')
 
 {{--| delete modal |--}}
@@ -267,16 +270,8 @@
 @stop
 
 @section('script')
-<script src="{{ asset('js/components/datatable.js') }}"></script>
-<script type="module">
-    function test() {
-        console.log('test')
-    }
-
-    window.test = test
-</script>
+@vite(['resources/ts/components/datatable.ts'])
 <script>
-    test()
     function validate() {
         if (fileUploader.classList.contains('hidden') === true) {
             if (form.querySelector('input[name="thumbnail"]').hasAttribute('old-thumbnail') === false) {
