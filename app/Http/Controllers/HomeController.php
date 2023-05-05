@@ -6,13 +6,17 @@ use App\Models\Project;
 use App\Service\TimeService;
 use DateTime;
 
-class HomeController
+class HomeController extends Controller
 {
     public function show()
     {
         $projects = [];
 
-        foreach (Project::all() as $project) {
+        $projectCollection = Project::where('inOverview', true)
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        foreach ($projectCollection as $project) {
             $timeAgo = TimeService::time_elapsed_string($project->updated_at);
             $array = [
                 "name" => $project->name,
@@ -25,8 +29,8 @@ class HomeController
             $projects[] = $array;
         }
 
-        return view('home', [
+        return view('home', array_merge($this->getBaseVariables(), [
             "projects" => $projects,
-        ]);
+        ]));
     }
 }

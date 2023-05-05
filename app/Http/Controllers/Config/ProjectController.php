@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Config;
 
+use App\Http\Controllers\Controller;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 
-class ProjectController
+class ProjectController extends Controller
 {
     public function overview()
     {
@@ -16,17 +17,17 @@ class ProjectController
         $projects = Project::offset(($page - 1) * $perPage)->limit($perPage)->get();
         $projectCount = Project::all()->count();
 
-        return view('config.projects.overview', [
+        return view('config.projects.overview', array_merge($this->getBaseVariables(), [
             "projectCount" => $projectCount,
             "projects" => $projects,
             "perPage" => $perPage,
             "page" => $page,
-        ]);
+        ]));
     }
 
     public function new()
     {
-        return view('config.projects.modify');
+        return view('config.projects.modify', $this->getBaseVariables());
     }
 
     public function modify(int $id)
@@ -37,9 +38,9 @@ class ProjectController
             return redirect(route('config.projects.overview'))->with("error", "That route does not exist");
         }
 
-        return view('config.projects.modify', [
-            'project' => $project,
-        ]);
+        return view('config.projects.modify', array_merge($this->getBaseVariables(), [
+            "project" => $project,
+        ]));
     }
 
     public function save(Request $request)

@@ -53,15 +53,10 @@
                 {{--| nav items |--}}
                 <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2">
                     <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li>
-                    {{-- <li><a href="#" class="nav-link interactive px-2 link-body-emphasis">Inventory</a></li>
-                    <li><a href="#" class="nav-link interactive px-2 link-body-emphasis">Customers</a></li>
-                    <li><a href="#" class="nav-link interactive px-2 link-body-emphasis">Products</a></li> --}}
+                    @foreach ($navCollection as $nav)
+                        <li><a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary">{{$nav->name}}</a></li>
+                    @endforeach
                 </ul>
-
-                {{--| search bar |--}}
-                {{-- <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3" role="search">
-                    <input type="search" class="form-control" placeholder="Search..." aria-label="Search">
-                </form> --}}
 
                 {{--| account icon |--}}
                 <div class="dropdown flex justify-center">
