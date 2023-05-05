@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root:root {
+    --bs-body-font-family: 'Platform';
+    --main-red: #FF0000;
+    --sub-red: #7f0000;
+    --main-grey: #B3B3B3;
+    --main-black: #000000;
+}
+
+#logo {
+    margin-top: -0.25rem;
+}
+
+.title {
+    color: var(--main-red) !important;
+    font-weight: bold !important;
+}
+
+.interactive {
+    text-decoration: none;
+    color: var(--main-red) !important;
+    accent-color: var(--main-red) !important;
+}
+
+.interactive:hover, .interactive.active, .interactive:focus {
+    color: var(--sub-red) !important;
+    accent-color: var(--sub-red) !important;
+}
+
+.cancel_interactive {
+    text-decoration: none;
+    color: var(--main-grey) !important;
+}
+
+.cancel_interactive:hover, .cancel_interactive.active {
+    color: var(--main-black) !important;
+}
+
+input.underlined, select.underlined, textarea.underlined {
+    border: none !important;
+    border-bottom: 1px var(--main-grey) solid !important;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.error-toast {
+    border-color: var(--main-red);
+}
+
+.smallInput {
+    height: 24px;
+    width: 300px
+}
+
+.mediumInput {
+    height: 24px;
+    width: 300px;
+}
+
+.largeInput {
+    height: 24px;
+    width: 425px;
+}
+
+.dashed-border {
+    border: 1px dashed var(--main-grey);
+    border-radius: 3px;
+}
