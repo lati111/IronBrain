@@ -91,12 +91,12 @@
                             <li>
                                 <hr class="dropdown-divider">
                             </li> --}}
-                            <li><a class="dropdown-item" href="#">Sign out</a></li>
+                            <li><a class="dropdown-item" href="{{route('auth.logout')}}">Sign out</a></li>
                         </ul>
                     @else
                         {{--| login / sign up |--}}
                         <div class="flex justify-center gap-3">
-                            <div class="interactive">Log In</div>
+                            <a href="{{route('auth.login.show')}}" class="interactive">Log In</a>
                             <a href="{{route('auth.signup.show')}}" class="interactive">Sign Up</a>
                         </div>
                     @endif

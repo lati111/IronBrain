@@ -53,4 +53,36 @@ class AuthController extends Controller
 
         return redirect(route('home.show'))->with("message", "Account Created");
     }
+
+    public function showLogin() {
+        return view('authentication.login', $this->getBaseVariables());
+    }
+
+    public function attemptLogin(Request $request) {
+        $request->validate([
+            'email' => 'required',
+            'password' => 'required',
+        ]);
+
+        if (Auth::attempt($request->only(['email', 'password']))) {
+            return redirect()->route("home.show")
+                ->with('message', 'Log in successful');
+        } else {
+            return back()
+                ->with('error', 'Username or password is incorrect');
+        }
+
+
+    }
+
+    public function logout() {
+        if (Auth::user() === null) {
+            return redirect()->route("auth.login.show")
+                ->with('error', 'Already signed out');
+        }
+
+        Auth::logout();
+        return redirect()->route("auth.login.show")
+                ->with('message', 'Logged out succesfully');
+    }
 }
