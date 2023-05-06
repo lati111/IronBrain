@@ -4,6 +4,8 @@ namespace App\Datatables\Auth;
 
 use App\Datatables\AbstractDatatable;
 use App\Models\Auth\Permission;
+use App\Models\Auth\Role;
+use App\Models\Auth\User;
 use App\Models\Config\Submenu;
 use Illuminate\Http\Request;
 
@@ -33,6 +35,36 @@ class PermissionDatatable extends AbstractDatatable
                 $permission->description,
                 $permission->group,
                 $actionHTML,
+            ];
+        }
+
+        return response()->json($tableData, 200);
+    }
+
+    public function listToggleableData(Request $request, int $role_id)
+    {
+        $role = Role::find($role_id);
+        if ($role === null) {
+            return response()->json('Role not found', 404);
+        }
+
+        $permissionCollection =
+            $this->applyTableFilters($request, Permission::select())
+                ->get();
+
+        $tableData = [];
+        foreach ($permissionCollection as $permission) {
+            $url = route('config.role.permission.toggle', [$role_id, $permission->id]);
+            $checkbox = sprintf(
+                "<input type='checkbox' onclick='togglePermission(this.checked, `%s`)' %s>",
+                $url,
+                $role->hasPermission($permission) ? 'checked' : ''
+            );
+
+            $tableData[] = [
+                $checkbox,
+                $permission->name,
+                $permission->description,
             ];
         }
 

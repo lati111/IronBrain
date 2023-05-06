@@ -1,11 +1,13 @@
 <?php
 
 use App\Datatables\Auth\PermissionDatatable;
+use App\Datatables\Auth\RoleDatatable;
 use App\Datatables\Config\SubmenuDatatable;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\SubmenuController;
 use App\Http\Controllers\Config\PermissionController;
+use App\Http\Controllers\Config\RoleController;
 
 Route::prefix('/config')->group(function() {
     //| project
@@ -27,14 +29,33 @@ Route::prefix('/config')->group(function() {
         });
     });
 
+    //| role
+    Route::prefix('/role')->group(function() {
+        // pages
+        Route::get('/', [RoleController::class, 'overview'])->name("config.role.overview");
+        Route::get('/new', [RoleController::class, 'new'])->name("config.role.new");
+        Route::get('/modify/{id}', [RoleController::class, 'modify'])->name("config.role.modify");
+        Route::post('/save', [RoleController::class, 'save'])->name("config.role.save");
+        Route::post('/delete/{id}', [RoleController::class, 'delete'])->name("config.role.delete");
+
+        // datatables
+        Route::get('/overview/data', [RoleDatatable::class, 'overviewData'])->name("config.role.overview.datatable");
+        Route::get('/{id}/permissions/data', [PermissionDatatable::class, 'listToggleableData'])->name("config.role.permission.datatable");
+
+        // ajax calls
+        Route::post('/{role_id}/permission/{permission_id}/toggle', [RoleController::class, 'togglePermission'])->name("config.role.permission.toggle");
+    });
+
     //| permission
     Route::prefix('/permission')->group(function() {
+        // pages
         Route::get('/', [PermissionController::class, 'overview'])->name("config.permission.overview");
         Route::get('/new', [PermissionController::class, 'new'])->name("config.permission.new");
         Route::get('/modify/{id}', [PermissionController::class, 'modify'])->name("config.permission.modify");
         Route::post('/save', [PermissionController::class, 'save'])->name("config.permission.save");
         Route::post('/delete/{id}', [PermissionController::class, 'delete'])->name("config.permission.delete");
 
+        // datatables
         Route::get('/overview/data', [PermissionDatatable::class, 'overviewData'])->name("config.permission.overview.datatable");
     });
 });

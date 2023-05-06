@@ -16,6 +16,6 @@ class Project extends Model
 
     public function Submenu(): HasMany
     {
-        return $this->hasMany(Submenu::class, 'project_id');
+        return $this->hasMany(Submenu::class, 'project_id')->orderBy('order', 'asc');
     }
 }
