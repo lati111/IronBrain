@@ -11,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('role_permission', function (Blueprint $table) {
-            $table->string('role', 128);
-            $table->string('permission', 128);
+        Schema::create('auth__role_permission', function (Blueprint $table) {
+            $table->foreignId('role_id');
+            $table->foreignId('permission_id');
             $table->timestamps();
 
-            $table->foreign('role')->references('role')->on('role')->onUpdate('no action')->onDelete('restrict');
-            $table->foreign('permission')->references('permission')->on('permission')->onUpdate('no action')->onDelete('restrict');
+            $table->foreign('role_id')->references('id')->on('auth__role')->onUpdate('no action')->onDelete('restrict');
+            $table->foreign('permission_id')->references('id')->on('auth__permission')->onUpdate('no action')->onDelete('restrict');
         });
     }
 

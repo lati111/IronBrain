@@ -151,7 +151,7 @@
 
                     <div class="flex flex-col gap-4">
                         {{--| permission field |--}}
-                        <select id="permissionSelect" name="permission" class="mediumInput underlined py-0">
+                        <select id="permissionSelect" name="permission_id" class="mediumInput underlined py-0">
                             <option value="">No permission</option>
                         </select>
 
@@ -171,32 +171,32 @@
                 <div class="flex flex-row justify-around mt-3 pl-6">
                     {{--| in project checkbox |--}}
                     <div class="flex items-center justify-center">
-                        <input id="inOverviewCheckbox" type="checkbox" name="inOverview" class="w-4 h-4 text-red-600 focus:ring-red-500"
-                            @if(old('inNav') === true)
+                        <input id="inOverviewCheckbox" type="checkbox" name="in_overview" class="w-4 h-4 text-red-600 focus:ring-red-500"
+                            @if(old('in_overview') === true)
                                 checked
                             @elseif (isset($project) === true)
-                                @if ($project->inOverview === 1) checked @endif
+                                @if ($project->in_overview === 1) checked @endif
                             @else
                                 checked
                             @endif
                             onchange="toggleThumbnailField()">
-                        <label for="default-checkbox" class="ml-2 text-sm" name="inOverview">Visible in overview?</label>
+                        <label for="default-checkbox" class="ml-2 text-sm" name="in_overview">Visible in overview?</label>
                     </div>
 
                     {{--| in nav checkbox |--}}
                     <div class="flex items-center justify-center">
-                        <input id="inNavCheckbox" type="checkbox" name="inNav" class="w-4 h-4 text-red-600 focus:ring-red-500" onchange="toggleOrderField()"
-                            @isset($project) @if ($project->inNav === 1) checked @endif @endisset
-                            @if(old('inNav') === true) checked @endif
+                        <input id="inNavCheckbox" type="checkbox" name="in_nav" class="w-4 h-4 text-red-600 focus:ring-red-500" onchange="toggleOrderField()"
+                            @isset($project) @if ($project->in_nav === 1) checked @endif @endisset
+                            @if(old('in_nav') === true) checked @endif
                             />
-                        <label for="default-checkbox" class="ml-2 text-sm" name="inNav">Visible in navigation?</label>
+                        <label for="default-checkbox" class="ml-2 text-sm" name="in_nav">Visible in navigation?</label>
                     </div>
 
                     {{--| navigation order field |--}}
                     <div id="orderField" class="flex items-center justify-center gap-2 m-0
                         @if(isset($project))
-                            @if ($project->inNav === false) invisible" @endif
-                        @elseif(old('inNav') !== true)
+                            @if ($project->in_nav === false) invisible" @endif
+                        @elseif(old('in_nav') !== true)
                             invisible"
                         @endif
 
@@ -218,31 +218,34 @@
         </div>
 
         {{--| submenu table |--}}
-        <div class="flex flex-row justify-center mb-3">
-            @component('components.datatable.table')
-                @slot('headers')
-                    @component('components.datatable.header')
-                        @slot('columnId')name @endslot
-                        @slot('content')name @endslot
-                    @endcomponent
-                    @component('components.datatable.header')
-                        @slot('columnId')route @endslot
-                        @slot('content')route @endslot
-                    @endcomponent
-                    @component('components.datatable.header')
-                        @slot('columnId')order @endslot
-                        @slot('content')order @endslot
-                    @endcomponent
-                    @component('components.datatable.header')
-                        @slot('columnId')actions @endslot
-                        @slot('content')
-                            <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline">Add Submenu</a>
-                        @endslot
-                    @endcomponent
-                @endslot
-                @slot('dataUrl'){{route('config.projects.submenu.overview.datatable', $project->id)}} @endslot
-            @endcomponent
-        </div>
+        @isset($project)
+            <div class="flex flex-row justify-center mb-3">
+                @component('components.datatable.table')
+                    @slot('headers')
+                        @component('components.datatable.header')
+                            @slot('columnId')name @endslot
+                            @slot('content')name @endslot
+                        @endcomponent
+                        @component('components.datatable.header')
+                            @slot('columnId')route @endslot
+                            @slot('content')route @endslot
+                        @endcomponent
+                        @component('components.datatable.header')
+                            @slot('columnId')order @endslot
+                            @slot('content')order @endslot
+                        @endcomponent
+                        @component('components.datatable.header')
+                            @slot('columnId')actions @endslot
+                            @slot('content')
+                                <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline">Add Submenu</a>
+                            @endslot
+                        @endcomponent
+                    @endslot
+                    @slot('dataUrl'){{route('config.projects.submenu.overview.datatable', $project->id)}} @endslot
+                @endcomponent
+            </div>
+        @endisset
+
     </div>
 </div>
 
@@ -256,8 +259,10 @@
 ])
 <script>
     function validate() {
-        if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
-            return false;
+        if (fileUploader.classList.contains('hidden') === false) {
+            if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
+                return false;
+            }
         }
 
         if (form.querySelector('input[name="name"]').checkValidity() === false) {
@@ -268,7 +273,7 @@
             return false;
         }
 
-        if (form.querySelector('select[name="permission"]').checkValidity() === false) {
+        if (form.querySelector('select[name="permission_id"]').checkValidity() === false) {
             return false;
         }
 

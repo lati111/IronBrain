@@ -3,20 +3,20 @@
 namespace App\Http\Controllers\Config;
 
 use App\Http\Controllers\Controller;
-use App\Models\Project;
-use App\Models\Submenu;
+use App\Models\Config\Project;
+use App\Models\Config\Submenu;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 
 class SubmenuController extends Controller
 {
-    public function overviewDataTable(Request $request, int $projectId)
+    public function overviewDataTable(Request $request, int $project_id)
     {
         $token = $request->session()->token();
         $token = csrf_token();
 
-        $project = Project::find($projectId);
+        $project = Project::find($project_id);
         if ($project === null) {
             // todo custom error
             return redirect(route('config.projects.overview'))->with("error", "That project does not exist");
@@ -37,7 +37,7 @@ class SubmenuController extends Controller
             "</div>".
         "</div>";
 
-        $submenuCollection = Submenu::where('projectId', "=", $projectId)
+        $submenuCollection = Submenu::where('project_id', "=", $project_id)
             ->offset(($request->get('page', 1) - 1) * $request->get('perpage', 10))
             ->take($request->get('perpage', 10))
             ->get();
@@ -50,8 +50,8 @@ class SubmenuController extends Controller
                 $submenu->order,
                 sprintf(
                     $actionHTML,
-                    route('config.projects.submenu.modify', [$projectId, $submenu->id]),
-                    route('config.projects.submenu.delete', [$projectId, $submenu->id]),
+                    route('config.projects.submenu.modify', [$project_id, $submenu->id]),
+                    route('config.projects.submenu.delete', [$project_id, $submenu->id]),
                     $token
                 ),
             ];
@@ -60,34 +60,34 @@ class SubmenuController extends Controller
         return response()->json($tableData, 200);
     }
 
-    public function new(int $projectId)
+    public function new(int $project_id)
     {
         return view('config.projects.submenu.modify', array_merge($this->getBaseVariables(), [
-            'projectId' => $projectId,
+            'project_id' => $project_id,
         ]));
     }
 
-    public function modify(int $projectId, int $id)
+    public function modify(int $project_id, int $id)
     {
         $submenu = Submenu::find($id);
         if ($submenu === null) {
             // todo custom error screen
-            return redirect(route('config.projects.modify'), $projectId)->with("error", "That submenu does not exist");
+            return redirect(route('config.projects.modify'), $project_id)->with("error", "That submenu does not exist");
         }
 
         return view('config.projects.submenu.modify', array_merge($this->getBaseVariables(), [
-            'projectId' => $projectId,
+            'project_id' => $project_id,
             'submenu' => $submenu,
         ]));
     }
 
-    public function save(Request $request, int $projectId)
+    public function save(Request $request, int $project_id)
     {
         $validator = Validator::make($request->all(), [
-            'id' => 'nullable|exists:nav_submenu,id',
+            'id' => 'nullable|exists:nav__submenu,id',
             'name' => 'required|string|max:64',
             'route' => 'required|string|max:255',
-            'permission' => 'nullable|string"exists:permission,permission',
+            'permission_id' => 'nullable|string"exists:auth__permission,id',
             'order' => 'required|integer',
         ]);
 
@@ -108,26 +108,26 @@ class SubmenuController extends Controller
             $submenu = Submenu::find($request->id);
         } else {
             $submenu = new Submenu();
-            $submenu->projectId = $projectId;
+            $submenu->project_id = $project_id;
         }
 
         $submenu->name = $request->name;
         $submenu->route = $request->route;
-        $submenu->permission = $request->permission;
+        $submenu->permission_id = $request->permission_id;
         $submenu->order = $request->order;
         $submenu->save();
 
-        return redirect(route('config.projects.modify', $projectId))->with("message", "Changes saved");
+        return redirect(route('config.projects.modify', $project_id))->with("message", "Changes saved");
     }
 
-    public function delete(int $projectId, int $id) {
+    public function delete(int $project_id, int $id) {
         $submenu = Submenu::find($id);
         if ($submenu !== null) {
             $submenu->delete();
-            return redirect(route('config.projects.modify', $projectId))->with("message", "Submenu was deleted");
+            return redirect(route('config.projects.modify', $project_id))->with("message", "Submenu was deleted");
         } else {
             // todo custom error screen
-            return redirect(route('config.projects.modify', $projectId))->with("error", "Invalid submenu");
+            return redirect(route('config.projects.modify', $project_id))->with("error", "Invalid submenu");
         }
     }
 }

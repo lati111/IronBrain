@@ -20,7 +20,7 @@
 
         {{--| form |--}}
         <div class="flex flex-row justify-center mb-3">
-            <form id="form" action="{{ route('config.projects.submenu.save', $projectId) }}" method="POST" enctype="multipart/form-data">
+            <form id="form" action="{{ route('config.projects.submenu.save', $project_id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @isset($submenu)
                     <input type="hidden" name="id" value="{{$submenu->id}}">
@@ -44,7 +44,7 @@
                         />
 
                         {{--| permission field |--}}
-                        <select id="permissionSelect" name="permission" class="largeInput underlined py-0">
+                        <select id="permissionSelect" name="permission_id" class="largeInput underlined py-0">
                             <option value="">No permission</option>
                         </select>
                     </div>

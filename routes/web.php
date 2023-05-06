@@ -1,10 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Config\ProjectController;
-use App\Http\Controllers\Config\SubmenuController;
 
 Route::get('/', [HomeController::class, 'show'])->name("home.show");
 

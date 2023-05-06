@@ -11,17 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('nav_submenu', function (Blueprint $table) {
+        Schema::create('nav__submenu', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('projectId');
+            $table->foreignId('project_id');
             $table->string('name', 64);
             $table->integer('order');
             $table->string('route')->nullable();
-            $table->string('permission')->nullable();
+            $table->foreignId('permission_id')->nullable();
             $table->timestamps();
 
-            $table->foreign('projectId')->references('id')->on('project')->onUpdate('no action')->onDelete('restrict');
-            $table->foreign('permission')->references('permission')->on('permission')->onUpdate('no action')->onDelete('restrict');
+            $table->foreign('project_id')->references('id')->on('nav__project')->onUpdate('no action')->onDelete('restrict');
+            $table->foreign('permission_id')->references('id')->on('auth__permission')->onUpdate('no action')->onDelete('restrict');
         });
     }
 

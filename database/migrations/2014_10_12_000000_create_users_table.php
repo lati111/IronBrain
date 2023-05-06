@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('user', function (Blueprint $table) {
+        Schema::create('auth__user', function (Blueprint $table) {
             $table->uuid('uuid')->primary();
             $table->string('name', 28);
             $table->string('pronouns', 16);

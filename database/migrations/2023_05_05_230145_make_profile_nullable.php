@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('user', function (Blueprint $table) {
+        Schema::table('auth__user', function (Blueprint $table) {
             $table->string('pronouns', 16)->default('unspecified')->change();
             $table->text('description')->nullable()->change();
             $table->string('profile_picture')->nullable()->change();
@@ -23,7 +23,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('user', function (Blueprint $table) {
+        Schema::table('auth__user', function (Blueprint $table) {
             $table->string('pronouns', 16)->change();
             $table->text('description')->change();
             $table->string('profile_picture')->change();
