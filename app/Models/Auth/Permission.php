@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Config;
+namespace App\Models\Auth;
 
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +12,4 @@ class Permission extends Model
     use HasTimestamps;
 
     protected $table = 'auth__permission';
-    protected $primaryKey = 'permission';
-    protected $keyType = 'string';
 }

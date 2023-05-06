@@ -60,7 +60,6 @@
 @endcomponent
 
 
-{{--| pagination form |--}}
 <div class="flex justify-center">
     <div>
         {{--| title |--}}
@@ -93,7 +92,7 @@
                         @endslot
                     @endcomponent
                 @endslot
-                @slot('dataUrl')# @endslot
+                @slot('dataUrl'){{route('config.permission.overview.datatable')}} @endslot
             @endcomponent
         </div>
     </div>

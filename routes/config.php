@@ -1,5 +1,7 @@
 <?php
 
+use App\Datatables\Auth\PermissionDatatable;
+use App\Datatables\Config\SubmenuDatatable;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\SubmenuController;
@@ -21,14 +23,18 @@ Route::prefix('/config')->group(function() {
             Route::post('/save', [SubmenuController::class, 'save'])->name("config.projects.submenu.save");
             Route::post('/delete/{id}', [SubmenuController::class, 'delete'])->name("config.projects.submenu.delete");
 
-            Route::get('/overview/datatable', [SubmenuController::class, 'overviewDataTable'])->name("config.projects.submenu.overview.datatable");
+            Route::get('/overview/data', [SubmenuDatatable::class, 'overviewData'])->name("config.projects.submenu.overview.datatable");
         });
     });
 
-    //| submenu
+    //| permission
     Route::prefix('/permission')->group(function() {
         Route::get('/', [PermissionController::class, 'overview'])->name("config.permission.overview");
         Route::get('/new', [PermissionController::class, 'new'])->name("config.permission.new");
-        Route::get('/save', [PermissionController::class, 'save'])->name("config.permission.save");
+        Route::get('/modify/{id}', [PermissionController::class, 'modify'])->name("config.permission.modify");
+        Route::post('/save', [PermissionController::class, 'save'])->name("config.permission.save");
+        Route::post('/delete/{id}', [PermissionController::class, 'delete'])->name("config.permission.delete");
+
+        Route::get('/overview/data', [PermissionDatatable::class, 'overviewData'])->name("config.permission.overview.datatable");
     });
 });

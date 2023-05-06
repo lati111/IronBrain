@@ -1,12 +1,20 @@
 @extends('layouts.form.single_form')
 
-@section('htmlTitle', 'Add Permission')
-
-@section('form_title', 'Add Permission')
-
-@section('form_route', route('config.permission.save'))
+@if(isset($permission))
+    @section('htmlTitle', 'Save Permission')
+    @section('form_title', 'Save Permission')
+    @section('submit_string', 'Save Permission')
+@else
+    @section('htmlTitle', 'Add Permission')
+    @section('form_title', 'Add Permission')
+    @section('submit_string', 'Add Permission')
+@endif
 
 @section('form_content')
+    @isset($permission)
+        <input type="hidden" name="id" value="{{$permission->id}}">
+    @endisset
+
     {{--| name field |--}}
     <input type="text" name="name" class="largeInput underlined" placeholder="Name"
         @isset($permission) value="{{$permission->name}}" @endisset
@@ -27,6 +35,8 @@
     >@if(isset($permission)){{$permission->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
 @stop
 
-@section('submit_string', 'Add Permission')
+@section('submit_route', route('config.permission.save'))
+
+
 
 
