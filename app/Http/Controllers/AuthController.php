@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Validator;
+use splitbrain\RingIcon\RingIconSVG;
+use Illuminate\Support\Facades\File;
 
 class AuthController extends Controller
 {
@@ -48,10 +50,22 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password)
+            'password' => Hash::make($request->password),
         ]);
 
-        return redirect(route('home.show'))->with("message", "Account Created");
+        //| profile picture
+        $path = sprintf('img/profile/%s', $user->uuid);
+        if (is_dir($path) === false) {
+            File::makeDirectory($path);
+        }
+
+        $profilePicture = new RingIconSVG(128, 3);
+        $profilePicture->setMono(true);
+        $profilePicture->createImage($request->name . $request->email, sprintf('img/profile/%s/pfp.svg', $user->uuid));
+        $user->profile_picture = sprintf('%s/pfp.svg', $user->uuid);
+        $user->save();
+
+        return redirect(route('auth.login.show'))->with("message", "Account Created");
     }
 
     public function showLogin() {
