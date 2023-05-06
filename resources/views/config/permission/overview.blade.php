@@ -1,6 +1,6 @@
 @extends('layouts.master')
 
-@section('htmlTitle', 'Add Project')
+@section('htmlTitle', 'Permission Overview')
 @section('onloadFunction') datatableInit() @stop
 
 @section('header')

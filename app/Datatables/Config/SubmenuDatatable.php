@@ -17,7 +17,10 @@ class SubmenuDatatable extends AbstractDatatable
             return redirect(route('config.projects.overview'))->with("error", "That project does not exist");
         }
 
-        $submenuCollection = $this->applyTableFilters($request, Submenu::select())->get();
+        $submenuCollection =
+            $this->applyTableFilters($request, Submenu::select())
+                ->orderBy('order', 'asc')
+                ->get();
 
         $tableData = [];
         foreach ($submenuCollection as $submenu) {

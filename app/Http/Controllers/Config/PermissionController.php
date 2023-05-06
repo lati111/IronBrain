@@ -65,13 +65,12 @@ class PermissionController extends Controller
 
     public function delete(int $id)
     {
-        $project = Project::find($id);
-        if ($project !== null) {
-            $project->delete();
-            return redirect(route('config.projects.overview'))->with("message", "Project was deleted");
+        $permission = Permission::find($id);
+        if ($permission !== null) {
+            $permission->delete();
+            return redirect(route('config.permission.overview'))->with("message", "Permission was deleted");
         } else {
-            // todo custom error screen
-            return redirect(route('config.projects.overview'))->with("error", "Invalid project");
+            return redirect(route('config.permission.overview'))->with("error", "Invalid permission");
         }
     }
 }

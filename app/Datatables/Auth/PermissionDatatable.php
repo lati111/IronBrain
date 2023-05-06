@@ -11,7 +11,9 @@ class PermissionDatatable extends AbstractDatatable
 {
     public function overviewData(Request $request)
     {
-        $permissionCollection = $this->applyTableFilters($request, Permission::select())->get();
+        $permissionCollection =
+            $this->applyTableFilters($request, Permission::select())
+                ->get();
 
         $tableData = [];
         foreach ($permissionCollection as $permission) {
