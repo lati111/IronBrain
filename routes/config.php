@@ -2,12 +2,14 @@
 
 use App\Datatables\Auth\PermissionDatatable;
 use App\Datatables\Auth\RoleDatatable;
+use App\Datatables\Auth\UserDatatable;
 use App\Datatables\Config\SubmenuDatatable;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\SubmenuController;
 use App\Http\Controllers\Config\PermissionController;
 use App\Http\Controllers\Config\RoleController;
+use App\Http\Controllers\Config\UserController;
 
 Route::prefix('/config')->group(function() {
     //| project
@@ -27,6 +29,21 @@ Route::prefix('/config')->group(function() {
 
             Route::get('/overview/data', [SubmenuDatatable::class, 'overviewData'])->name("config.projects.submenu.overview.datatable");
         });
+    });
+
+    //| user control
+    Route::prefix('/user')->group(function() {
+        // pages
+        Route::get('/', [UserController::class, 'overview'])->name("config.user.overview");
+        Route::get('/new', [UserController::class, 'new'])->name("config.user.new");
+        Route::post('/save', [UserController::class, 'save'])->name("config.user.save");
+        Route::post('/delete/{uuid}', [UserController::class, 'delete'])->name("config.user.delete");
+
+        // datatables
+        Route::get('/overview/data', [UserDatatable::class, 'overviewData'])->name("config.user.overview.datatable");
+
+        // ajax calls
+        Route::post('/{uuid}/role/set', [UserController::class, 'setPermission'])->name("config.user.role.set");
     });
 
     //| role

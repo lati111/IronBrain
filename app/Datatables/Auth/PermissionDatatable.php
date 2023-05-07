@@ -5,8 +5,6 @@ namespace App\Datatables\Auth;
 use App\Datatables\AbstractDatatable;
 use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
-use App\Models\Auth\User;
-use App\Models\Config\Submenu;
 use Illuminate\Http\Request;
 
 class PermissionDatatable extends AbstractDatatable

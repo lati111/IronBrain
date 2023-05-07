@@ -71,3 +71,7 @@ input.underlined, select.underlined, textarea.underlined {
     border: 1px dashed var(--main-grey);
     border-radius: 3px;
 }
+
+.datatable-middle {
+    height: 52px;
+}
