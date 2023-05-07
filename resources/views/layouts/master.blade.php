@@ -53,7 +53,7 @@
 
                 {{--| nav items |--}}
                 <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2">
-                    <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li>
+                    {{-- <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li> --}}
                     @foreach ($navCollection as $nav)
                         <li>
                             @if(count($nav->Submenu) > 0)
