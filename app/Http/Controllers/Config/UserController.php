@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Config;
 
 use App\Http\Controllers\Controller;
-use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
 use App\Models\Auth\User;
 use Illuminate\Http\Request;
