@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('auth__role', function (Blueprint $table) {
-            $table->boolean('isAdmin')->default(false);
+            $table->boolean('is_admin')->default(false);
         });
 
         Schema::table('auth__permission', function (Blueprint $table) {
@@ -26,7 +26,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('auth__role', function (Blueprint $table) {
-            $table->dropColumn('isAdmin');
+            $table->dropColumn('is_admin');
         });
 
         Schema::table('auth__permission', function (Blueprint $table) {
