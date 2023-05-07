@@ -28,4 +28,4 @@
     @endcomponent
 @stop
 
-@section('submit_route', route('config.permission.save'))
+@section('submit_route', route('auth.login.attempt'))
