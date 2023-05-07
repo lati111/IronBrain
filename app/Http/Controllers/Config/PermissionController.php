@@ -37,6 +37,7 @@ class PermissionController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'id' => 'nullable|integer',
+            'permission' => 'required|string|max:128',
             'name' => 'required|string|max:48',
             'group' => 'required|string|max:64',
             'description' => 'required|string',
@@ -49,12 +50,26 @@ class PermissionController extends Controller
         }
 
         $permission = null;
+        $isUnique = true;
         if ($request->id !== null) {
             $permission = Permission::find($request->id);
+            if (Permission::where('permission', $request->permission)->where('id', "!=", $request->id)->count() > 0) {
+                $isUnique = false;
+            }
         } else {
             $permission = new Permission();
+            if (Permission::where('permission', $request->permission)->count() > 0) {
+                $isUnique = false;
+            }
         }
 
+        if ($isUnique === false) {
+            return back()
+                ->withInput($request->all())
+                ->with('error', 'Permission must be unique');
+        }
+
+        $permission->permission = $request->permission;
         $permission->name = $request->name;
         $permission->group = $request->group;
         $permission->description = $request->description;

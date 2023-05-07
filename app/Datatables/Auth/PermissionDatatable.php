@@ -29,6 +29,7 @@ class PermissionDatatable extends AbstractDatatable
             );
 
             $tableData[] = [
+                $permission->permission,
                 $permission->name,
                 $permission->description,
                 $permission->group,
