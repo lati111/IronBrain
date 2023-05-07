@@ -1,63 +1,53 @@
-@extends('layouts.master')
+@extends('layouts.form.single_form')
 
-@section('htmlTitle', 'Add Submenu')
+@section('htmlTitle', 'Sign Up')
+@section('form_title', 'Create New Account')
+@section('submit_string', 'Create Account')
 
-@section('content')
+@section('form_content')
+    {{--| username  field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Username @endslot
+        @slot('input_html')
+        <input type="text" name="name" class="largeInput underlined" placeholder="Name"
+            @if(old('name') !== null) value="{{old('name')}}" @endif
+            required autocomplete="off"
+        />
+        @endslot
+    @endcomponent
 
-{{--| pagination form |--}}
-<div class="flex justify-center">
-    <div>
-        {{--| title |--}}
-        <div class="flex flex-row justify-center mb-3">
-            <h3 class="title">
-                Create New Account
-            </h3>
-        </div>
+    {{--| email field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Email @endslot
+        @slot('input_html')
+        <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
+            @if(old('email') !== null) value="{{old('email')}}" @endif
+            required autocomplete="new-email"
+        />
+        @endslot
+    @endcomponent
 
-        {{--| form |--}}
-        <div class="flex flex-row justify-center mb-3">
-            <form id="form" action="{{route('auth.signup.save')}}" method="POST" enctype="multipart/form-data">
-                @csrf
+    {{--| password field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Password @endslot
+        @slot('input_html')
+        <input type="password" name="password" class="largeInput underlined" placeholder="Password"
+            @if(old('password') !== null) value="{{old('password')}}" @endif
+            required autocomplete="new-password"
+        />
+        @endslot
+    @endcomponent
 
-                <div class="flex flex-col justify-center gap-4">
-                    {{--| username field |--}}
-                    <input type="text" name="name" class="largeInput underlined" placeholder="Name"
-                        @if(old('name') !== null) value="{{old('name')}}" @endif
-                        required
-                    />
-
-                    {{--| email field |--}}
-                    <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
-                        @if(old('email') !== null) value="{{old('email')}}" @endif
-                        required
-                    />
-
-                    {{--| password field |--}}
-                    <input type="password" name="password" class="largeInput underlined" placeholder="Password"
-                        @if(old('password') !== null) value="{{old('password')}}" @endif
-                        required
-                    />
-
-                    {{--| repeat password field |--}}
-                    <input type="password" name="repeat_password" class="largeInput underlined" placeholder="Repeat Password"
-                        @if(old('repeat_password') !== null) value="{{old('repeat_password')}}" @endif
-                        required
-                    />
-                </div>
-
-                {{--| submitter |--}}
-                <div class="flex flex-col mt-3">
-                    <input type="submit" class="interactive" value="Create Account">
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
+    {{--| repeat password field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Repeat Password @endslot
+        @slot('input_html')
+        <input type="password" name="repeat_password" class="largeInput underlined" placeholder="Repeat Password"
+            @if(old('repeat_password') !== null) value="{{old('repeat_password')}}" @endif
+            required
+        />
+        @endslot
+    @endcomponent
 @stop
 
-@section('script')
-@vite([
-    'resources/ts/main.ts',
-])
-@stop
+@section('submit_route', route('auth.signup.save'))

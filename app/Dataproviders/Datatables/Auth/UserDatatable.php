@@ -1,9 +1,8 @@
 <?php
 
-namespace App\Datatables\Auth;
+namespace App\Dataproviders\Datatables\Auth;
 
-use App\Datatables\AbstractDatatable;
-use App\Models\Auth\Permission;
+use App\Dataproviders\Datatables\AbstractDatatable;
 use App\Models\Auth\User;
 use Illuminate\Http\Request;
 
@@ -11,14 +10,6 @@ use function PHPUnit\Framework\isNull;
 
 class UserDatatable extends AbstractDatatable
 {
-    private const IMG_HTML =
-        "<img ".
-            "style='height: 48px'".
-            "class='text-center'".
-            "src='%s'".
-            "alt='profile picture'".
-        "/>";
-
     private const CHANGE_ROLE_BUTTON_HTML =
         "<div class='text-center'>".
             "<form action='%s' method='POST'>".
@@ -37,9 +28,9 @@ class UserDatatable extends AbstractDatatable
 
         $tableData = [];
         foreach ($userCollection as $user) {
-            $pfpHTML = sprintf(
-                self::IMG_HTML,
-                asset('img/profile/' . $user->profile_picture)
+            $pfpHTML = $this->getImageHtml (
+                asset('img/profile/' . $user->profile_picture),
+                'profile picture',
             );
 
             $actionHTML = sprintf(

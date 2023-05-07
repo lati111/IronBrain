@@ -1,261 +1,191 @@
-@extends('layouts.master')
-
-@section('htmlTitle', 'Add Project')
-@section('onloadFunction') datatableInit() @stop
-
-@section('header')
-<style>
-    .file-drop-area {
-        position: relative;
-        display: flex;
-        align-items: center;
-        max-width: 100%;
-        padding: 25px;
-        transition: 0.2s;
-    }
-
-    .choose-file-button {
-        flex-shrink: 0;
-        color: var(--main-red);
-        border-radius: 3px;
-        padding: 8px 2px;
-        margin-right: 10px;
-        font-size: 12px;
-        text-transform: uppercase;
-    }
-
-    .file-message {
-        font-size: small;
-        font-weight: 300;
-        line-height: 1.4;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .file-input {
-        position: absolute;
-        left: 0;
-        top: 0;
-        height: 100%;
-        width: 100%;
-        cursor: pointer;
-        opacity: 0;
-    }
-
-    .file-area {
-        height: 140px !important;
-        width: 300px !important;
-    }
-</style>
+@extends('layouts.form.multi_form_with_datatable')
+@section('onloadFunctions')
+    imageUploaderInit
+    (
+        'filePreview',
+        'fileUploader',
+        'frame',
+        'inOverviewCheckbox'
+    );
+    fillSelectWithPermissions(
+        'permissionSelect',
+        @if(isset($project))
+            @if($project->permission_id !== null)
+                '{{$project->permission_id}}'
+            @endif
+        @endif
+    );
 @stop
 
+@if(isset($project))
+    @section('htmlTitle', 'Modify Project')
+    @section('form_title', 'Modify Project')
+    @section('submit_string', 'Save')
+@else
+    @section('htmlTitle', 'New Project')
+    @section('form_title', 'New Project')
+    @section('submit_string', 'New Project')
+@endif
 
-@section('content')
+@section('submit_route', route('config.projects.save'))
 
-{{--| delete modal |--}}
-@component('components.delete_model')
-    @slot('text') Are you sure you want to delete this project? @endslot
-    @slot('confirmFunction') submit_stored_form() @endslot
-@endcomponent
+@section('headers')
+    @vite(['resources/css/components/form/components/image_uploader.css'])
+@stop
 
+{{--| top form |--}}
+@section('form_content_top')
+    {{--| id |--}}
+    @isset($project)
+        <input type="hidden" name="id" value="{{$project->id}}">
+    @endisset
+    @if(old('id') !== null)
+        <input type="hidden" name="id" value="{{old('id')}}">
+    @endif
+@stop
 
-{{--| pagination form |--}}
-<div class="flex justify-center">
-    <div>
-        {{--| title |--}}
-        <div class="flex flex-row justify-center mb-3">
-            <h3 class="title">
+{{--| left form |--}}
+@section('form_content_left')
+    {{--| name field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Name  @endslot
+        @slot('input_html')
+            <input type="text" name="name" class="smallInput underlined" placeholder="Name"
+                @isset($project) value="{{$project->name}}" @endisset
+                @if(old('name') !== null) value="{{old('name')}}" @endif
+            />
+        @endslot
+    @endcomponent
+
+    {{--| image uploader |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Thumbnail  @endslot
+        @slot('input_html')
+            @component('components.form.image_uploader')
                 @if(isset($project))
-                    Modify Project
+                    @isset($project->thumbnail)
+                        @slot('thumbnail', $project->thumbnail)
+                    @endisset
+                @endif
+                @if(isset($project))
+                    @slot('isDisabled', !$project->in_overview)
                 @else
-                    Add New Project
+                    @slot('isDisabled', false)
                 @endif
-            </h3>
-        </div>
-
-        {{--| form |--}}
-        <div class="flex flex-row justify-center mb-3">
-            <form id="form" action="{{ route('config.projects.save') }}" method="POST" enctype="multipart/form-data"  style="width: 620%">
-                @csrf
-                @isset($project)
-                    <input type="hidden" name="id" value="{{$project->id}}">
-                @endisset
-                @if(old('id') !== null)
-                    <input type="hidden" name="id" value="{{old('id')}}">
-                @endif
-
-                <div class="grid grid-cols-2 gap-4" style="width: 620px">
-                    <div class="flex flex-col gap-4">
-                        {{--| name field |--}}
-                        <input type="text" name="name" class="smallInput underlined" placeholder="Name"
-                            @isset($project) value="{{$project->name}}" @endisset
-                            @if(old('name') !== null) value="{{old('name')}}" @endif
-                        />
-
-                        {{--| image uploader |--}}
-                        <div class="flex flex-col justify-center">
-                            <div class="flex justify-center">
-                                <div id="fileUploader" class="file-drop-area file-area dashed-border
-                                    @if(isset($project)) hidden @endif"
-                                >
-                                    <span class="choose-file-button interactive">Choose thumbnail</span>
-                                    <span class="file-message">or drag and drop image</span>
-                                    <input id="fileInput" class="file-input" type="file" name="thumbnail"
-                                        @isset($project) old-thumbnail="{{$project->thumbnail}}" @endisset
-                                        onchange="preview()" required
-                                    />
-                                </div>
-                            </div>
-
-                            <div class="flex justify-center">
-                                @if ((isset($project) === true && $project->inOverview === true) || old('inOverview') === "on")
-                                    <div id="filePreview"
-                                        @if(!isset($project)) class="hidden @else class="flex @endif
-                                        relative justify-center file-area dashed-border"
-                                    />
-                                        <span onclick="clearImage()" class="interactive absolute top-1 right-1 removeButton">remove</span>
-
-                                        <span class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 disabledBlurb hidden">thumbnail is disabled</span>
-
-                                        <img id="frame" class="img-fluid file-area p-1"
-                                            @if(isset($project) && $project->thumbnail !== null)
-                                                src="{{asset('img/project/thumbnail/'.$project->thumbnail)}}"
-                                            @else
-                                                src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-                                            @endif
-                                        />
-                                    </div>
-                                @else
-                                    <div id="filePreview"
-                                        @if(!isset($project)) class="hidden @else class="flex @endif
-                                        relative justify-center file-area dashed-border"
-                                    />
-                                        <span onclick="clearImage()" class="interactive absolute top-1 right-1 bg-white px-1 removeButton hidden">remove</span>
-
-                                        <span class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 disabledBlurb">thumbnail is disabled</span>
-
-                                        <img id="frame" class="img-fluid file-area p-1"
-                                            @if(isset($project) && $project->thumbnail !== null)
-                                                src="{{asset('img/project/thumbnail/'.$project->thumbnail)}}"
-                                            @else
-                                                src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-                                            @endif
-                                        />
-                                    </div>
-                                @endif
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col gap-4">
-                        {{--| permission field |--}}
-                        <select id="permissionSelect" name="permission_id" class="mediumInput underlined py-0">
-                            <option value="">No permission</option>
-                        </select>
-
-                        {{--| route field |--}}
-                        <input type="text" name="route" class="smallInput underlined" placeholder="Route" required
-                            @isset($project) value="{{$project->route}}" @endisset
-                            @if(old('route') !== null) value="{{old('route')}}" @endif
-                        />
-
-                        {{--| description field |--}}
-                        <textarea name="description" class="mediumInput underlined"
-                            style="height: 90px !important" placeholder="Description" required
-                        >@if(isset($project)){{$project->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
-                    </div>
-                </div>
-
-                <div class="flex flex-row justify-around mt-3 pl-6">
-                    {{--| in project checkbox |--}}
-                    <div class="flex items-center justify-center">
-                        <input id="inOverviewCheckbox" type="checkbox" name="in_overview" class="w-4 h-4 text-red-600 focus:ring-red-500"
-                            @if(old('in_overview') === true)
-                                checked
-                            @elseif (isset($project) === true)
-                                @if ($project->in_overview === 1) checked @endif
-                            @else
-                                checked
-                            @endif
-                            onchange="toggleThumbnailField()">
-                        <label for="default-checkbox" class="ml-2 text-sm" name="in_overview">Visible in overview?</label>
-                    </div>
-
-                    {{--| in nav checkbox |--}}
-                    <div class="flex items-center justify-center">
-                        <input id="inNavCheckbox" type="checkbox" name="in_nav" class="w-4 h-4 text-red-600 focus:ring-red-500" onchange="toggleOrderField()"
-                            @isset($project) @if ($project->in_nav === 1) checked @endif @endisset
-                            @if(old('in_nav') === true) checked @endif
-                            />
-                        <label for="default-checkbox" class="ml-2 text-sm" name="in_nav">Visible in navigation?</label>
-                    </div>
-
-                    {{--| navigation order field |--}}
-                    <div id="orderField" class="flex items-center justify-center gap-2 m-0
-                        @if(isset($project))
-                            @if ($project->in_nav === false) invisible" @endif
-                        @elseif(old('in_nav') !== true)
-                            invisible"
-                        @endif
-
-                    />
-                        <label for="default-checkbox" class="ml-2 text-sm" name="order">Navigation order:</label>
-                        <input type="number" name="order" class="w-16 h-4 pr-0 underlined"
-                            @isset($project) value="{{$project->order}}" @endisset
-                            @if(old('route') !== null) value="{{old('order')}}" @endif
-                            />
-                    </div>
-                </div>
-
-
-                {{--| submitter |--}}
-                <div class="flex flex-col mt-3">
-                    <input type="button" class="interactive" onclick="validate(this.closest('form'))" value="Save Project">
-                </div>
-            </form>
-        </div>
-
-        {{--| submenu table |--}}
-        @isset($project)
-            <div class="flex flex-row justify-center mb-3">
-                @component('components.datatable.table')
-                    @slot('headers')
-                        @component('components.datatable.header')
-                            @slot('columnId')name @endslot
-                            @slot('content')name @endslot
-                        @endcomponent
-                        @component('components.datatable.header')
-                            @slot('columnId')route @endslot
-                            @slot('content')route @endslot
-                        @endcomponent
-                        @component('components.datatable.header')
-                            @slot('columnId')order @endslot
-                            @slot('content')order @endslot
-                        @endcomponent
-                        @component('components.datatable.header')
-                            @slot('columnId')actions @endslot
-                            @slot('content')
-                                <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline">Add Submenu</a>
-                            @endslot
-                        @endcomponent
-                    @endslot
-                    @slot('dataUrl'){{route('config.projects.submenu.overview.datatable', $project->id)}} @endslot
-                @endcomponent
-            </div>
-        @endisset
-
-    </div>
-</div>
-
+            @endcomponent
+        @endslot
+    @endcomponent
 @stop
 
-@section('script')
+{{--| right form |--}}
+@section('form_content_right')
+    {{--| permission field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Permission @endslot
+        @slot('input_html')
+            @component('components.form.select.permission_list')
+                @slot('classes', 'mediumInput')
+                @slot('default_option', 'No permission needed')
+            @endcomponent
+        @endslot
+    @endcomponent
+
+    {{--| route field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Route @endslot
+        @slot('input_html')
+            <input type="text" name="route" class="smallInput underlined" placeholder="Route" required
+                @isset($project) value="{{$project->route}}" @endisset
+                @if(old('route') !== null) value="{{old('route')}}" @endif
+            />
+        @endslot
+    @endcomponent
+
+    {{--| description field |--}}
+    @component('components.form.input_wrapper')
+        @slot('label_text')Description @endslot
+        @slot('input_html')
+            <textarea name="description" class="mediumInput underlined"
+                style="height: 90px !important" placeholder="Description" required
+            >@if(isset($project)){{$project->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
+        @endslot
+    @endcomponent
+@stop
+
+{{--| bottom form |--}}
+@section('form_content_bottom')
+    <div class="flex flex-row justify-around gap-4 pt-3">
+        {{--| in project checkbox |--}}
+        <div class="flex items-center justify-center">
+            <input id="inOverviewCheckbox" type="checkbox" name="in_overview" class="w-4 h-4 text-red-600 focus:ring-red-500"
+                @if(old('in_overview') === true)
+                    checked
+                @elseif (isset($project) === true)
+                    @if ($project->in_overview === 1) checked @endif
+                @else
+                    checked
+                @endif
+                onchange="toggleThumbnailField()">
+            <label for="default-checkbox" class="ml-2 text-sm" name="in_overview">Visible in overview?</label>
+        </div>
+
+        {{--| in nav checkbox |--}}
+        <div class="flex items-center justify-center">
+            <input id="inNavCheckbox" type="checkbox" name="in_nav" class="w-4 h-4 text-red-600 focus:ring-red-500" onchange="toggleOrderField()"
+                @isset($project) @if ($project->in_nav === 1) checked @endif @endisset
+                @if(old('in_nav') === true) checked @endif
+                />
+            <label for="default-checkbox" class="ml-2 text-sm" name="in_nav">Visible in navigation?</label>
+        </div>
+
+        {{--| navigation order field |--}}
+        <div id="orderField" class="flex items-center justify-center gap-2 m-0
+            @if(isset($project))
+                @if ($project->in_nav === false) invisible" @endif
+            @elseif(old('in_nav') !== true)
+                invisible"
+            @endif
+
+        />
+            <label for="default-checkbox" class="ml-2 text-sm" name="order">Navigation order:</label>
+            <input type="number" name="order" class="w-16 h-4 pr-0 underlined"
+                @isset($project) value="{{$project->order}}" @endisset
+                @if(old('route') !== null) value="{{old('order')}}" @endif
+                />
+        </div>
+    </div>
+@stop
+
+{{--| submenu table |--}}
+@isset($project)
+    @section('table_headers')
+        @component('components.datatable.header')
+            @slot('columnId')name @endslot
+            @slot('content')name @endslot
+        @endcomponent
+        @component('components.datatable.header')
+            @slot('columnId')route @endslot
+            @slot('content')route @endslot
+        @endcomponent
+        @component('components.datatable.header')
+            @slot('columnId')order @endslot
+            @slot('content')order @endslot
+        @endcomponent
+        @component('components.datatable.header')
+            @slot('columnId')actions @endslot
+            @slot('content')
+                <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline">Add Submenu</a>
+            @endslot
+        @endcomponent
+    @stop
+
+    @section('datatable_url', route('config.projects.submenu.overview.datatable', $project->id))
+@endisset
+
+@section('scripts')
 @vite([
-    'resources/ts/main.ts',
-    'resources/ts/components/datatable.ts',
-    'resources/ts/components/modal.ts'
+    'resources/ts/components/form/image_uploader.ts',
+    'resources/ts/components/form/permission_select.ts',
 ])
 <script>
     function validate() {
@@ -290,35 +220,6 @@
         } else {
             orderField.classList.add("invisible");
         }
-    }
-
-    function toggleThumbnailField() {
-        if (inOverviewCheckbox.checked) {
-            filePreview.classList.replace('flex', 'hidden');
-            filePreview.classList.add('disabled');
-            filePreview.querySelector(".disabledBlurb").classList.add('hidden')
-            filePreview.querySelector(".removeButton").classList.remove('hidden')
-            fileUploader.classList.remove('hidden')
-        } else {
-            fileUploader.classList.add('hidden')
-            filePreview.classList.add('remove');
-            filePreview.querySelector(".disabledBlurb").classList.remove('hidden')
-            filePreview.querySelector(".removeButton").classList.add('hidden')
-            filePreview.classList.replace('hidden', 'flex')
-        }
-    }
-
-    function preview() {
-        frame.src = URL.createObjectURL(event.target.files[0]);
-        fileUploader.classList.add('hidden')
-        filePreview.classList.replace('hidden', 'flex')
-    }
-
-    function clearImage() {
-        document.getElementById('fileInput').value = null;
-        filePreview.classList.replace('flex', 'hidden');
-        fileUploader.classList.remove('hidden')
-        frame.src = "";
     }
 </script>
 @stop

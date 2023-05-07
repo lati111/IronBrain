@@ -1,9 +1,11 @@
 <?php
 
-use App\Datatables\Auth\PermissionDatatable;
-use App\Datatables\Auth\RoleDatatable;
-use App\Datatables\Auth\UserDatatable;
-use App\Datatables\Config\SubmenuDatatable;
+use App\Dataproviders\Datatables\Auth\PermissionDatatable;
+use App\Dataproviders\Datatables\Config\ProjectDatatable;
+use App\Dataproviders\Datatables\Auth\RoleDatatable;
+use App\Dataproviders\Datatables\Auth\UserDatatable;
+use App\Dataproviders\Datatables\Config\SubmenuDatatable;
+use App\Dataproviders\SelectorLists\Config\PermissionSelectorList;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\SubmenuController;
@@ -14,6 +16,7 @@ use App\Http\Controllers\Config\UserController;
 Route::prefix('/config')->group(function() {
     //| project
     Route::prefix('/projects')->group(function() {
+        // pages
         Route::get('/', [ProjectController::class, 'overview'])
             ->middleware('permission:config.project.view')
             ->name("config.projects.overview");
@@ -33,6 +36,11 @@ Route::prefix('/config')->group(function() {
         Route::post('/delete/{id}', [ProjectController::class, 'delete'])
             ->middleware('permission:config.project.edit')
             ->name("config.projects.delete");
+
+        // data providers
+        Route::get('/overview/data', [ProjectDatatable::class, 'overviewData'])
+            ->middleware('permission:config.project.view')
+            ->name("config.project.overview.datatable");
 
 
         //| submenu
@@ -144,9 +152,13 @@ Route::prefix('/config')->group(function() {
             ->middleware('permission:config.permission.edit')
             ->name("config.permission.delete");
 
-        // datatables
+        // data providers
         Route::get('/overview/data', [PermissionDatatable::class, 'overviewData'])
             ->middleware('permission:config.permission.view')
             ->name("config.permission.overview.datatable");
+
+        Route::get('/selector/data', [PermissionSelectorList::class, 'PermissionSelectorList'])
+            ->middleware('permission:config.role.view')
+            ->name("config.permission.selector.list");
     });
 });

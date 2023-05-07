@@ -1,6 +1,7 @@
 @extends('layouts.master')
 
-@section('onloadFunction') datatableInit() @stop
+@section('onloadFunction') datatableInit(); @yield('onloadFunction') @stop
+@section('header')@yield('headers') @stop
 
 @section('content')
 
@@ -24,8 +25,21 @@
             <form id="form" action="@yield('submit_route')" method="POST" enctype="multipart/form-data">
                 @csrf
 
-                <div class="flex flex-col justify-center gap-4">
-                    @yield('form_content')
+                <div class="flex flex-col gap-4">
+                    @yield('form_content_top')
+                </div>
+
+                <div class="grid grid-cols-2 gap-4" style="width: 620px">
+                    <div class="flex flex-col gap-4">
+                        @yield('form_content_left')
+                    </div>
+                    <div class="flex flex-col gap-4">
+                        @yield('form_content_right')
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    @yield('form_content_bottom')
                 </div>
 
                 {{--| submitter |--}}
@@ -39,7 +53,7 @@
         <div class="flex flex-row justify-center mb-3">
             @component('components.datatable.table')
                 @slot('headers')
-                    @yield('headers')
+                    @yield('table_headers')
                 @endslot
                 @slot('dataUrl')@yield('datatable_url') @endslot
             @endcomponent
@@ -50,10 +64,10 @@
 @stop
 
 @section('script')
-@yield('scripts')
-@vite([
-    'resources/ts/main.ts',
-    'resources/ts/components/datatable.ts',
-    'resources/ts/components/modal.ts'
-])
+    @yield('scripts')
+    @vite([
+        'resources/ts/main.ts',
+        'resources/ts/components/datatable.ts',
+        'resources/ts/components/modal.ts'
+    ])
 @stop

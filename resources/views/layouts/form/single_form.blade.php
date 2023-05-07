@@ -32,6 +32,7 @@
 @stop
 
 @section('script')
+@yield('scripts')
 @vite([
     'resources/ts/main.ts',
 ])
