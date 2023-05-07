@@ -10,6 +10,16 @@
     @section('submit_string', 'Add Submenu')
 @endif
 
+@section('onloadFunction')
+    fillSelectWithPermissions(
+        'permissionSelect',
+        @if(isset($submenu))
+            @if($submenu->permission_id !== null)
+                '{{$submenu->permission_id}}'
+            @endif
+        @endif
+    );
+@stop
 
 @section('form_content')
     @isset($submenu)
@@ -43,24 +53,31 @@
 
     {{--| permission field |--}}
     @component('components.form.input_wrapper')
-        @slot('label_text')Password @endslot
+        @slot('label_text')Permission @endslot
         @slot('input_html')
-            <select id="permissionSelect" name="permission_id" class="largeInput underlined py-0">
-                <option value="">No permission</option>
-            </select>
+            @component('components.form.select.permission_list')
+                @slot('classes', 'largeInput')
+                @slot('default_option', 'No permission needed')
+            @endcomponent
         @endslot
     @endcomponent
 
     {{--| navigation order field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Password @endslot
-        @slot('input_html')
-            <input type="number" name="order" class="w-16 h-4 pr-0 underlined"
-                @isset($submenu) value="{{$submenu->order}}" @endisset
-                @if(old('route') !== null) value="{{old('order')}}" @endif
-            />
-        @endslot
-    @endcomponent
+    <div class="flex flex-row justify-center">
+        @component('components.form.input_wrapper')
+            @slot('label_text')Order @endslot
+            @slot('input_html')
+                <input type="number" name="order" class="w-16 h-4 pr-0 underlined"
+                    @isset($submenu) value="{{$submenu->order}}" @endisset
+                    @if(old('route') !== null) value="{{old('order')}}" @endif
+                />
+            @endslot
+        @endcomponent
+    </div>
+@stop
+
+@section('scripts')
+    @vite(['resources/ts/components/form/permission_select.ts'])
 @stop
 
 @section('submit_route', route('config.projects.submenu.save', $project_id))
