@@ -1,9 +1,10 @@
 <?php
 
-use App\Datatables\Auth\PermissionDatatable;
-use App\Datatables\Auth\RoleDatatable;
-use App\Datatables\Auth\UserDatatable;
-use App\Datatables\Config\SubmenuDatatable;
+use App\Dataproviders\Datatables\Auth\PermissionDatatable;
+use App\Dataproviders\Datatables\Auth\RoleDatatable;
+use App\Dataproviders\Datatables\Auth\UserDatatable;
+use App\Dataproviders\Datatables\Config\SubmenuDatatable;
+use App\Dataproviders\SelectorLists\Config\PermissionSelectorList;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\SubmenuController;
@@ -144,9 +145,13 @@ Route::prefix('/config')->group(function() {
             ->middleware('permission:config.permission.edit')
             ->name("config.permission.delete");
 
-        // datatables
+        // data providers
         Route::get('/overview/data', [PermissionDatatable::class, 'overviewData'])
             ->middleware('permission:config.permission.view')
             ->name("config.permission.overview.datatable");
+
+        Route::get('/selector/data', [PermissionSelectorList::class, 'PermissionSelectorList'])
+            ->middleware('permission:config.role.view')
+            ->name("config.permission.selector.list");
     });
 });

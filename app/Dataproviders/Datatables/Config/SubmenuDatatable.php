@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Datatables\Config;
+namespace App\Dataproviders\Datatables\Config;
 
-use App\Datatables\AbstractDatatable;
+use App\Dataproviders\Datatables\AbstractDatatable;
 use App\Models\Config\Project;
 use App\Models\Config\Submenu;
 use Illuminate\Http\Request;

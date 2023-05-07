@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Datatables;
+namespace App\Dataproviders\Datatables;
 
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;

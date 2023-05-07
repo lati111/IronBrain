@@ -1,9 +1,8 @@
 <?php
 
-namespace App\Datatables\Auth;
+namespace App\Dataproviders\Datatables\Auth;
 
-use App\Datatables\AbstractDatatable;
-use App\Models\Auth\Permission;
+use App\Dataproviders\Datatables\AbstractDatatable;
 use App\Models\Auth\User;
 use Illuminate\Http\Request;
 
