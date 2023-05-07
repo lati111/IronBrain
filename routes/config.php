@@ -35,8 +35,6 @@ Route::prefix('/config')->group(function() {
     Route::prefix('/user')->group(function() {
         // pages
         Route::get('/', [UserController::class, 'overview'])->name("config.user.overview");
-        Route::get('/new', [UserController::class, 'new'])->name("config.user.new");
-        Route::post('/save', [UserController::class, 'save'])->name("config.user.save");
         Route::post('/delete/{uuid}', [UserController::class, 'delete'])->name("config.user.delete");
 
         // datatables
