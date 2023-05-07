@@ -21,6 +21,5 @@ Route::prefix('/auth')->group(function() {
         ->name("auth.login.attempt");
 
     Route::get('/logout', [AuthController::class, 'logout'])
-        ->middleware('auth:sanctum')
         ->name("auth.logout");
 });

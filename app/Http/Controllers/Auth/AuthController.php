@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Auth\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -11,16 +12,25 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Validator;
 use splitbrain\RingIcon\RingIconSVG;
 use Illuminate\Support\Facades\File;
+use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showSignup()
+    public function showSignup(): View | RedirectResponse
     {
+        if (Auth::user() !== null) {
+            return redirect(route('home.show'));
+        }
+
         return view('authentication.signup', $this->getBaseVariables());
     }
 
-    public function saveSignup(Request $request)
+    public function saveSignup(Request $request): RedirectResponse
     {
+        if (Auth::user() !== null) {
+            return redirect(route('home.show'));
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:28',
             'email' => 'required|email|max:40|unique:auth__user,email',
@@ -69,11 +79,21 @@ class AuthController extends Controller
         return redirect(route('auth.login.show'))->with("message", "Account Created");
     }
 
-    public function showLogin() {
+    public function showLogin(): View | RedirectResponse
+    {
+        if (Auth::user() !== null) {
+            return redirect(route('home.show'));
+        }
+
         return view('authentication.login', $this->getBaseVariables());
     }
 
-    public function attemptLogin(Request $request) {
+    public function attemptLogin(Request $request): RedirectResponse
+    {
+        if (Auth::user() !== null) {
+            return redirect(route('home.show'));
+        }
+
         $request->validate([
             'email' => 'required',
             'password' => 'required',
@@ -86,14 +106,12 @@ class AuthController extends Controller
             return back()
                 ->with('error', 'Username or password is incorrect');
         }
-
-
     }
 
-    public function logout() {
+    public function logout(): View | RedirectResponse
+    {
         if (Auth::user() === null) {
-            return redirect()->route("auth.login.show")
-                ->with('error', 'Already signed out');
+            return redirect(route('home.show'));
         }
 
         Auth::logout();
