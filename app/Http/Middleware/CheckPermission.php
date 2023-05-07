@@ -5,14 +5,13 @@ namespace App\Http\Middleware;
 use App\Models\Auth\Permission;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 class CheckPermission
 {
     private const FORBIDDEN_STRING = "Your account does not have access to this page";
 
-    public function handle(Request $request, Closure $next, string $permission): Response
+    public function handle(Request $request, Closure $next, string $permission)
     {
         $user = Auth::user();
         if ($user === null) {
