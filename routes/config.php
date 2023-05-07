@@ -1,6 +1,7 @@
 <?php
 
 use App\Dataproviders\Datatables\Auth\PermissionDatatable;
+use App\Dataproviders\Datatables\Config\ProjectDatatable;
 use App\Dataproviders\Datatables\Auth\RoleDatatable;
 use App\Dataproviders\Datatables\Auth\UserDatatable;
 use App\Dataproviders\Datatables\Config\SubmenuDatatable;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Config\UserController;
 Route::prefix('/config')->group(function() {
     //| project
     Route::prefix('/projects')->group(function() {
+        // pages
         Route::get('/', [ProjectController::class, 'overview'])
             ->middleware('permission:config.project.view')
             ->name("config.projects.overview");
@@ -34,6 +36,11 @@ Route::prefix('/config')->group(function() {
         Route::post('/delete/{id}', [ProjectController::class, 'delete'])
             ->middleware('permission:config.project.edit')
             ->name("config.projects.delete");
+
+        // data providers
+        Route::get('/overview/data', [ProjectDatatable::class, 'overviewData'])
+            ->middleware('permission:config.project.view')
+            ->name("config.project.overview.datatable");
 
 
         //| submenu

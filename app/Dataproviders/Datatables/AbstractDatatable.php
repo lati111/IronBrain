@@ -22,6 +22,14 @@ abstract class AbstractDatatable
             "</form>".
         "</div>";
 
+    private const IMG_HTML =
+        "<img ".
+            "style='height: 48px'".
+            "class='text-center'".
+            "src='%s'".
+            "alt='%s'".
+        "/>";
+
     protected function getToken(Request $request): string {
         $request->session()->token();
         return csrf_token();
@@ -39,6 +47,14 @@ abstract class AbstractDatatable
             self::DELETE_BUTTON_HTML,
             $this->getToken($request),
             $route,
+        );
+    }
+
+    protected function getImageHtml(string $src, string $alt): string {
+        return sprintf(
+            self::IMG_HTML,
+            $src,
+            $alt,
         );
     }
 
