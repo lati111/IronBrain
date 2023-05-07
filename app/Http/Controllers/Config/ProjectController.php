@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Config;
 
 use App\Http\Controllers\Controller;
-use App\Models\Project;
+use App\Models\Config\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
@@ -46,12 +46,12 @@ class ProjectController extends Controller
     public function save(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id' => 'nullable|exists:project,id',
+            'id' => 'nullable|exists:nav__project,id',
             'thumbnail' => 'nullable|mimes:png,jpg,jpeg,svg,webp|max:240',
             'name' => 'required|string|max:64',
             'route' => 'required|string|max:255',
             'description' => 'required|string',
-            'permission' => 'nullable|string"exists:permission,permission',
+            'permission_id' => 'nullable|string"exists:auth__permission,permission',
             'order' => 'nullable|integer',
         ]);
 
@@ -72,14 +72,14 @@ class ProjectController extends Controller
             $project = Project::find($request->id);
         } else {
             $project = new Project();
-            if ($request->thumbnail === null && $request->inOverview === "on") {
+            if ($request->thumbnail === null && $request->in_overview === "on") {
                 return back()
                     ->withInput($request->all())
                     ->with('error', 'Thumbnail is required');
             }
         }
 
-        if ($request->thumbnail !== null && $request->inOverview === "on") {
+        if ($request->thumbnail !== null && $request->in_overview === "on") {
             $filename = sprintf(
                 '%s.%s',
                 $request->name,
@@ -89,25 +89,25 @@ class ProjectController extends Controller
             $project->thumbnail = $filename;
         }
 
-        if ($request->inNav === "on") {
+        if ($request->in_nav === "on") {
             $project->order = $request->order;
         }
 
         $project->name = $request->name;
         $project->route = $request->route;
         $project->description = $request->description;
-        $project->permission = $request->permission;
+        $project->permission_id = $request->permission_id;
 
-        if ($request->inOverview === "on") {
-            $project->inOverview = true;
-        } else if ($request->inOverview === null) {
-            $project->inOverview = false;
+        if ($request->in_overview === "on") {
+            $project->in_overview = true;
+        } else if ($request->in_overview === null) {
+            $project->in_overview = false;
         }
 
-        if ($request->inNav === "on") {
-            $project->inNav = true;
-        } else if ($request->inNav === null) {
-            $project->inNav = false;
+        if ($request->in_nav === "on") {
+            $project->in_nav = true;
+        } else if ($request->in_nav === null) {
+            $project->in_nav = false;
         }
 
         $project->save();
@@ -115,7 +115,8 @@ class ProjectController extends Controller
         return redirect(route('config.projects.overview'))->with("message", "Changes saved");
     }
 
-    public function delete(int $id) {
+    public function delete(int $id)
+    {
         $project = Project::find($id);
         if ($project !== null) {
             $project->delete();

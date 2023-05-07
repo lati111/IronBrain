@@ -74,23 +74,31 @@
                     @endforeach
                 </ul>
 
-                {{--| account icon |--}}
+                {{--| authentication |--}}
                 <div class="dropdown flex justify-center">
-                    <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        {{-- <img src="https://cdn.discordapp.com/avatars/233948668447817728/b41993097639122be18c0f2ada8bac79?size=1024" alt="" width="32" height="32" class="rounded-circle"> --}}
-                    </a>
+                    @if(isset($user))
+                        {{--| account icon |--}}
+                            <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <img src="{{asset(sprintf('img/profile/%s/pfp.svg', $user->uuid))}}" alt="pfp" width="32" height="32" class="rounded-circle">
+                        </a>
 
-                    {{--| account dropdown |--}}
-                    <ul class="dropdown-menu text-small shadow">
-                        {{-- <li><a class="dropdown-item" href="#">New project...</a></li>
-                        <li><a class="dropdown-item" href="#">Settings</a></li>
-                        <li><a class="dropdown-item" href="#">Profile</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li> --}}
-                        <li><a class="dropdown-item" href="#">Sign out</a></li>
-                    </ul>
+                        {{--| account dropdown |--}}
+                        <ul class="dropdown-menu text-small shadow">
+                            <li><span class="dropdown-item pointer-events-none">{{$user->name}}</span></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="{{route('auth.logout')}}">Sign out</a></li>
+                        </ul>
+                    @else
+                        {{--| login / sign up |--}}
+                        <div class="flex justify-center gap-3">
+                            <a href="{{route('auth.login.show')}}" class="interactive">Log In</a>
+                            <a href="{{route('auth.signup.show')}}" class="interactive">Sign Up</a>
+                        </div>
+                    @endif
+
                 </div>
             </div>
         </div>

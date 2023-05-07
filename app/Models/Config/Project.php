@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Config;
 
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,10 +12,10 @@ class Project extends Model
     use HasFactory;
     use HasTimestamps;
 
-    protected $table = 'project';
+    protected $table = 'nav__project';
 
     public function Submenu(): HasMany
     {
-        return $this->hasMany(Submenu::class, 'projectId');
+        return $this->hasMany(Submenu::class, 'project_id')->orderBy('order', 'asc');
     }
 }

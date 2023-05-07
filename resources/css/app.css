@@ -7,6 +7,7 @@
     --main-red: #FF0000;
     --sub-red: #7f0000;
     --main-grey: #B3B3B3;
+    --sub-grey: #4f4f4f;
     --main-black: #000000;
 }
 
@@ -52,6 +53,10 @@ input.underlined, select.underlined, textarea.underlined {
     border-color: var(--main-red);
 }
 
+.form_label {
+    color: var(--sub-grey) !important;
+}
+
 .smallInput {
     height: 24px;
     width: 300px
@@ -70,4 +75,8 @@ input.underlined, select.underlined, textarea.underlined {
 .dashed-border {
     border: 1px dashed var(--main-grey);
     border-radius: 3px;
+}
+
+.datatable-middle {
+    height: 52px;
 }

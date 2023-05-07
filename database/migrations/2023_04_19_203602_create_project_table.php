@@ -11,20 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('project', function (Blueprint $table) {
+        Schema::create('nav__project', function (Blueprint $table) {
             $table->id();
             $table->string('name', 64);
             $table->text('description');
             $table->string('thumbnail')->nullable();
             $table->string('route')->nullable();
-            $table->string('permission')->nullable();
+            $table->foreignId('permission_id')->nullable();
             $table->integer('order')->nullable()->unique();
-            $table->boolean('inOverview')->default(true);
-            $table->boolean('inNav')->default(false);
+            $table->boolean('in_overview')->default(true);
+            $table->boolean('in_nav')->default(false);
             $table->boolean('active')->default(true);
             $table->timestamps();
 
-            $table->foreign('permission')->references('permission')->on('permission')->onUpdate('no action')->onDelete('restrict');
+            $table->foreign('permission_id')->references('id')->on('auth__permission')->onUpdate('no action')->onDelete('restrict');
         });
     }
 

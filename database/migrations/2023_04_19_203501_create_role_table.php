@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('role', function (Blueprint $table) {
-            $table->string('role', 128)->primary();
+        Schema::create('auth__role', function (Blueprint $table) {
+            $table->id('id');
             $table->string('name', 28);
             $table->text('description');
             $table->timestamps();

@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('personal_access_token', function (Blueprint $table) {
+        Schema::create('auth__personal_access_token', function (Blueprint $table) {
             $table->id();
             $table->uuidMorphs('tokenable');
             $table->string('name');

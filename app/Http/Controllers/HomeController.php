@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Project;
+use App\Models\Config\Project;
 use App\Service\TimeService;
-use DateTime;
 
 class HomeController extends Controller
 {
@@ -12,7 +11,7 @@ class HomeController extends Controller
     {
         $projects = [];
 
-        $projectCollection = Project::where('inOverview', true)
+        $projectCollection = Project::where('in_overview', true)
             ->orderBy('updated_at', 'desc')
             ->get();
 
