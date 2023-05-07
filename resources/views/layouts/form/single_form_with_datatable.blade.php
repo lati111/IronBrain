@@ -5,7 +5,7 @@
 @section('content')
 
 {{--| delete modal |--}}
-@component('components.delete_model')
+@component('components.modal.delete_modal')
     @slot('text') Are you sure you want to delete this project? @endslot
     @slot('confirmFunction') submit_stored_form() @endslot
 @endcomponent
