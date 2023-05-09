@@ -19,4 +19,9 @@ class Submenu extends Model
     {
         return $this->belongsTo(Project::class, 'id', 'project_id');
     }
+
+    public function Permission(): BelongsTo
+    {
+        return $this->belongsTo(BelongsTo::class, 'permission_id');
+    }
 }
