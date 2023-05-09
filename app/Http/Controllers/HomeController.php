@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Doctrine\DBAL\Query\QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Config\Project;
 use App\Service\TimeService;
+use Illuminate\Database\Query\Builder;
 
 class HomeController extends Controller
 {
@@ -48,12 +50,12 @@ class HomeController extends Controller
             ->where(function ($query) use ($role_id) {
                 $query->where('nav__project.permission_id', null)
                     ->orWhere(function ($query) use ($role_id) {
-                        $query->selectRaw('count(auth__role_permission.permission_id)')
+                        return $query
+                            ->selectRaw('count(auth__role_permission.permission_id)')
                             ->from('auth__role_permission')
-                            ->where('auth__role_permission.permission_id', 'auth__permission.id')
-                            ->where('auth__role_permission.role_id', $role_id)
-                            ->get();
-                    }, ">", 0);
+                            ->whereColumn('auth__role_permission.permission_id', 'nav__project.permission_id')
+                            ->where('auth__role_permission.role_id', $role_id);
+                    }, 1);
             })
             ->where('in_overview', true)
             ->orderBy('updated_at', 'desc')

@@ -52,10 +52,10 @@
                 </a>
 
                 {{--| nav items |--}}
-                <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2">
+                <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2" dusk="nav">
                     {{-- <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li> --}}
                     @foreach ($navCollection as $nav)
-                        <li>
+                        <li dusk="{{$nav->name}}">
                             @if(count($nav->Submenu) > 0)
                                 <span class="nav-link interactive px-2 link-secondary dropdown-toggle"
                                     data-bs-toggle="dropdown" aria-expanded="false"
@@ -75,16 +75,16 @@
                 </ul>
 
                 {{--| authentication |--}}
-                <div class="dropdown flex justify-center">
+                <div class="dropdown flex justify-center" dusk="auth_header">
                     @if(isset($user))
                         {{--| account icon |--}}
                             <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                            data-bs-toggle="dropdown" aria-expanded="false" dusk="pfp_dropdown_toggle">
                             <img src="{{asset(sprintf('img/profile/%s/pfp.svg', $user->uuid))}}" alt="pfp" width="32" height="32" class="rounded-circle">
                         </a>
 
                         {{--| account dropdown |--}}
-                        <ul class="dropdown-menu text-small shadow">
+                        <ul class="dropdown-menu text-small shadow" dusk="pfp_dropdown">
                             <li><span class="dropdown-item pointer-events-none">{{$user->name}}</span></li>
                             <li>
                                 <hr class="dropdown-divider">

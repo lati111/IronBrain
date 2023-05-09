@@ -36,12 +36,12 @@ class Project extends Model
             ->where(function ($query) use ($role_id) {
                 $query->where('nav__submenu.permission_id', null)
                     ->orWhere(function ($query) use ($role_id) {
-                        $query->selectRaw('count(auth__role_permission.permission_id)')
+                        return $query
+                            ->selectRaw('count(auth__role_permission.permission_id)')
                             ->from('auth__role_permission')
-                            ->where('auth__role_permission.permission_id', 'auth__permission.id')
-                            ->where('auth__role_permission.role_id', $role_id)
-                            ->get();
-                    }, ">", 0);
+                            ->whereColumn('auth__role_permission.permission_id', 'nav__submenu.permission_id')
+                            ->where('auth__role_permission.role_id', $role_id);
+                    }, 1);
             })
             ->orderBy('order', 'asc');
     }

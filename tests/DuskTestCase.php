@@ -2,12 +2,15 @@
 
 namespace Tests;
 
+use App\Models\Auth\User;
 use Illuminate\Support\Collection;
 use Facebook\WebDriver\Chrome\ChromeOptions;
 use Facebook\WebDriver\Remote\DesiredCapabilities;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Support\Facades\Auth;
+
 use Laravel\Dusk\TestCase as BaseTestCase;
 
 abstract class DuskTestCase extends BaseTestCase

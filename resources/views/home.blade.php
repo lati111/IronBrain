@@ -18,7 +18,8 @@
     </section>
 
     {{--| project cards |--}}
-    @foreach ($projects as $project)
+    <div dusk="projects">
+        @foreach ($projects as $project)
         <div class="project pb-5">
             <div class="container flex justify-center">
                 <div class="w-96">
@@ -36,4 +37,5 @@
             </div>
         </div>
     @endforeach
+    </div>
 @stop
