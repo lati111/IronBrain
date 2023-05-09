@@ -1,0 +1,32 @@
+[
+    {
+        "name": "Overview",
+        "description": "A test to see if a project is displayed in the nav when the user has no permissions",
+        "thumbnail": null,
+        "permission": null,
+        "route": "home.show",
+        "in_overview": false,
+        "in_nav": true,
+        "order": 1
+    },
+    {
+        "name": "Config",
+        "description": "A test to see if a project is displayed in the nav when the user has the right permissions",
+        "thumbnail": null,
+        "permission": "has.permission",
+        "route": "home.show",
+        "in_overview": false,
+        "in_nav": true,
+        "order": 99
+    },
+    {
+        "name": "Admin",
+        "description": "A test to see if a project is not displayed in the nav when the user does not have the right permission",
+        "thumbnail": null,
+        "permission": "has.not.permission",
+        "route": "home.show",
+        "in_overview": false,
+        "in_nav": true,
+        "order": 2
+    }
+]

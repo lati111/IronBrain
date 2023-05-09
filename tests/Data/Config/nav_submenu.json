@@ -1,0 +1,26 @@
+[
+    {
+        "parent_name": "Config",
+        "name": "Default",
+        "description": "A test to see if a project is displayed in the submenu when the user has no permissions",
+        "permission": null,
+        "route": "home.show",
+        "order": 1
+    },
+    {
+        "parent_name": "Config",
+        "name": "Visible",
+        "description": "A test to see if a project is displayed in the submenu when the user has the right permissions",
+        "permission": "has.permission",
+        "route": "home.show",
+        "order": 2
+    },
+    {
+        "parent_name": "Config",
+        "name": "Invisible",
+        "description": "A test to see if a project is not displayed in the submenu when the user does not have the right permission",
+        "permission": "has.not.permission",
+        "route": "home.show",
+        "order": 3
+    }
+]

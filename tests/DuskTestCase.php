@@ -6,11 +6,22 @@ use Illuminate\Support\Collection;
 use Facebook\WebDriver\Chrome\ChromeOptions;
 use Facebook\WebDriver\Remote\DesiredCapabilities;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Laravel\Dusk\TestCase as BaseTestCase;
 
 abstract class DuskTestCase extends BaseTestCase
 {
     use CreatesApplication;
+    use DatabaseTruncation;
+
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        $this->artisan('migrate');
+        $this->artisan('db:seed', ['--class' => 'AuthSeeder']);
+    }
 
     /**
      * Prepare for Dusk test execution.

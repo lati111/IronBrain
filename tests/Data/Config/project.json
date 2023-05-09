@@ -1,0 +1,29 @@
+[
+    {
+        "name": "Default Test Project",
+        "description": "A test to see if a project is displayed in the overview when the user has no permissions",
+        "thumbnail": "test.jpg",
+        "permission": null,
+        "route": "home.show",
+        "in_overview": true,
+        "in_nav": false
+    },
+    {
+        "name": "Visible Test Project",
+        "description": "A test to see if a project is displayed in the overview when the user has the right permissions",
+        "thumbnail": "test.jpg",
+        "permission": "has.permission",
+        "route": "home.show",
+        "in_overview": true,
+        "in_nav": false
+    },
+    {
+        "name": "Invisible Test Project",
+        "description": "A test to see if a project is not displayed in the overview when the user does not have the right permission",
+        "thumbnail": "test.jpg",
+        "permission": "has.not.permission",
+        "route": "home.show",
+        "in_overview": true,
+        "in_nav": false
+    }
+]
