@@ -1,5 +1,5 @@
 @extends('layouts.form.multi_form_with_datatable')
-@section('onloadFunctions')
+@section('onloadFunction')
     imageUploaderInit
     (
         'filePreview',
@@ -13,6 +13,8 @@
             @if($project->permission_id !== null)
                 '{{$project->permission_id}}'
             @endif
+        @elseif(old('permission_id') !== null)
+            '{{old('permission_id')}}'
         @endif
     );
 @stop
@@ -53,6 +55,7 @@
             <input type="text" name="name" class="smallInput underlined" placeholder="Name"
                 @isset($project) value="{{$project->name}}" @endisset
                 @if(old('name') !== null) value="{{old('name')}}" @endif
+                dusk="name_input"
             />
         @endslot
     @endcomponent
@@ -97,6 +100,7 @@
             <input type="text" name="route" class="smallInput underlined" placeholder="Route" required
                 @isset($project) value="{{$project->route}}" @endisset
                 @if(old('route') !== null) value="{{old('route')}}" @endif
+                dusk="route_input"
             />
         @endslot
     @endcomponent
@@ -105,7 +109,7 @@
     @component('components.form.input_wrapper')
         @slot('label_text')Description @endslot
         @slot('input_html')
-            <textarea name="description" class="mediumInput underlined"
+            <textarea name="description" class="mediumInput underlined" dusk="description_field"
                 style="height: 90px !important" placeholder="Description" required
             >@if(isset($project)){{$project->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
         @endslot
@@ -115,25 +119,26 @@
 {{--| bottom form |--}}
 @section('form_content_bottom')
     <div class="flex flex-row justify-around gap-4 pt-3">
-        {{--| in project checkbox |--}}
+        {{--| in overview checkbox |--}}
         <div class="flex items-center justify-center">
             <input id="inOverviewCheckbox" type="checkbox" name="in_overview" class="w-4 h-4 text-red-600 focus:ring-red-500"
-                @if(old('in_overview') === true)
+                @if(old('in_overview') === "on")
                     checked
                 @elseif (isset($project) === true)
                     @if ($project->in_overview === 1) checked @endif
-                @else
+                @elseif(old('name') === null)
                     checked
                 @endif
-                onchange="toggleThumbnailField()">
+                onchange="toggleThumbnailField()" dusk="in_overview_check">
             <label for="default-checkbox" class="ml-2 text-sm" name="in_overview">Visible in overview?</label>
         </div>
 
         {{--| in nav checkbox |--}}
         <div class="flex items-center justify-center">
-            <input id="inNavCheckbox" type="checkbox" name="in_nav" class="w-4 h-4 text-red-600 focus:ring-red-500" onchange="toggleOrderField()"
+            <input id="inNavCheckbox" type="checkbox" name="in_nav" class="w-4 h-4 text-red-600 focus:ring-red-500"
                 @isset($project) @if ($project->in_nav === 1) checked @endif @endisset
-                @if(old('in_nav') === true) checked @endif
+                @if(old('in_nav') === "on") checked @endif
+                onchange="toggleOrderField()" dusk="in_nav_check"
                 />
             <label for="default-checkbox" class="ml-2 text-sm" name="in_nav">Visible in navigation?</label>
         </div>
@@ -142,19 +147,21 @@
         <div id="orderField" class="flex items-center justify-center gap-2 m-0
             @if(isset($project))
                 @if ($project->in_nav === false) invisible" @endif
-            @elseif(old('in_nav') !== true)
+            @elseif(old('in_nav') !== "on")
                 invisible"
             @endif
 
         />
             <label for="default-checkbox" class="ml-2 text-sm" name="order">Navigation order:</label>
-            <input type="number" name="order" class="w-16 h-4 pr-0 underlined"
+            <input type="number" name="order" class="w-16 h-4 pr-0 underlined" dusk="order_input"
                 @isset($project) value="{{$project->order}}" @endisset
                 @if(old('route') !== null) value="{{old('order')}}" @endif
                 />
         </div>
     </div>
 @stop
+
+@section('submit_function', 'validate()')
 
 {{--| submenu table |--}}
 @isset($project)

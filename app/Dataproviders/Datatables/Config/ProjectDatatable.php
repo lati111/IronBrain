@@ -27,11 +27,13 @@ class ProjectDatatable extends AbstractDatatable
             $actionHTML = sprintf(
                 "<div class='flex flex-row gap-2'>%s %s</div>",
                 $this->getModifyButton(
-                    route('config.role.modify', [$project->id])
+                    route('config.projects.modify', [$project->id]),
+                    $project->id
                 ),
                 $this->getDeleteButton(
                     $request,
-                    route('config.user.delete', [$project->id]),
+                    route('config.projects.delete', [$project->id]),
+                    $project->id
                 ),
             );
 

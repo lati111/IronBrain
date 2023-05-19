@@ -15,7 +15,7 @@
 </head>
 
 <body onload="init(); @yield('onloadFunction')" class="relative">
-    <div class="absolute flex flex-col gap-2 top-3 left-3 w-64">
+    <div class="absolute flex flex-col gap-2 top-3 left-3 w-64" dusk="toasts">
         @if ($error = Session::get('error'))
             @component('components.toast')
                 @slot('id') error-toast-0 @endslot

@@ -1,6 +1,6 @@
 @extends('layouts.datatable.overview')
-@section('htmlTitle', 'Permission Overview')
-@section('table_title', 'Permission Overview')
+@section('htmlTitle', 'Project Overview')
+@section('table_title', 'Project Overview')
 
 @section('delete_modal_text', 'Are you sure you want to delete this permission?')
 
@@ -30,7 +30,7 @@
     @component('components.datatable.header')
         @slot('columnId')actions @endslot
         @slot('content')
-        <a href="{{route('config.projects.new')}}" class="interactive no-underline">Add Project</a>
+        <a href="{{route('config.projects.new')}}" class="interactive no-underline" dusk="add_project">Add Project</a>
         @endslot
     @endcomponent
 @endsection

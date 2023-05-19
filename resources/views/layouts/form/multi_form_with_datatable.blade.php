@@ -21,7 +21,7 @@
         </div>
 
         {{--| form |--}}
-        <div class="flex flex-row justify-center mb-3">
+        <div class="flex flex-row justify-center mb-3" dusk="multi-form">
             <form id="form" action="@yield('submit_route')" method="POST" enctype="multipart/form-data">
                 @csrf
 
@@ -44,19 +44,25 @@
 
                 {{--| submitter |--}}
                 <div class="flex flex-col mt-3">
-                    <input type="submit" class="interactive" value="@yield('submit_string')">
+                    @hasSection('submit_function')
+                        <input id="submitter" type="button" class="interactive" value="@yield('submit_string')" onclick="@yield('submit_function')" dusk="submitter">
+                    @else
+                        <input id="submitter" type="submit" class="interactive" value="@yield('submit_string')" dusk="submitter">
+                    @endif
                 </div>
             </form>
         </div>
 
         {{--| data table |--}}
         <div class="flex flex-row justify-center mb-3">
-            @component('components.datatable.table')
-                @slot('headers')
-                    @yield('table_headers')
-                @endslot
-                @slot('dataUrl')@yield('datatable_url') @endslot
-            @endcomponent
+            @hasSection('datatable_url')
+                @component('components.datatable.table')
+                    @slot('headers')
+                        @yield('table_headers')
+                    @endslot
+                    @slot('dataUrl')@yield('datatable_url') @endslot
+                @endcomponent
+            @endif
         </div>
     </div>
 </div>
