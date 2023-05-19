@@ -25,7 +25,7 @@
     @component('components.datatable.header')
         @slot('columnId')actions @endslot
         @slot('content')
-            <a href="{{route('config.permission.new')}}" class="interactive no-underline">Add Permission</a>
+            <a href="{{route('config.permission.new')}}" class="interactive no-underline" dusk="new_permission">Add Permission</a>
         @endslot
     @endcomponent
 @endsection

@@ -134,7 +134,7 @@ class RoleTest extends DuskTestCase
         });
     }
 
-    public function testDeleteProject(): void
+    public function testDeleteRole(): void
     {
 
         $this->browse(function (Browser $browser) {

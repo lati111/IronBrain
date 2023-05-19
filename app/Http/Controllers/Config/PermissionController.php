@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Config;
 
+use App\Enum\Auth\PermissionEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\Permission;
 use App\Models\Config\Project;
@@ -25,7 +26,7 @@ class PermissionController extends Controller
         $permission = Permission::find($id);
         if ($permission === null) {
             // todo custom error screen
-            return redirect(route('config.permission.overview'))->with("error", "That permission does not exist");
+            return redirect(route('config.permission.overview'))->with("error", PermissionEnum::NOT_FOUND_MESSAGE);
         }
 
         return view('config.permission.modify', array_merge($this->getBaseVariables(), [
@@ -75,7 +76,7 @@ class PermissionController extends Controller
         $permission->description = $request->description;
         $permission->save();
 
-        return redirect(route('config.permission.overview'))->with("message", "Changes saved");
+        return redirect(route('config.permission.overview'))->with("message", PermissionEnum::SAVED_MESSAGE);
     }
 
     public function delete(int $id)
@@ -83,9 +84,9 @@ class PermissionController extends Controller
         $permission = Permission::find($id);
         if ($permission !== null) {
             $permission->delete();
-            return redirect(route('config.permission.overview'))->with("message", "Permission was deleted");
+            return redirect(route('config.permission.overview'))->with("message", PermissionEnum::DELETED_MESSAGE);
         } else {
-            return redirect(route('config.permission.overview'))->with("error", "Invalid permission");
+            return redirect(route('config.permission.overview'))->with("error", PermissionEnum::NOT_FOUND_MESSAGE);
         }
     }
 }

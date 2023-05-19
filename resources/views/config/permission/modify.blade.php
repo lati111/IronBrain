@@ -22,7 +22,7 @@
             <input type="text" name="name" class="largeInput underlined" placeholder="Name"
                 @isset($permission) value="{{$permission->name}}" @endisset
                 @if(old('name') !== null) value="{{old('name')}}" @endif
-                required
+                dusk="name_input" required
             />
         @endslot
     @endcomponent
@@ -34,7 +34,7 @@
             <input type="text" name="permission" class="largeInput underlined" placeholder="Permission"
                 @isset($permission) value="{{$permission->permission}}" @endisset
                 @if(old('permission') !== null) value="{{old('permission')}}" @endif
-                required
+                dusk="permission_input" required
             />
         @endslot
     @endcomponent
@@ -46,7 +46,7 @@
             <input type="text" name="group" class="largeInput underlined" placeholder="Group"
                 @isset($permission) value="{{$permission->group}}" @endisset
                 @if(old('group') !== null) value="{{old('group')}}" @endif
-                required
+                dusk="group_input" required
             />
         @endslot
     @endcomponent
@@ -56,7 +56,7 @@
         @slot('label_text')Description @endslot
         @slot('input_html')
             <textarea name="description" class="largeInput underlined"
-                style="height: 90px !important" placeholder="Description" required
+                style="height: 90px !important" placeholder="Description" dusk="description_input" required
             >@if(isset($permission)){{$permission->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
         @endslot
     @endcomponent
