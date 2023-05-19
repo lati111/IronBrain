@@ -1,6 +1,6 @@
 @extends('layouts.master')
 
-@section('onloadFunction') datatableInit(); @yield('onloadFunction') @stop
+@section('onloadFunction') datatableInit(); @yield('onloadFunctions') @stop
 @section('header')@yield('headers') @stop
 
 @section('content')

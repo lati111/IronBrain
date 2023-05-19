@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Config;
 
+use App\Enum\Config\ProjectEnum;
+use App\Enum\Config\SubmenuEnum;
+use App\Enum\ErrorEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Config\Project;
 use App\Models\Config\Submenu;
@@ -19,7 +22,7 @@ class SubmenuController extends Controller
         $project = Project::find($project_id);
         if ($project === null) {
             // todo custom error
-            return redirect(route('config.projects.overview'))->with("error", "That project does not exist");
+            return redirect(route('config.projects.overview'))->with("error", ProjectEnum::PROJECT_NOT_FOUND_MESSAGE);
         }
 
         $actionHTML =
@@ -72,7 +75,7 @@ class SubmenuController extends Controller
         $submenu = Submenu::find($id);
         if ($submenu === null) {
             // todo custom error screen
-            return redirect(route('config.projects.modify'), $project_id)->with("error", "That submenu does not exist");
+            return redirect(route('config.projects.modify'), $project_id)->with("error", SubmenuEnum::SUBMENU_NOT_FOUND_MESSAGE);
         }
 
         return view('config.projects.submenu.modify', array_merge($this->getBaseVariables(), [
@@ -87,7 +90,7 @@ class SubmenuController extends Controller
             'id' => 'nullable|exists:nav__submenu,id',
             'name' => 'required|string|max:64',
             'route' => 'required|string|max:255',
-            'permission_id' => 'nullable|string"exists:auth__permission,id',
+            'permission_id' => 'nullable|string|exists:auth__permission,id',
             'order' => 'required|integer',
         ]);
 
@@ -100,7 +103,7 @@ class SubmenuController extends Controller
         if (Route::has($request->route) === false) {
             return back()
                 ->withInput($request->all())
-                ->with('error', "Route does not exist");
+                ->with('error', ErrorEnum::INVALID_ROUTE_MESSAGE);
         }
 
         $submenu = null;
@@ -117,17 +120,17 @@ class SubmenuController extends Controller
         $submenu->order = $request->order;
         $submenu->save();
 
-        return redirect(route('config.projects.modify', $project_id))->with("message", "Changes saved");
+        return redirect(route('config.projects.modify', $project_id))->with("message", SubmenuEnum::SUBMENU_SAVED_MESSAGE);
     }
 
     public function delete(int $project_id, int $id) {
         $submenu = Submenu::find($id);
         if ($submenu !== null) {
             $submenu->delete();
-            return redirect(route('config.projects.modify', $project_id))->with("message", "Submenu was deleted");
+            return redirect(route('config.projects.modify', $project_id))->with("message", SubmenuEnum::SUBMENU_DELETED_MESSAGE);
         } else {
             // todo custom error screen
-            return redirect(route('config.projects.modify', $project_id))->with("error", "Invalid submenu");
+            return redirect(route('config.projects.modify', $project_id))->with("error", SubmenuEnum::SUBMENU_NOT_FOUND_MESSAGE);
         }
     }
 }
