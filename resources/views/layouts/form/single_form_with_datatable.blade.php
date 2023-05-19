@@ -21,7 +21,7 @@
 
         {{--| form |--}}
         <div class="flex flex-row justify-center mb-3">
-            <form id="form" action="@yield('submit_route')" method="POST" enctype="multipart/form-data">
+            <form id="form" action="@yield('submit_route')" method="POST" enctype="multipart/form-data" dusk="form">
                 @csrf
 
                 <div class="flex flex-col justify-center gap-4">
@@ -30,7 +30,7 @@
 
                 {{--| submitter |--}}
                 <div class="flex flex-col mt-3">
-                    <input type="submit" class="interactive" value="@yield('submit_string')">
+                    <input type="submit" class="interactive" value="@yield('submit_string')" dusk="submitter">
                 </div>
             </form>
         </div>

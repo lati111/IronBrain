@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Config;
 
+use App\Enum\Auth\PermissionEnum;
+use App\Enum\Auth\RoleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
@@ -26,7 +28,7 @@ class RoleController extends Controller
         $role = Role::find($id);
         if ($role === null) {
             // todo custom error screen
-            return redirect(route('config.role.overview'))->with("error", "That role does not exist");
+            return redirect(route('config.role.overview'))->with("error", RoleEnum::ROLE_NOT_FOUND_MESSAGE);
         }
 
         return view('config.role.modify', array_merge($this->getBaseVariables(), [
@@ -59,7 +61,7 @@ class RoleController extends Controller
         $role->description = $request->description;
         $role->save();
 
-        return redirect(route('config.role.overview'))->with("message", "Changes saved");
+        return redirect(route('config.role.overview'))->with("message", RoleEnum::ROLE_SAVED_MESSAGE);
     }
 
     public function delete(int $id)
@@ -67,9 +69,9 @@ class RoleController extends Controller
         $permission = Permission::find($id);
         if ($permission !== null) {
             $permission->delete();
-            return redirect(route('config.role.overview'))->with("message", "Permission was deleted");
+            return redirect(route('config.role.overview'))->with("message", RoleEnum::ROLE_DELETED_MESSAGE);
         } else {
-            return redirect(route('config.role.overview'))->with("error", "Invalid permission");
+            return redirect(route('config.role.overview'))->with("error", RoleEnum::ROLE_NOT_FOUND_MESSAGE);
         }
     }
 
@@ -84,12 +86,12 @@ class RoleController extends Controller
 
         $role = Role::find($role_id);
         if ($role === null) {
-            return response()->json('Role does not exist', 404);
+            return response()->json(RoleEnum::ROLE_NOT_FOUND_MESSAGE, 404);
         }
 
         $permission = Permission::find($permission_id);
         if ($permission === null) {
-            return response()->json('Permission does not exist', 404);
+            return response()->json(PermissionEnum::NOT_FOUND_MESSAGE, 404);
         }
 
         if ($role->hasPermission($permission)) {

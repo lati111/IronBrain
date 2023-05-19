@@ -19,11 +19,13 @@ class RoleDatatable extends AbstractDatatable
             $actionHTML = sprintf(
                 "<div class='flex flex-row gap-2'>%s %s</div>",
                 $this->getModifyButton(
-                    route('config.role.modify', [$role->id])
+                    route('config.role.modify', [$role->id]),
+                    $role->id
                 ),
                 $this->getDeleteButton(
                     $request,
                     route('config.role.delete', [$role->id]),
+                    $role->id
                 ),
             );
 

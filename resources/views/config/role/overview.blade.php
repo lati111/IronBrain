@@ -17,7 +17,7 @@
     @component('components.datatable.header')
         @slot('columnId')actions @endslot
         @slot('content')
-            <a href="{{route('config.role.new')}}" class="interactive no-underline">Add Role</a>
+            <a href="{{route('config.role.new')}}" class="interactive no-underline" dusk="new_role">Add Role</a>
         @endslot
     @endcomponent
 @endsection
