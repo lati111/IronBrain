@@ -18,7 +18,7 @@ abstract class AbstractDatatable
                 "<input type='hidden' name='_token' value='%s'/>".
                 "<span ".
                     "onclick='store_form(this.closest(`form`)); openModal(`delete_modal`)' ".
-                    "class='interactive' dusk='delete_%d'".
+                    "class='interactive' dusk='delete_%s'".
                     "/>delete</span>".
             "</form>".
         "</div>";
@@ -36,7 +36,7 @@ abstract class AbstractDatatable
         return csrf_token();
     }
 
-    protected function getModifyButton(string $route, ?int $id = null): string {
+    protected function getModifyButton(string $route, ?string $id = ""): string {
         return sprintf(
             self::MODIFY_BUTTON_HTML,
             $route,
@@ -44,7 +44,7 @@ abstract class AbstractDatatable
         );
     }
 
-    protected function getDeleteButton(Request $request, string $route, ?int $id = null): string {
+    protected function getDeleteButton(Request $request, string $route, ?string $id = ""): string {
         return sprintf(
             self::DELETE_BUTTON_HTML,
             $route,

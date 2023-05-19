@@ -28,12 +28,12 @@ class ProjectDatatable extends AbstractDatatable
                 "<div class='flex flex-row gap-2'>%s %s</div>",
                 $this->getModifyButton(
                     route('config.projects.modify', [$project->id]),
-                    $project->id
+                    (string) $project->id
                 ),
                 $this->getDeleteButton(
                     $request,
                     route('config.projects.delete', [$project->id]),
-                    $project->id
+                    (string) $project->id
                 ),
             );
 

@@ -28,12 +28,12 @@ class SubmenuDatatable extends AbstractDatatable
                 "<div class='flex flex-row gap-2'>%s %s</div>",
                 $this->getModifyButton(
                     route('config.projects.submenu.modify', [$project_id, $submenu->id]),
-                    $submenu->id
+                    (string) $submenu->id
                 ),
                 $this->getDeleteButton(
                     $request,
                     route('config.projects.submenu.delete', [$project_id, $submenu->id]),
-                    $submenu->id
+                    (string) $submenu->id
                 ),
             );
 

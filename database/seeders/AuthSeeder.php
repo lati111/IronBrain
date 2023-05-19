@@ -36,6 +36,7 @@ class AuthSeeder extends Seeder
             'email' => "test@test.nl",
             'password' => Hash::make("Password123"),
             'role_id' => $this->role_table->where('name', 'Tester')->first()->id,
+            'profile_picture' => 'test/pfp.png',
             'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
             'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
@@ -46,6 +47,12 @@ class AuthSeeder extends Seeder
         $this->role_table->insert([
             "name" => "Tester",
             "description" => "Default test role",
+            'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
+            'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
+        $this->role_table->insert([
+            "name" => "Admin",
+            "description" => "Admin test role",
             'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
             'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
