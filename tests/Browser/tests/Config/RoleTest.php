@@ -72,7 +72,7 @@ class RoleTest extends DuskTestCase
         });
     }
 
-    public function testRoleOldValues(): void
+    public function testRoleModifyOldValues(): void
     {
         $this->browse(function (Browser $browser) {
             $browser->loginAs(User::where('name', 'Tester')->first())
@@ -92,6 +92,45 @@ class RoleTest extends DuskTestCase
                         ->assertValue('@name_input', 'qwertyuiopasdfghjklzxcvbnmqwertyuiop')
                         ->assertValue('@description_input', 'A fake role for testing');
                 });
+        });
+    }
+
+    public function testRolePermissionToggle(): void
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->loginAs(User::where('name', 'Tester')->first())
+                ->visit(route('config.role.overview'));
+            $browser->pause(250);
+            $browser
+                ->with('.datatable', function (Browser $browser) {
+                    $browser->click('@modify_1');
+                });
+
+            $browser
+                ->assertRouteIs('config.role.modify', [1])
+                ->pause(250);
+
+            $browser->with('.datatable', function (Browser $browser) {
+                $browser
+                    ->assertSee('Given permission')
+                    ->assertSee('Test permission that is given to the test user')
+
+                    ->assertChecked("@permission_checkbox_1")
+                    ->assertNotChecked("@permission_checkbox_2")
+
+                    ->uncheck("@permission_checkbox_1")
+                    ->check("@permission_checkbox_2");
+            });
+
+            $browser
+                ->refresh()
+                ->pause(250);
+
+            $browser->with('.datatable', function (Browser $browser) {
+                $browser
+                    ->assertNotChecked("@permission_checkbox_1")
+                    ->assertChecked("@permission_checkbox_2");
+            });
         });
     }
 
