@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enum\Auth\UserEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\User;
 use Illuminate\Http\RedirectResponse;
@@ -48,14 +49,13 @@ class AuthController extends Controller
             'password' => ['required', Password::min(8)
                 ->letters()
                 ->mixedCase()
-                ->numbers()
-                ->uncompromised()]
+                ->numbers()]
         ]);
 
         if ($request->password !== $request->repeat_password) {
             return back()
                 ->withInput($request->all())
-                ->with('error', 'Passwords must match');
+                ->with('error', UserEnum::PASSWORDS_NOT_MATCHING_MESSAGE);
         }
 
         $user = User::create([
@@ -76,7 +76,7 @@ class AuthController extends Controller
         $user->profile_picture = sprintf('%s/pfp.svg', $user->uuid);
         $user->save();
 
-        return redirect(route('auth.login.show'))->with("message", "Account Created");
+        return redirect(route('auth.login.show'))->with("message", UserEnum::SIGNUP_SUCCESS_MESSAGE);
     }
 
     public function showLogin(): View | RedirectResponse
@@ -101,10 +101,10 @@ class AuthController extends Controller
 
         if (Auth::attempt($request->only(['email', 'password']))) {
             return redirect()->route("home.show")
-                ->with('message', 'Log in successful');
+                ->with('message', UserEnum::LOGIN_SUCCESS_MESSAGE);
         } else {
             return back()
-                ->with('error', 'Username or password is incorrect');
+                ->with('error', UserEnum::LOGIN_FAILED_MESSAGE);
         }
     }
 
@@ -116,6 +116,6 @@ class AuthController extends Controller
 
         Auth::logout();
         return redirect()->route("auth.login.show")
-                ->with('message', 'Logged out succesfully');
+                ->with('message', UserEnum::LOGOUT_MESSAGE);
     }
 }
