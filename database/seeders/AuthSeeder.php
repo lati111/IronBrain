@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Auth\Role;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,17 @@ class AuthSeeder extends Seeder
             'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
             'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
+
+        $this->user_table->insert([
+            'uuid' => Str::uuid(),
+            'name' => "Admin",
+            'email' => "admin@test.nl",
+            'password' => Hash::make("Password123"),
+            'role_id' => Role::where('name', 'Admin')->first()->id,
+            'profile_picture' => 'test/pfp.png',
+            'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
+            'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
     }
 
     private function seedRole()
@@ -55,6 +67,7 @@ class AuthSeeder extends Seeder
             "description" => "Admin test role",
             'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
             'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+            'is_admin' => true,
         ]);
     }
 

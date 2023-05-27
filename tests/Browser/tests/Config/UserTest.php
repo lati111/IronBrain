@@ -8,7 +8,7 @@ use App\Models\Auth\User;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
-class userTest extends DuskTestCase
+class UserTest extends DuskTestCase
 {
     public function testOverviewDatatable(): void
     {

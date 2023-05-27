@@ -5,18 +5,26 @@ namespace App\Http\Controllers\Auth;
 use App\Enum\Auth\UserEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\User;
+use App\Service\AvatarGenerator;
+use App\Service\AvatarGeneratorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Validator;
-use splitbrain\RingIcon\RingIconSVG;
-use Illuminate\Support\Facades\File;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
+    private AvatarGeneratorService $avatarGeneratorService;
+
+    public function __construct(
+        AvatarGeneratorService $avatarGeneratorService
+    ) {
+        $this->avatarGeneratorService = $avatarGeneratorService;
+    }
+
     public function showSignup(): View | RedirectResponse
     {
         if (Auth::user() !== null) {
@@ -35,7 +43,10 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:28',
             'email' => 'required|email|max:40|unique:auth__user,email',
-            'password' => 'required|string|min:8',
+            'password' => ['required', Password::min(8)
+                ->letters()
+                ->mixedCase()
+                ->numbers()],
             'repeat_password' => 'required|string',
         ]);
 
@@ -44,13 +55,6 @@ class AuthController extends Controller
                 ->withInput($request->all())
                 ->withErrors($validator);
         }
-
-        $request->validate([
-            'password' => ['required', Password::min(8)
-                ->letters()
-                ->mixedCase()
-                ->numbers()]
-        ]);
 
         if ($request->password !== $request->repeat_password) {
             return back()
@@ -64,17 +68,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        //| profile picture
-        $path = sprintf('img/profile/%s', $user->uuid);
-        if (is_dir($path) === false) {
-            File::makeDirectory($path);
-        }
-
-        $profilePicture = new RingIconSVG(128, 3);
-        $profilePicture->setMono(true);
-        $profilePicture->createImage($request->name . $request->email, sprintf('img/profile/%s/pfp.svg', $user->uuid));
-        $user->profile_picture = sprintf('%s/pfp.svg', $user->uuid);
-        $user->save();
+        $this->avatarGeneratorService->generateProfilePicture($user);
 
         return redirect(route('auth.login.show'))->with("message", UserEnum::SIGNUP_SUCCESS_MESSAGE);
     }
