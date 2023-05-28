@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Controller;
 
 use App\Http\Controllers\Controller;
 use GuzzleHttp\Psr7\Uri;
@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Session\SessionManager;
 use Illuminate\Testing\TestResponse;
 use Illuminate\View\View;
+use Tests\Unit\AbstractUnitTester;
 
 abstract class AbstractControllerUnitTester extends AbstractUnitTester
 {

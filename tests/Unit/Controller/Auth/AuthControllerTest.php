@@ -1,12 +1,12 @@
 <?php
 
-namespace Tests\Unit\Auth;
+namespace Tests\Unit\Controller\Auth;
 
 use App\Enum\Auth\UserEnum;
 use App\Models\Auth\User;
 use App\Service\AvatarGeneratorService;
 use Illuminate\Support\Facades\Auth;
-use Tests\Unit\AbstractControllerUnitTester;
+use Tests\Unit\Controller\AbstractControllerUnitTester;
 use Illuminate\Support\Facades\File;
 
 class LoginTest extends AbstractControllerUnitTester

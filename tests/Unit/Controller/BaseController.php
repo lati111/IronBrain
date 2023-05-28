@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Controller;
 
 use App\Http\Controllers\Controller;
 
