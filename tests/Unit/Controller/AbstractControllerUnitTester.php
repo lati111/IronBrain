@@ -2,32 +2,31 @@
 
 namespace Tests\Unit\Controller;
 
-use App\Http\Controllers\Controller;
-use GuzzleHttp\Psr7\Uri;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Session\SessionManager;
 use Illuminate\Testing\TestResponse;
-use Illuminate\View\View;
 use Tests\Unit\AbstractUnitTester;
 
 abstract class AbstractControllerUnitTester extends AbstractUnitTester
 {
-    protected function assertView(TestResponse $response, string $view, array $vars = []) {
+    protected function assertView(TestResponse $response, string $view, array $vars = [])
+    {
         $vars = array_merge($vars, $this->getBaseRouteVars());
 
+        $response->assertValid();
         $response->assertViewIs($view);
         $response->assertViewHasAll($vars);
     }
 
-    protected function assertRedirect(TestResponse $response, string $route, array $vars = []) {
+    protected function assertRedirect(TestResponse $response, string $route, array $vars = [])
+    {
+        $response->assertValid();
         $response->assertRedirectToRoute($route);
         foreach ($vars as $key => $value) {
             $this->assertEquals($value, session($key));
         }
     }
 
-    protected function assertValidationRequired(string $fieldName) {
+    protected function assertValidationRequired(string $fieldName)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s field is required.',
@@ -37,7 +36,8 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    protected function assertValidationTooLong(string $fieldName, int $maxLength) {
+    protected function assertValidationTooLong(string $fieldName, int $maxLength)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s field must not be greater than %d characters.',
@@ -48,7 +48,8 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    protected function assertValidationTooShort(string $fieldName, int $maxLength) {
+    protected function assertValidationTooShort(string $fieldName, int $maxLength)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s field must be at least %d characters.',
@@ -59,7 +60,8 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    protected function assertValidationString(string $fieldName) {
+    protected function assertValidationString(string $fieldName)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s field must be a string.',
@@ -69,7 +71,19 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    protected function assertValidationEmail(string $fieldName) {
+    protected function assertValidationInteger(string $fieldName)
+    {
+        $fieldString = $this->formatValidationFieldName($fieldName);
+        $message = sprintf(
+            'The %s field must be an integer.',
+            $fieldString
+        );
+
+        $this->assertValidation($fieldName, $message);
+    }
+
+    protected function assertValidationEmail(string $fieldName)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s field must be a valid email address.',
@@ -79,7 +93,8 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    protected function assertValidationTaken(string $fieldName) {
+    protected function assertValidationTaken(string $fieldName)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s has already been taken.',
@@ -89,7 +104,19 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    protected function assertValidationMixedCase(string $fieldName) {
+    protected function assertValidationExists(string $fieldName)
+    {
+        $fieldString = $this->formatValidationFieldName($fieldName);
+        $message = sprintf(
+            'The selected %s is invalid.',
+            $fieldString
+        );
+
+        $this->assertValidation($fieldName, $message);
+    }
+
+    protected function assertValidationMixedCase(string $fieldName)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s field must contain at least one uppercase and one lowercase letter.',
@@ -99,7 +126,8 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    protected function assertValidationHasNumbers(string $fieldName) {
+    protected function assertValidationHasNumbers(string $fieldName)
+    {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
             'The %s field must contain at least one number.',
@@ -109,20 +137,24 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message);
     }
 
-    private function formatValidationFieldName(string $fieldName) {
+    private function formatValidationFieldName(string $fieldName)
+    {
         $fieldName = str_replace("_", " ", $fieldName);
         return $fieldName;
     }
 
-    protected function assertValidationValid(string $fieldName) {
+    protected function assertValidationValid(string $fieldName)
+    {
         $this->assertEmpty($this->getValidationErrors($fieldName));
     }
 
-    private function assertValidation(string $fieldName, string $message) {
+    private function assertValidation(string $fieldName, string $message)
+    {
         $this->assertContains($message, $this->getValidationErrors($fieldName));
     }
 
-    protected function getValidationErrors(string $fieldName) {
+    protected function getValidationErrors(string $fieldName)
+    {
         $errors = session('errors');
         if ($errors === null) {
             return [];
@@ -131,7 +163,8 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         return $errors->get($fieldName);
     }
 
-    protected function getBaseRouteVars() {
+    protected function getBaseRouteVars()
+    {
         $controller = new BaseController();
         return $controller->getbaseRouteVars();
     }

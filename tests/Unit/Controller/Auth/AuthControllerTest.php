@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Tests\Unit\Controller\AbstractControllerUnitTester;
 use Illuminate\Support\Facades\File;
 
-class LoginTest extends AbstractControllerUnitTester
+class AuthControllerTest extends AbstractControllerUnitTester
 {
 
     //| show signup tests

@@ -13,7 +13,7 @@ class PermissionController extends Controller
 {
     public function overview()
     {
-        return view('config.permission.overview', array_merge($this->getBaseVariables(), []));
+        return view('config.permission.overview', $this->getBaseVariables());
     }
 
     public function new()
@@ -37,7 +37,7 @@ class PermissionController extends Controller
     public function save(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id' => 'nullable|integer',
+            'id' => 'nullable|integer|exists:auth__permission,id',
             'permission' => 'required|string|max:128',
             'name' => 'required|string|max:48',
             'group' => 'required|string|max:64',
@@ -67,7 +67,7 @@ class PermissionController extends Controller
         if ($isUnique === false) {
             return back()
                 ->withInput($request->all())
-                ->with('error', 'Permission must be unique');
+                ->with('error', PermissionEnum::NOT_UNIQUE_MESSAGE);
         }
 
         $permission->permission = $request->permission;
