@@ -30,7 +30,8 @@ class UserController extends Controller
         }
     }
 
-    public function setRole(Request $request, string $uuid) {
+    public function setRole(Request $request, string $uuid)
+    {
         $validator = Validator::make($request->all(), [
             'role_id' => 'nullable|integer|exists:auth__role,id',
         ]);

@@ -15,7 +15,7 @@ class RoleController extends Controller
 {
     public function overview()
     {
-        return view('config.role.overview', array_merge($this->getBaseVariables(), []));
+        return view('config.role.overview', $this->getBaseVariables());
     }
 
     public function new()
@@ -39,7 +39,7 @@ class RoleController extends Controller
     public function save(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id' => 'nullable|integer',
+            'id' => 'nullable|integer|exists:auth__role,id',
             'name' => 'required|string|max:28',
             'description' => 'required|string',
         ]);
@@ -66,16 +66,21 @@ class RoleController extends Controller
 
     public function delete(int $id)
     {
-        $permission = Permission::find($id);
-        if ($permission !== null) {
-            $permission->delete();
+        $role = Role::where('id', $id)->first();
+        if ($role !== null) {
+            if ($role->Users->count() > 0) {
+                return redirect(route('config.role.overview'))->with("error", RoleEnum::USER_HAS_ROLE_MESSAGE);
+            }
+
+            $role->delete();
             return redirect(route('config.role.overview'))->with("message", RoleEnum::ROLE_DELETED_MESSAGE);
         } else {
             return redirect(route('config.role.overview'))->with("error", RoleEnum::ROLE_NOT_FOUND_MESSAGE);
         }
     }
 
-    public function togglePermission(Request $request, int $role_id, int $permission_id) {
+    public function togglePermission(Request $request, int $role_id, int $permission_id)
+    {
         $validator = Validator::make($request->all(), [
             'hasPermission' => 'required|boolean',
         ]);
@@ -111,6 +116,5 @@ class RoleController extends Controller
         }
 
         return response()->json('Success', 200);
-
     }
 }
