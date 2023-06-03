@@ -29,11 +29,11 @@ class PermissionControllerTest extends AbstractControllerUnitTester
     //| show modify permission test
     public function testModifyPermissionShow(): void
     {
-        $permissionID = Permission::select()->first()->id;
+        $permission = $this->getRandomEntity(Permission::class);
 
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('config.permission.modify', [$permissionID]));
+            ->get(route('config.permission.modify', [$permission->id]));
         $this->assertView($response, 'config.permission.modify');
     }
 
@@ -41,7 +41,7 @@ class PermissionControllerTest extends AbstractControllerUnitTester
     {
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('config.permission.modify', [-4]));
+            ->get(route('config.permission.modify', [$this->getFalseId(Permission::class)]));
         $this->assertRedirect($response, 'config.permission.overview');
         $this->assertEquals(PermissionEnum::NOT_FOUND_MESSAGE, session('error'));
     }
@@ -53,14 +53,7 @@ class PermissionControllerTest extends AbstractControllerUnitTester
         $name = $this->faker->regexify('[A-Za-z0-9]{26}');
         $group = $this->faker->regexify('[A-Za-z0-9]{48}');
         $description = $this->faker->regexify('[A-Za-z0-9]{48}');
-
-        $permissionString = null;
-        while ($permissionString === null) {
-            $perm = $this->faker->regexify('[A-Za-z0-9]{48}');
-            if (Permission::where('permission', $perm)->count() === 0) {
-                $permissionString = $perm;
-            }
-        }
+        $permissionString = $this->getNewPermissionString();
 
         $response = $this
             ->actingAs($this->getAdminUser())
@@ -85,15 +78,9 @@ class PermissionControllerTest extends AbstractControllerUnitTester
     public function testSaveModifiedPermissionValid(): void
     {
         $route = route('config.permission.save');
-        $permissionString = null;
-        while ($permissionString === null) {
-            $perm = $this->faker->regexify('[A-Za-z0-9]{48}');
-            if (Permission::where('permission', $perm)->count() === 0) {
-                $permissionString = $perm;
-            }
-        }
+        $permissionString = $this->getNewPermissionString();
 
-        $id = Permission::select()->first()->id;
+        $id = $this->getRandomEntity(Permission::class)->id;
         $name = $this->faker->regexify('[A-Za-z0-9]{26}');
         $group = $this->faker->regexify('[A-Za-z0-9]{48}');
         $description = $this->faker->regexify('[A-Za-z0-9]{48}');
@@ -124,19 +111,19 @@ class PermissionControllerTest extends AbstractControllerUnitTester
     public function testSavePermissionIdValidation(): void
     {
         $route = route('config.permission.save');
-        $permissionID = Permission::select()->first()->id;
+        $permission = $this->getRandomEntity(Permission::class);
 
         //valid
         $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'id' =>  $permissionID,
+                'id' =>  $permission->id,
             ]);
         $this->assertValidationValid('id');
 
         //does not exist
         $this->post($route, [
-            'id' => $this->faker->numberBetween(-200, -1),
+            'id' => $this->getFalseId(Permission::class)
         ]);
         $this->assertValidationExists('id');
 
@@ -158,19 +145,13 @@ class PermissionControllerTest extends AbstractControllerUnitTester
     public function testSavePermissionPermissionValidation(): void
     {
         $route = route('config.permission.save');
-        $permission = null;
-        while ($permission === null) {
-            $perm = $this->faker->regexify('[A-Za-z0-9]{48}');
-            if (Permission::where('permission', $perm)->count() === 0) {
-                $permission = $perm;
-            }
-        }
+        $permissionString = $this->getNewPermissionString();
 
         //valid
         $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'permission' =>  $perm,
+                'permission' =>  $permissionString,
             ]);
         $this->assertValidationValid('permission');
 
@@ -297,14 +278,14 @@ class PermissionControllerTest extends AbstractControllerUnitTester
     public function testSavePermissionNotUnique(): void
     {
         $route = route('config.permission.save');
-        $permission = Permission::select()->first()->permission;
-        $permissionID = Permission::where('permission', '!=', $permission)->first()->id;
+        $permission = $this->getRandomEntity(Permission::class);
+        $other_permission = Permission::where('permission', '!=', $permission->permission)->first();
 
         //new
         $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'permission' =>  $permission,
+                'permission' =>  $permission->permission,
                 'name' =>  $this->faker->regexify('[A-Za-z0-9]{26}'),
                 'group' =>  $this->faker->regexify('[A-Za-z0-9]{48}'),
                 'description' =>  $this->faker->regexify('[A-Za-z0-9]{48}'),
@@ -315,8 +296,8 @@ class PermissionControllerTest extends AbstractControllerUnitTester
         $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'id' => $permissionID,
-                'permission' =>  $permission,
+                'id' => $other_permission->id,
+                'permission' =>  $permission->permission,
                 'name' =>  $this->faker->regexify('[A-Za-z0-9]{26}'),
                 'group' =>  $this->faker->regexify('[A-Za-z0-9]{48}'),
                 'description' =>  $this->faker->regexify('[A-Za-z0-9]{48}'),
@@ -327,6 +308,32 @@ class PermissionControllerTest extends AbstractControllerUnitTester
     //| delete permission test
     public function testDeletePermissionValid(): void
     {
+        $permission = $this->createRandomEntity(Permission::class);
+        $route = route('config.permission.delete', $permission->id);
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->post($route);
+        $this->assertNull(Permission::where('id', $permission->id)->first());
+        $this->assertRedirect($response, 'config.permission.overview', [
+            "message" => PermissionEnum::DELETED_MESSAGE,
+        ]);
+    }
+
+    public function testDeletePermissionNotFound(): void
+    {
+        $route = route('config.permission.delete', $this->getFalseId(Permission::class));
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->post($route);
+        $this->assertRedirect($response, 'config.permission.overview', [
+            "error" => PermissionEnum::NOT_FOUND_MESSAGE,
+        ]);
+    }
+
+    //| getter
+    private function getNewPermissionString() {
         $permission = null;
         while ($permission === null) {
             $perm = $this->faker->regexify('[A-Za-z0-9]{48}');
@@ -335,36 +342,6 @@ class PermissionControllerTest extends AbstractControllerUnitTester
             }
         }
 
-        $this
-            ->actingAs($this->getAdminUser())
-            ->post(route('config.permission.save'), [
-                'permission' =>  $permission,
-                'name' =>  $this->faker->regexify('[A-Za-z0-9]{26}'),
-                'group' =>  $this->faker->regexify('[A-Za-z0-9]{48}'),
-                'description' =>  $this->faker->regexify('[A-Za-z0-9]{48}'),
-            ]);
-
-        $permissionID = Permission::where('permission', $permission)->first()->id;
-        $route = route('config.permission.delete', $permissionID);
-
-        $response = $this
-            ->actingAs($this->getAdminUser())
-            ->post($route);
-        $this->assertNull(Permission::where('permission', $permission)->first());
-        $this->assertRedirect($response, 'config.permission.overview', [
-            "message" => PermissionEnum::DELETED_MESSAGE,
-        ]);
-    }
-
-    public function testDeletePermissionNotFound(): void
-    {
-        $route = route('config.permission.delete', -4);
-
-        $response = $this
-            ->actingAs($this->getAdminUser())
-            ->post($route);
-        $this->assertRedirect($response, 'config.permission.overview', [
-            "error" => PermissionEnum::NOT_FOUND_MESSAGE,
-        ]);
+        return $permission;
     }
 }

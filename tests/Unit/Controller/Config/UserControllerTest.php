@@ -23,7 +23,7 @@ class UserControllerTest extends AbstractControllerUnitTester
     //| delete user test
     public function testDeleteUserValid(): void
     {
-        $user = $this->getRandomUser();
+        $user = $this->createRandomEntity(User::class);
 
         $response = $this
             ->actingAs($this->getAdminUser())
@@ -36,7 +36,7 @@ class UserControllerTest extends AbstractControllerUnitTester
 
     public function testDeleteUserNotFound(): void
     {
-        $route = route('config.user.delete', -4);
+        $route = route('config.user.delete', $this->getFalseUuid(User::class));
 
         $response = $this
             ->actingAs($this->getAdminUser())
@@ -49,14 +49,14 @@ class UserControllerTest extends AbstractControllerUnitTester
     //| set role test
     public function testSetRoleValid(): void
     {
-        $user = $this->getRandomUser();
-        $role_id = Role::select()->first()->id;
+        $user = $this->getRandomEntity(User::class);
+        $role = $this->getRandomEntity(Role::class);
         $route = route('config.user.role.set', [$user->uuid]);
 
         $response = $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'role_id' => $role_id,
+                'role_id' => $role->id,
             ]);
 
         $this->assertRedirect($response, 'config.user.overview', [
@@ -64,18 +64,19 @@ class UserControllerTest extends AbstractControllerUnitTester
         ]);
 
         $user = User::where('email', $user->email)->first();
-        $this->assertEquals($role_id, $user->role_id);
+        $this->assertEquals($role->id, $user->role_id);
     }
 
     public function testSetRoleRoleValidation(): void
     {
-        $role_id = Role::select()->first()->id;
-        $route = route('config.user.role.set', [$this->getFalseUser()]);
+        $role = $this->getRandomEntity(Role::class);
+        $route = route('config.user.role.set', [$this->getFalseUuid(User::class)]);
+
         //valid
         $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'role_id' =>  $role_id,
+                'role_id' =>  $role->id,
             ]);
         $this->assertValidationValid('role_id');
 
@@ -97,53 +98,21 @@ class UserControllerTest extends AbstractControllerUnitTester
         $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'role_id' => $this->getFalseRole(),
+                'role_id' => $this->getFalseId(Role::class),
             ]);
         $this->assertValidationExists('role_id');
     }
 
     public function testSetRoleUserNotFound(): void
     {
-        $role_id = Role::select()->first()->id;
-        $route = route('config.user.role.set', [$this->getFalseUser()]);
+        $role = $this->getRandomEntity(Role::class);
+        $route = route('config.user.role.set', [$this->getFalseUuid(User::class)]);
 
         $this
             ->actingAs($this->getAdminUser())
             ->post($route, [
-                'role_id' =>  $role_id,
+                'role_id' =>  $role->id,
             ]);
         $this->assertEquals(UserEnum::USER_NOT_FOUND_MESSAGE, session('error'));
-    }
-
-    //| getters
-    private function getRandomUser(): User|null
-    {
-        return User::where('email', '!=', 'admin@test.nl')->first();
-    }
-
-    private function getFalseUser(): string
-    {
-        $saved_uuid = null;
-        while ($saved_uuid === null) {
-            $uuid = $this->faker->uuid();
-            if (User::where('uuid', $uuid)->count() === 0) {
-                $saved_uuid = $uuid;
-            }
-        }
-
-        return $saved_uuid;
-    }
-
-    private function getFalseRole(): int
-    {
-        $saved_id = null;
-        while ($saved_id === null) {
-            $id = $this->faker->randomNumber();
-            if (Role::where('id', $id)->count() === 0) {
-                $saved_id = $id;
-            }
-        }
-
-        return $saved_id;
     }
 }

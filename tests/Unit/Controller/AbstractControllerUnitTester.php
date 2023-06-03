@@ -8,31 +8,6 @@ use Tests\Unit\AbstractUnitTester;
 
 abstract class AbstractControllerUnitTester extends AbstractUnitTester
 {
-    //| getters
-    protected function getFalseId(string $model): int
-    {
-        $saved_id = null;
-        while ($saved_id === null) {
-            $id = $this->faker->randomNumber();
-            if ($model::where('id', $id)->count() === 0) {
-                $saved_id = $id;
-            }
-        }
-
-        return $saved_id;
-    }
-
-    protected function getRandomEntity(string $model): Model|null
-    {
-        return $model::select()->first();
-    }
-
-    protected function createRandomEntity(string $model): Model {
-        $entity = $model::factory()->makeOne();
-        $entity->save();
-        return $entity;
-    }
-
     //| routing asserts
     protected function assertView(TestResponse $response, string $view, array $vars = [])
     {

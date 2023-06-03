@@ -94,7 +94,7 @@ class AuthControllerTest extends AbstractControllerUnitTester
         $this->assertValidationValid('name');
 
         //is required
-        $this->post($route, []);
+        $this->post($route);
         $this->assertValidationRequired('name');
 
         //too long
@@ -120,7 +120,7 @@ class AuthControllerTest extends AbstractControllerUnitTester
         $this->assertValidationValid('email');
 
         //is required
-        $this->post($route, []);
+        $this->post($route);
         $this->assertValidationRequired('email');
 
         //too long
@@ -137,7 +137,7 @@ class AuthControllerTest extends AbstractControllerUnitTester
 
         //already taken
         $this->post($route, [
-            'email' => 'test@test.nl',
+            'email' => $this->getRandomEntity(User::class)->email,
         ]);
         $this->assertValidationTaken('email');
     }
@@ -151,7 +151,7 @@ class AuthControllerTest extends AbstractControllerUnitTester
         $this->assertValidationValid('password');
 
         //is required
-        $this->post(route('auth.signup.save'), []);
+        $this->post(route('auth.signup.save'));
         $this->assertValidationRequired('password');
 
         //too short
