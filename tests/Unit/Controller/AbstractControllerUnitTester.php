@@ -151,6 +151,17 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
+    protected function assertValidationImageFileType(string $fieldName, array $response = [])
+    {
+        $fieldString = $this->formatValidationFieldName($fieldName);
+        $message = sprintf(
+            'The %s field must be a file of type: png, jpg, jpeg, svg, webp.',
+            $fieldString
+        );
+
+        $this->assertValidation($fieldName, $message, $response);
+    }
+
     private function formatValidationFieldName(string $fieldName)
     {
         $fieldName = strtolower(preg_replace('/(?<!^)[A-Z]/', ' $0', $fieldName));

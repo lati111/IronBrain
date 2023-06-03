@@ -4,6 +4,7 @@ namespace Tests\Unit\Controller\Config;
 
 use App\Enum\Auth\PermissionEnum;
 use App\Models\Auth\Permission;
+
 use Tests\Unit\Controller\AbstractControllerUnitTester;
 
 class PermissionControllerTest extends AbstractControllerUnitTester
