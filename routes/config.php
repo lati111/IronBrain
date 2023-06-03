@@ -67,7 +67,6 @@ Route::prefix('/config')->group(function() {
         });
     });
 
-
     //| user control
     Route::prefix('/user')->group(function() {
         // pages
@@ -75,7 +74,7 @@ Route::prefix('/config')->group(function() {
             ->middleware('permission:config.user.view')
             ->name("config.user.overview");
 
-        Route::post('/delete/{uuid}', [UserController::class, 'delete'])
+        Route::post('/delete/{uuid}', [UserController::class, 'deactivate'])
             ->middleware('permission:config.user.edit')
             ->name("config.user.delete");
 
@@ -85,11 +84,10 @@ Route::prefix('/config')->group(function() {
             ->name("config.user.overview.datatable");
 
         // ajax calls
-        Route::post('/{uuid}/role/set', [UserController::class, 'setPermission'])
+        Route::post('/{uuid}/role/set', [UserController::class, 'setRole'])
             ->middleware('permission:config.user.edit')
             ->name("config.user.role.set");
     });
-
 
     //| role
     Route::prefix('/role')->group(function() {

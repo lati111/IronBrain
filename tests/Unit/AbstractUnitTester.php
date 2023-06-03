@@ -27,6 +27,6 @@ abstract class AbstractUnitTester extends Testcase
     }
 
     protected function getAdminUser(): User {
-        return User::where('name', 'Admin')->first();
+        return User::where('email', 'admin@test.nl')->first();
     }
 }

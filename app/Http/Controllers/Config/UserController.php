@@ -18,7 +18,7 @@ class UserController extends Controller
         ]));
     }
 
-    public function delete(string $uuid)
+    public function deactivate(string $uuid)
     {
         $user = User::find($uuid);
         if ($user !== null) {
@@ -30,9 +30,9 @@ class UserController extends Controller
         }
     }
 
-    public function setPermission(Request $request, string $uuid) {
+    public function setRole(Request $request, string $uuid) {
         $validator = Validator::make($request->all(), [
-            'role_id' => 'nullable|integer',
+            'role_id' => 'nullable|integer|exists:auth__role,id',
         ]);
 
         if ($validator->fails()) {
@@ -49,7 +49,7 @@ class UserController extends Controller
         $user->role_id = $request->role_id;
         $user->save();
 
-        return back()
-            ->with('error', UserEnum::USER_ROLE_CHANGED_MESSAGE);
+        return redirect(route('config.user.overview'))
+            ->with("message", UserEnum::USER_ROLE_CHANGED_MESSAGE);
     }
 }
