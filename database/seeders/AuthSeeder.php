@@ -69,6 +69,12 @@ class AuthSeeder extends Seeder
             'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
             'is_admin' => true,
         ]);
+        $this->role_table->insert([
+            "name" => "Dummy",
+            "description" => "Dummy test role",
+            'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
+            'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
     }
 
     private function seedPermissions()

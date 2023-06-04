@@ -143,7 +143,7 @@ class RoleTest extends DuskTestCase
             $browser->pause(250);
             $browser
                 ->with('.datatable', function (Browser $browser) {
-                    $browser->click('@delete_2');
+                    $browser->click('@delete_3');
                 });
 
             $browser->with('#delete_modal', function (Browser $browser) {
