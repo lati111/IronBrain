@@ -3,6 +3,7 @@
 namespace App\Dataproviders\Datatables\Auth;
 
 use App\Dataproviders\Datatables\AbstractDatatable;
+use App\Enum\Auth\RoleEnum;
 use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class PermissionDatatable extends AbstractDatatable
     {
         $role = Role::find($role_id);
         if ($role === null) {
-            return response()->json('Role not found', 404);
+            return response()->json(RoleEnum::ROLE_NOT_FOUND_MESSAGE, 404);
         }
 
         $permissionCollection =

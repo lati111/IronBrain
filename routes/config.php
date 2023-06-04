@@ -45,6 +45,7 @@ Route::prefix('/config')->group(function() {
 
         //| submenu
         Route::prefix('/{project_id}/submenu')->group(function() {
+            //pages
             Route::get('/new', [SubmenuController::class, 'new'])
                 ->middleware('permission:config.project.edit')
                 ->name("config.projects.submenu.new");
@@ -61,6 +62,7 @@ Route::prefix('/config')->group(function() {
                 ->middleware('permission:config.project.edit')
                 ->name("config.projects.submenu.delete");
 
+            //data providers
             Route::get('/overview/data', [SubmenuDatatable::class, 'overviewData'])
                 ->middleware('permission:config.project.edit')
                 ->name("config.projects.submenu.overview.datatable");
@@ -78,7 +80,7 @@ Route::prefix('/config')->group(function() {
             ->middleware('permission:config.user.edit')
             ->name("config.user.delete");
 
-        // datatables
+        // data providers
         Route::get('/overview/data', [UserDatatable::class, 'overviewData'])
             ->middleware('permission:config.user.view')
             ->name("config.user.overview.datatable");
