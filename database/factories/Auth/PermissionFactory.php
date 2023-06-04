@@ -14,19 +14,11 @@ class PermissionFactory extends Factory
 
     public function definition(): array
     {
-        $permission = null;
-        while ($permission === null) {
-            $perm = $this->faker->regexify('[A-Za-z0-9]{48}');
-            if (Permission::where('permission', $perm)->count() === 0) {
-                $permission = $perm;
-            }
-        }
-
         return [
-            'permission' => $permission,
-            'name' => $this->faker->regexify('[A-Za-z0-9]{26}'),
-            'description' => $this->faker->regexify('[A-Za-z0-9]{48}'),
-            'group' => $this->faker->regexify('[A-Za-z0-9]{12}'),
+            'permission' => fake()->unique()->regexify('[A-Za-z0-9]{48}'),
+            'name' => fake()->regexify('[A-Za-z0-9]{26}'),
+            'description' => fake()->regexify('[A-Za-z0-9]{48}'),
+            'group' => fake()->regexify('[A-Za-z0-9]{12}'),
         ];
     }
 }

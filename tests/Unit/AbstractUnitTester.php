@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Auth\User;
 use Database\Seeders\AuthSeeder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Database\Eloquent\Model;
@@ -71,5 +72,10 @@ abstract class AbstractUnitTester extends Testcase
         $entity = $model::factory()->makeOne();
         $entity->save();
         return $entity;
+    }
+
+    protected function createRandomEntities(string $model, int $amount, array $params = []): Collection {
+        $entities = $model::factory()->count($amount)->create($params);
+        return $entities;
     }
 }

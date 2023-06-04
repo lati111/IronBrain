@@ -12,8 +12,8 @@ class RoleFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->regexify('[A-Za-z0-9]{26}'),
-            'description' => $this->faker->regexify('[A-Za-z0-9]{48}'),
+            'name' => fake()->regexify('[A-Za-z0-9]{26}'),
+            'description' => fake()->regexify('[A-Za-z0-9]{48}'),
         ];
     }
 }
