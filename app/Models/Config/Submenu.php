@@ -17,7 +17,7 @@ class Submenu extends Model
 
     public function Nav(): BelongsTo
     {
-        return $this->belongsTo(Project::class, 'id', 'project_id');
+        return $this->belongsTo(Project::class, 'project_id', 'id');
     }
 
     public function Permission(): BelongsTo

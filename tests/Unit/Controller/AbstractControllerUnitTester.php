@@ -27,6 +27,15 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         }
     }
 
+    protected function assertRedirectWithRouteParams(TestResponse $response, string $route, array $routeParams, array $vars = [])
+    {
+        $response->assertValid();
+        $response->assertRedirectToRoute($route, $routeParams);
+        foreach ($vars as $key => $value) {
+            $this->assertEquals($value, session($key));
+        }
+    }
+
     //| validation asserts
     protected function assertValidationRequired(string $fieldName, array $response = [])
     {
