@@ -11,6 +11,7 @@ function imageUploaderInit
         imageFrameId: string,
         disabledCheckboxId: string | null = null
     ) {
+
     const preview = document.querySelector("#" + filePreviewId);
     const uploader = document.querySelector<HTMLInputElement>("#" + fileUploaderId);
     const frame = document.querySelector<HTMLImageElement>("#" + imageFrameId);
@@ -72,8 +73,15 @@ function toggleThumbnailField() {
     }
 }
 
-function preview(event: { target: { files: (Blob | MediaSource)[]; }; }) {
-    imageFrame.src = URL.createObjectURL(event.target.files[0]);
+function preview(e: { target: { files: (Blob | MediaSource)[]; }; }) {
+    let file;
+    if (e.target.files && e.target.files[0]) {
+      file = e.target.files[0]
+    } else {
+        return false;
+    }
+
+    imageFrame.src = URL.createObjectURL(file);
     fileUploader.classList.add('hidden')
     filePreview.classList.replace('hidden', 'flex')
 }

@@ -6,7 +6,7 @@
         <span class="file-message">or drag and drop image</span>
         <input id="fileInput" class="file-input" type="file" name="thumbnail"
             @isset($thumbnail) old-thumbnail="{{$thumbnail}}" @endisset
-            onchange="preview(event)" required
+            onchange="preview(event)" dusk="image_uploader" required
         />
     </div>
 </div>

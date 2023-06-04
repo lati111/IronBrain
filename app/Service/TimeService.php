@@ -5,9 +5,9 @@ namespace App\Service;
 use DateTime;
 
 class TimeService {
-    public static function time_elapsed_string(string $datetime): string {
+    public static function time_elapsed_string(string|DateTime $datetime): string {
         $now = new DateTime;
-        $ago = new DateTime($datetime);
+        $ago = ($datetime instanceof DateTime) ? $datetime : new DateTime($datetime);
         $diff = $now->diff($ago);
 
         //| in years

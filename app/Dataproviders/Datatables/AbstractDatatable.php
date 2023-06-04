@@ -9,7 +9,7 @@ abstract class AbstractDatatable
 {
     private const MODIFY_BUTTON_HTML =
         "<div class='text-center'>".
-            "<a href='%s' class='interactive'>edit</a>".
+            "<a href='%s' class='interactive' dusk='modify_%d'>edit</a>".
         "</div>";
 
     private const DELETE_BUTTON_HTML =
@@ -17,7 +17,8 @@ abstract class AbstractDatatable
             "<form action='%s' method='POST'>".
                 "<input type='hidden' name='_token' value='%s'/>".
                 "<span ".
-                    "onclick='store_form(this.closest(`form`)); openModal(`delete_modal`)' class='interactive'".
+                    "onclick='store_form(this.closest(`form`)); openModal(`delete_modal`)' ".
+                    "class='interactive' dusk='delete_%s'".
                     "/>delete</span>".
             "</form>".
         "</div>";
@@ -35,18 +36,20 @@ abstract class AbstractDatatable
         return csrf_token();
     }
 
-    protected function getModifyButton(string $route): string {
+    protected function getModifyButton(string $route, ?string $id = ""): string {
         return sprintf(
             self::MODIFY_BUTTON_HTML,
             $route,
+            $id,
         );
     }
 
-    protected function getDeleteButton(Request $request, string $route): string {
+    protected function getDeleteButton(Request $request, string $route, ?string $id = ""): string {
         return sprintf(
             self::DELETE_BUTTON_HTML,
-            $this->getToken($request),
             $route,
+            $this->getToken($request),
+            $id
         );
     }
 

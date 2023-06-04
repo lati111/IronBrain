@@ -11,7 +11,7 @@
         @slot('input_html')
         <input type="text" name="name" class="largeInput underlined" placeholder="Name"
             @if(old('name') !== null) value="{{old('name')}}" @endif
-            required autocomplete="off"
+            dusk="name_input" required autocomplete="off"
         />
         @endslot
     @endcomponent
@@ -22,7 +22,7 @@
         @slot('input_html')
         <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
             @if(old('email') !== null) value="{{old('email')}}" @endif
-            required autocomplete="new-email"
+            dusk="email_input" required autocomplete="new-email"
         />
         @endslot
     @endcomponent
@@ -33,7 +33,7 @@
         @slot('input_html')
         <input type="password" name="password" class="largeInput underlined" placeholder="Password"
             @if(old('password') !== null) value="{{old('password')}}" @endif
-            required autocomplete="new-password"
+            dusk="password_input" required autocomplete="new-password"
         />
         @endslot
     @endcomponent
@@ -44,7 +44,7 @@
         @slot('input_html')
         <input type="password" name="repeat_password" class="largeInput underlined" placeholder="Repeat Password"
             @if(old('repeat_password') !== null) value="{{old('repeat_password')}}" @endif
-            required
+            dusk="repeat_password_input" required
         />
         @endslot
     @endcomponent

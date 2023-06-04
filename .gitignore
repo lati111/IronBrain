@@ -3,8 +3,10 @@
 /public/build
 /public/hot
 /public/storage
-/public/img/project
-/public/img/profile
+/public/img/project/thumbnail/*
+!/public/img/project/thumbnail/test.png
+/public/img/profile/*
+!/public/img/profile/test
 /storage/*.key
 /vendor
 .env

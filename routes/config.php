@@ -5,7 +5,7 @@ use App\Dataproviders\Datatables\Config\ProjectDatatable;
 use App\Dataproviders\Datatables\Auth\RoleDatatable;
 use App\Dataproviders\Datatables\Auth\UserDatatable;
 use App\Dataproviders\Datatables\Config\SubmenuDatatable;
-use App\Dataproviders\SelectorLists\Config\PermissionSelectorList;
+use App\Dataproviders\SelectorLists\Auth\PermissionSelectorList;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\SubmenuController;
@@ -45,6 +45,7 @@ Route::prefix('/config')->group(function() {
 
         //| submenu
         Route::prefix('/{project_id}/submenu')->group(function() {
+            //pages
             Route::get('/new', [SubmenuController::class, 'new'])
                 ->middleware('permission:config.project.edit')
                 ->name("config.projects.submenu.new");
@@ -61,12 +62,12 @@ Route::prefix('/config')->group(function() {
                 ->middleware('permission:config.project.edit')
                 ->name("config.projects.submenu.delete");
 
+            //data providers
             Route::get('/overview/data', [SubmenuDatatable::class, 'overviewData'])
                 ->middleware('permission:config.project.edit')
                 ->name("config.projects.submenu.overview.datatable");
         });
     });
-
 
     //| user control
     Route::prefix('/user')->group(function() {
@@ -75,21 +76,20 @@ Route::prefix('/config')->group(function() {
             ->middleware('permission:config.user.view')
             ->name("config.user.overview");
 
-        Route::post('/delete/{uuid}', [UserController::class, 'delete'])
+        Route::post('/delete/{uuid}', [UserController::class, 'deactivate'])
             ->middleware('permission:config.user.edit')
             ->name("config.user.delete");
 
-        // datatables
+        // data providers
         Route::get('/overview/data', [UserDatatable::class, 'overviewData'])
             ->middleware('permission:config.user.view')
             ->name("config.user.overview.datatable");
 
         // ajax calls
-        Route::post('/{uuid}/role/set', [UserController::class, 'setPermission'])
+        Route::post('/{uuid}/role/set', [UserController::class, 'setRole'])
             ->middleware('permission:config.user.edit')
             ->name("config.user.role.set");
     });
-
 
     //| role
     Route::prefix('/role')->group(function() {

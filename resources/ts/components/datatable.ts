@@ -1,4 +1,4 @@
-import {getData} from '../ajax.js';
+import { getData } from '../ajax.js';
 
 async function datatableInit() {
     const datatableCollection = document.querySelectorAll('table.datatable');
@@ -9,7 +9,7 @@ async function datatableInit() {
 }
 
 async function loadDataTable(datatable: Element) {
-    const url =  datatable.getAttribute('data-content-url')!;
+    const url = datatable.getAttribute('data-content-url')!;
     const data = await getData(url);
 
     const tbody = datatable.querySelector('tbody')!;
@@ -37,7 +37,7 @@ function getCellWrapper(datatable: Element) {
     cell_wrapper.classList.add('justify-center');
     cell_wrapper.classList.add('items-center');
 
-    switch(datatable.getAttribute('data-table-size')) {
+    switch (datatable.getAttribute('data-table-size')) {
         case 'middle':
             cell_wrapper.classList.add('datatable-middle');
             break;

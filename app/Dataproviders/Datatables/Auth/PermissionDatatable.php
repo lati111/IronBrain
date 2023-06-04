@@ -3,6 +3,7 @@
 namespace App\Dataproviders\Datatables\Auth;
 
 use App\Dataproviders\Datatables\AbstractDatatable;
+use App\Enum\Auth\RoleEnum;
 use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
 use Illuminate\Http\Request;
@@ -20,11 +21,13 @@ class PermissionDatatable extends AbstractDatatable
             $actionHTML = sprintf(
                 "<div class='flex flex-row gap-2'>%s %s</div>",
                 $this->getModifyButton(
-                    route('config.permission.modify', [$permission->id])
+                    route('config.permission.modify', [$permission->id]),
+                    $permission->id,
                 ),
                 $this->getDeleteButton(
                     $request,
                     route('config.permission.delete', [$permission->id]),
+                    $permission->id
                 ),
             );
 
@@ -44,7 +47,7 @@ class PermissionDatatable extends AbstractDatatable
     {
         $role = Role::find($role_id);
         if ($role === null) {
-            return response()->json('Role not found', 404);
+            return response()->json(RoleEnum::ROLE_NOT_FOUND_MESSAGE, 404);
         }
 
         $permissionCollection =
@@ -53,10 +56,11 @@ class PermissionDatatable extends AbstractDatatable
 
         $tableData = [];
         foreach ($permissionCollection as $permission) {
-            $url = route('config.role.permission.toggle', [$role_id, $permission->id]);
+            $toggle_url = route('config.role.permission.toggle', [$role_id, $permission->id]);
             $checkbox = sprintf(
-                "<input type='checkbox' onclick='togglePermission(this.checked, `%s`)' %s>",
-                $url,
+                "<input type='checkbox' dusk='permission_checkbox_%s' onclick='togglePermission(this.checked, `%s`)' %s>",
+                $permission->id,
+                $toggle_url,
                 $role->hasPermission($permission) ? 'checked' : ''
             );
 

@@ -15,7 +15,7 @@
 </head>
 
 <body onload="init(); @yield('onloadFunction')" class="relative">
-    <div class="absolute flex flex-col gap-2 top-3 left-3 w-64">
+    <div class="absolute flex flex-col gap-2 top-3 left-3 w-64" dusk="toasts">
         @if ($error = Session::get('error'))
             @component('components.toast')
                 @slot('id') error-toast-0 @endslot
@@ -52,10 +52,10 @@
                 </a>
 
                 {{--| nav items |--}}
-                <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2">
+                <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2" dusk="nav">
                     {{-- <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li> --}}
                     @foreach ($navCollection as $nav)
-                        <li>
+                        <li dusk="{{$nav->name}}">
                             @if(count($nav->Submenu) > 0)
                                 <span class="nav-link interactive px-2 link-secondary dropdown-toggle"
                                     data-bs-toggle="dropdown" aria-expanded="false"
@@ -75,27 +75,27 @@
                 </ul>
 
                 {{--| authentication |--}}
-                <div class="dropdown flex justify-center">
+                <div class="dropdown flex justify-center" dusk="auth_header">
                     @if(isset($user))
                         {{--| account icon |--}}
                             <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                            data-bs-toggle="dropdown" aria-expanded="false" dusk="pfp_dropdown_toggle">
                             <img src="{{asset(sprintf('img/profile/%s/pfp.svg', $user->uuid))}}" alt="pfp" width="32" height="32" class="rounded-circle">
                         </a>
 
                         {{--| account dropdown |--}}
-                        <ul class="dropdown-menu text-small shadow">
+                        <ul class="dropdown-menu text-small shadow" dusk="pfp_dropdown">
                             <li><span class="dropdown-item pointer-events-none">{{$user->name}}</span></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
-                            <li><a class="dropdown-item" href="{{route('auth.logout')}}">Sign out</a></li>
+                            <li><a class="dropdown-item" href="{{route('auth.logout')}}" dusk="logout">Sign out</a></li>
                         </ul>
                     @else
                         {{--| login / sign up |--}}
                         <div class="flex justify-center gap-3">
-                            <a href="{{route('auth.login.show')}}" class="interactive">Log In</a>
-                            <a href="{{route('auth.signup.show')}}" class="interactive">Sign Up</a>
+                            <a href="{{route('auth.login.show')}}" class="interactive" dusk="login">Log In</a>
+                            <a href="{{route('auth.signup.show')}}" class="interactive" dusk="signup">Sign Up</a>
                         </div>
                     @endif
 

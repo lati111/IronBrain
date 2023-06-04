@@ -36,6 +36,7 @@
             <input type="text" name="name" class="largeInput underlined" placeholder="Name"
                 @isset($submenu) value="{{$submenu->name}}" @endisset
                 @if(old('name') !== null) value="{{old('name')}}" @endif
+                dusk="name_input" required
             />
         @endslot
     @endcomponent
@@ -44,9 +45,10 @@
     @component('components.form.input_wrapper')
         @slot('label_text')Password @endslot
         @slot('input_html')
-            <input type="text" name="route" class="largeInput underlined" placeholder="Route" required
+            <input type="text" name="route" class="largeInput underlined" placeholder="Route"
                 @isset($submenu) value="{{$submenu->route}}" @endisset
                 @if(old('route') !== null) value="{{old('route')}}" @endif
+                dusk="route_input" required
             />
         @endslot
     @endcomponent
@@ -70,6 +72,7 @@
                 <input type="number" name="order" class="w-16 h-4 pr-0 underlined"
                     @isset($submenu) value="{{$submenu->order}}" @endisset
                     @if(old('route') !== null) value="{{old('order')}}" @endif
+                    dusk="order_input" required
                 />
             @endslot
         @endcomponent

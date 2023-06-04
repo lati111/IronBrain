@@ -11,7 +11,7 @@
         @slot('input_html')
             <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
                 @if(old('email') !== null) value="{{old('email')}}" @endif
-                required
+                dusk="email_input" required
             />
         @endslot
     @endcomponent
@@ -22,7 +22,7 @@
         @slot('input_html')
             <input type="password" name="password" class="largeInput underlined" placeholder="Password"
                 @if(old('password') !== null) value="{{old('password')}}" @endif
-                required
+                dusk="password_input" required
             />
         @endslot
     @endcomponent

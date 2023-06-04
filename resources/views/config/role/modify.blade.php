@@ -19,12 +19,12 @@
     <input type="text" name="name" class="largeInput underlined" placeholder="Name"
         @isset($role) value="{{$role->name}}" @endisset
         @if(old('name') !== null) value="{{old('name')}}" @endif
-        required
+        dusk="name_input" required
     />
 
     {{--| description field |--}}
     <textarea name="description" class="largeInput underlined"
-        style="height: 90px !important" placeholder="Description" required
+        style="height: 90px !important" placeholder="Description" dusk="description_input" required
     >@if(isset($role)){{$role->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
 @stop
 

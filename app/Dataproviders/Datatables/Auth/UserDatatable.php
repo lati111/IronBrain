@@ -15,7 +15,8 @@ class UserDatatable extends AbstractDatatable
             "<form action='%s' method='POST'>".
                 "<input type='hidden' name='_token' value='%s'/>".
                 "<span ".
-                    "onclick='load_select_modal(document.querySelector(`#role_modal`), %s); store_form(this.closest(`form`)); openModal(`role_modal`)' class='interactive'".
+                    "onclick='load_select_modal(document.querySelector(`#role_modal`), %s); store_form(this.closest(`form`)); openModal(`role_modal`)'".
+                    "class='interactive' dusk='change_role_%s'".
                     "/>change role</span>".
             "</form>".
         "</div>";
@@ -38,11 +39,13 @@ class UserDatatable extends AbstractDatatable
                 $this->getChangeRoleButton(
                     $request,
                     route('config.user.role.set', [$user->uuid]),
+                    $user->uuid,
                     $user->role_id,
                 ),
                 $this->getDeleteButton(
                     $request,
                     route('config.user.delete', [$user->uuid]),
+                    $user->uuid
                 ),
             );
 
@@ -61,12 +64,13 @@ class UserDatatable extends AbstractDatatable
         return response()->json($tableData, 200);
     }
 
-    protected function getChangeRoleButton(Request $request, string $route, ?int $role_id): string {
+    protected function getChangeRoleButton(Request $request, string $route, ?string $id, ?int $role_id): string {
         return sprintf(
             self::CHANGE_ROLE_BUTTON_HTML,
             $route,
             $this->getToken($request),
-            $role_id
+            $role_id,
+            $id
         );
     }
 }
