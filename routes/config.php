@@ -5,7 +5,7 @@ use App\Dataproviders\Datatables\Config\ProjectDatatable;
 use App\Dataproviders\Datatables\Auth\RoleDatatable;
 use App\Dataproviders\Datatables\Auth\UserDatatable;
 use App\Dataproviders\Datatables\Config\SubmenuDatatable;
-use App\Dataproviders\SelectorLists\Config\PermissionSelectorList;
+use App\Dataproviders\SelectorLists\Auth\PermissionSelectorList;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\SubmenuController;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Dataproviders\SelectorLists\Config;
+namespace App\Dataproviders\SelectorLists\Auth;
 
 use App\Models\Auth\Permission;
 

@@ -20,18 +20,4 @@ abstract class AbstractDatatableTester extends AbstractDataProviderTester
     protected function assertFiltersValid(array $datatable) {
         $this->assertCount($this->perpage, $datatable);
     }
-
-    protected function assertContentValid(string $model, array $datatable, array $columnStructure) {
-        foreach ($datatable as $datarow) {
-            $qb = $model::select();
-            for ($i = 0; $i < count($columnStructure); $i++) {
-                if ($columnStructure[$i] === null) {
-                    continue;
-                }
-
-                $qb->where($columnStructure[$i], $datarow[$i]);
-            }
-            $this->assertGreaterThanOrEqual(1, $qb->count());
-        }
-    }
 }
