@@ -7,7 +7,7 @@ use splitbrain\RingIcon\RingIconSVG;
 use Illuminate\Support\Facades\File;
 
 class AvatarGeneratorService {
-    public static function generateProfilePicture(User $user) {
+    public static function generateProfilePicture(User $user): void {
         $path = sprintf('public/img/profile/%s', $user->uuid);
         if (is_dir($path) === false) {
             File::makeDirectory($path, 755, true);
