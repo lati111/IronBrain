@@ -91,9 +91,15 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required',
             'password' => 'required',
+            'remember_me' => 'nullable'
         ]);
 
-        if (Auth::attempt($request->only(['email', 'password']))) {
+        $remember = false;
+        if ($request->remember_me === "on") {
+            $remember = true;
+        }
+
+        if (Auth::attempt($request->only(['email', 'password']), $remember)) {
             return redirect()->route("home.show")
                 ->with('message', UserEnum::LOGIN_SUCCESS_MESSAGE);
         } else {
