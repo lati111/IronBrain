@@ -26,6 +26,11 @@
             />
         @endslot
     @endcomponent
+
+    @component('components.form.input.checkbox')
+        @slot('name', 'remember_me')
+        @slot('right_label', 'Remember Me')
+    @endcomponent
 @stop
 
 @section('submit_route', route('auth.login.attempt'))

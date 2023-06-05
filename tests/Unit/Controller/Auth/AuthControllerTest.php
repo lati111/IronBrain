@@ -275,6 +275,21 @@ class AuthControllerTest extends AbstractControllerUnitTester
         $this->assertValidationRequired('password');
     }
 
+    public function testAttemptLoginRememberMeValidation(): void
+    {
+        $route = route('auth.login.attempt');
+
+        //valid
+        $this->post($route, [
+            'remember_me' => 'on',
+        ]);
+        $this->assertValidationValid('remember_me');
+
+        //is nullable
+        $this->post($route);
+        $this->assertValidationValid('remember_me');
+    }
+
     //| logout tests
     public function testAttemptLogoutValid(): void
     {

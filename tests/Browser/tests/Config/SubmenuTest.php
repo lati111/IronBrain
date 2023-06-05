@@ -79,6 +79,8 @@ class SubmenuTest extends DuskTestCase
             $browser->pause(250);
             $browser
                 ->with('.datatable tbody', function (Browser $browser) {
+                    $browser->scrollIntoView('@modify_1');
+                    $browser->pause(250);
                     $browser->scrollIntoView('@modify_3');
                     $browser->pause(250);
                     $browser->click('@modify_3');
@@ -113,6 +115,8 @@ class SubmenuTest extends DuskTestCase
             $browser->pause(250);
             $browser
                 ->with('.datatable', function (Browser $browser) {
+                    $browser->scrollIntoView('@modify_1');
+                    $browser->pause(250);
                     $browser->scrollIntoView('@modify_3');
                     $browser->pause(250);
                     $browser->click('@new_submenu');

@@ -46,6 +46,7 @@ class LoginTest extends DuskTestCase
                     $browser
                         ->type('@email_input', 'test@test.nl')
                         ->type('@password_input', 'Password123')
+                        ->check('#remember_me')
                         ->press('@submitter');
                 });
 
