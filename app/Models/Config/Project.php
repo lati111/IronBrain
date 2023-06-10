@@ -34,7 +34,14 @@ class Project extends Model
                 '=',
                 'auth__permission.permission')
             ->where(function ($query) use ($role_id) {
-                $query->where('nav__submenu.permission_id', null)
+                $query
+                    ->where('nav__submenu.permission_id', null)
+                    ->orWhere(function ($query) use ($role_id) {
+                        return $query
+                            ->select('auth__role.is_admin')
+                            ->from('auth__role')
+                            ->where('auth__role.id', $role_id);
+                    }, 1)
                     ->orWhere(function ($query) use ($role_id) {
                         return $query
                             ->selectRaw('count(auth__role_permission.permission_id)')
