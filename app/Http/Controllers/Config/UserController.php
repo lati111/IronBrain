@@ -22,8 +22,7 @@ class UserController extends Controller
     {
         $user = User::find($uuid);
         if ($user !== null) {
-            $user->active = false;
-            $user->save();
+            $user->delete();
             return redirect(route('config.user.overview'))->with("message", UserEnum::USER_DEACTIVATED_MESSAGE);
         } else {
             return redirect(route('config.user.overview'))->with("error", UserEnum::USER_NOT_FOUND_MESSAGE);
