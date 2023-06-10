@@ -34,7 +34,8 @@ class Controller extends BaseController
                 '=',
                 'auth__permission.permission')
             ->where(function ($query) use ($role_id) {
-                $query->where('nav__project.permission_id', null)
+                $query
+                    ->where('nav__project.permission_id', null)
                     ->orWhere(function ($query) use ($role_id) {
                         return $query
                             ->selectRaw('count(auth__role_permission.permission_id)')
@@ -44,6 +45,7 @@ class Controller extends BaseController
                     }, 1);
             })
             ->where('in_nav', true)
+            ->orderBy('order', 'desc')
             ->get();
     }
 }
