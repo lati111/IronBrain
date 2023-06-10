@@ -97,7 +97,7 @@
     @component('components.form.input_wrapper')
         @slot('label_text')Route @endslot
         @slot('input_html')
-            <input type="text" name="route" class="smallInput underlined" placeholder="Route" required
+            <input type="text" name="route" class="smallInput underlined" placeholder="Route"
                 @isset($project) value="{{$project->route}}" @endisset
                 @if(old('route') !== null) value="{{old('route')}}" @endif
                 dusk="route_input"

@@ -66,7 +66,7 @@
                                         <li><a class="dropdown-item" href="{{route($submenu->route)}}">{{$submenu->name}}</a></li>
                                     @endforeach
                                 </ul>
-                            @else
+                            @elseif ($nav->route !== null)
                                 <a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary">{{$nav->name}}</a>
                             @endif
 

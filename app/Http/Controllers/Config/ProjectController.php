@@ -41,7 +41,7 @@ class ProjectController extends Controller
             'id' => 'nullable|integer|exists:nav__project,id',
             'thumbnail' => 'nullable|mimes:png,jpg,jpeg,svg,webp|max:240',
             'name' => 'required|string|max:64',
-            'route' => 'required|string|max:255',
+            'route' => 'nullable|string|max:255',
             'description' => 'required|string',
             'permission_id' => 'nullable|integer|exists:auth__permission,id',
             'order' => 'nullable|integer',
@@ -53,10 +53,12 @@ class ProjectController extends Controller
                 ->withErrors($validator);
         }
 
-        if (Route::has($request->route) === false) {
-            return back()
-                ->withInput($request->all())
-                ->with('error', ErrorEnum::INVALID_ROUTE_MESSAGE);
+        if ($request->route !== null) {
+            if (Route::has($request->route) === false) {
+                return back()
+                    ->withInput($request->all())
+                    ->with('error', ErrorEnum::INVALID_ROUTE_MESSAGE);
+            }
         }
 
         $project = null;
