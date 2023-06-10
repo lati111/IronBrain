@@ -28,7 +28,7 @@ class UserControllerTest extends AbstractControllerUnitTester
         $response = $this
             ->actingAs($this->getAdminUser())
             ->post(route('config.user.delete', [$user->uuid]));
-        $this->assertEquals('0', User::where('email', $user->email)->first()->active);
+        $this->assertNull(User::where('email', $user->email)->first());
         $this->assertRedirect($response, 'config.user.overview', [
             "message" => UserEnum::USER_DEACTIVATED_MESSAGE,
         ]);

@@ -298,11 +298,11 @@ class ProjectControllerTest extends AbstractControllerUnitTester
             ]);
         $this->assertValidationValid('route');
 
-        //required
+        //nullable
         $this
             ->actingAs($this->getAdminUser())
             ->post($route);
-        $this->assertValidationRequired('route');
+        $this->assertValidationValid('route');
 
         //too long
         $this

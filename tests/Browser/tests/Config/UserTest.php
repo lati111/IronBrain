@@ -59,16 +59,15 @@ class UserTest extends DuskTestCase
     public function testDeactiveUser(): void
     {
         $this->browse(function (Browser $browser) {
-            $user = User::where('name', 'Tester')->first();
+            $user = User::where('email', 'admin@test.nl')->first();
             $browser->loginAs($user)
                 ->visit(route('config.user.overview'))
                 ->with('.datatable', function (Browser $browser) use ($user) {
                     $browser->pause(250);
-                    $browser->click('@delete_' . $user->uuid);
+                    $browser->click('@delete_'.User::where('email', '!=', 'admin@test.nl')->first()->uuid);
                 });
 
             $browser->with('#delete_modal', function (Browser $browser) {
-                $browser->disableFitOnFailure();
                 $browser->pause(250);
                 $browser->click("@delete_confirm");
             });

@@ -5,12 +5,15 @@
 @section('content')
 
 {{--| modals |--}}
-@hasSection('delete_modal_text')
-    @component('components.modal.delete_modal')
-        @slot('text')@yield('delete_modal_text') @endslot
-        @slot('confirmFunction') submit_stored_form() @endslot
-    @endcomponent
-@endif
+<div dusk='toasts'>
+    @hasSection('delete_modal_text')
+        @component('components.modal.delete_modal')
+            @slot('text')@yield('delete_modal_text') @endslot
+            @slot('confirmFunction') submit_stored_form() @endslot
+        @endcomponent
+    @endif
+</div>
+
 
 @yield('modals')
 
