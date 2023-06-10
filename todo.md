@@ -1,7 +1,6 @@
 #TODO
 
 ##project (v1.0)
-- (userstory) nav links should be active when selected
 - (bug) sorting is wrong direction
 
 ##user (v1.1)

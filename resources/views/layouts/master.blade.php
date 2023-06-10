@@ -57,8 +57,13 @@
                     @foreach ($navCollection as $nav)
                         <li dusk="{{$nav->name}}">
                             @if(count($nav->Submenu) > 0)
-                                <span class="nav-link interactive px-2 link-secondary dropdown-toggle"
-                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                <span class="nav-link interactive px-2 link-secondary dropdown-toggle
+                                    @foreach ($nav->Submenu as $submenu)
+                                        @if (Route::is($submenu->route))
+                                            active
+                                        @endif
+                                    @endforeach
+                                    " data-bs-toggle="dropdown" aria-expanded="false"
                                 />{{$nav->name}}</span>
 
                                 <ul class="dropdown-menu interactive px-2 link-secondary">
@@ -67,9 +72,12 @@
                                     @endforeach
                                 </ul>
                             @elseif ($nav->route !== null)
-                                <a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary">{{$nav->name}}</a>
+                                <a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary
+                                    @if (Route::is($nav->route))
+                                        active
+                                    @endif
+                                ">{{$nav->name}}</a>
                             @endif
-
                         </li>
                     @endforeach
                 </ul>
