@@ -12,8 +12,9 @@ IronBrain is fully capable of running locally for both development and personal 
 
 - Download and extract the IronBrain zip file.
 - Run `composer install` in a terminal. (make sure [Composer](https://getcomposer.org) is properly installed).
-- Configure the generated .env to your liking. (make sure to configure the `APP_URL` and database logins properly)
+- Configure the generated .env to your liking. (make sure to configure the `APP_URL` and database logins properly).
 - Run `php artisan migrate` in a terminal. (make sure that your database is running properly).
+- Run `php artisan db:seed --class=CoreSeeder` in a terminal.
 
 *every start up:*
 - Open a terminal and run `php artisan serve`. (keep this terminal open).
