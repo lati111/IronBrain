@@ -12,7 +12,7 @@
         </div>
 
         {{--| form |--}}
-        <div class="flex flex-row justify-center mb-3">
+        <div class="flex flex-row justify-center mb-3" dusk="form">
             <form id="form" action="@yield('submit_route')" method="POST" enctype="multipart/form-data">
                 @csrf
 
@@ -22,7 +22,7 @@
 
                 {{--| submitter |--}}
                 <div class="flex flex-col mt-3">
-                    <input type="submit" class="interactive" value="@yield('submit_string')">
+                    <input type="submit" class="interactive" value="@yield('submit_string')" dusk="submitter">
                 </div>
             </form>
         </div>
@@ -32,6 +32,7 @@
 @stop
 
 @section('script')
+@yield('scripts')
 @vite([
     'resources/ts/main.ts',
 ])

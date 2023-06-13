@@ -55,7 +55,6 @@ function store_modal_data(modal:Element) {
 
 function submit_stored_form(includeModalData:Boolean = false) {
     if (includeModalData === true) {
-
         const data_keys = Object.keys(stored_modal_data);
         for (let i = 0; i < data_keys.length; i++) {
             const name = data_keys[i];

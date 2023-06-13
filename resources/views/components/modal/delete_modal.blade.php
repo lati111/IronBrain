@@ -21,11 +21,12 @@
                 </svg>
                 <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">{{ $text }}</h3>
                 <button type="button" class="mr-2 px-5 py-2.5 interactive"
+                    dusk="delete_confirm"
                     onclick="closeModal(); @isset($confirmFunction) {{$confirmFunction}} @endisset"
                 />
                     Yes, I'm sure
                 </button>
-                <button onclick="closeModal()" type="button" class="mr-2 px-5 py-2.5 cancel_interactive">No,
+                <button onclick="closeModal()" type="button" class="mr-2 px-5 py-2.5 cancel_interactive" dusk="delete_cancel">No,
                     cancel</button>
             </div>
         </div>

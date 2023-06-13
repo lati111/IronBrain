@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Config;
 
+use App\Enum\Auth\UserEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\Role;
 use App\Models\Auth\User;
@@ -17,21 +18,21 @@ class UserController extends Controller
         ]));
     }
 
-    public function delete(int $uuid)
+    public function deactivate(string $uuid)
     {
         $user = User::find($uuid);
         if ($user !== null) {
-            $user->active = false;
-            $user->save();
-            return redirect(route('config.user.overview'))->with("message", "User was deactivated");
+            $user->delete();
+            return redirect(route('config.user.overview'))->with("message", UserEnum::USER_DEACTIVATED_MESSAGE);
         } else {
-            return redirect(route('config.user.overview'))->with("error", "Invalid user");
+            return redirect(route('config.user.overview'))->with("error", UserEnum::USER_NOT_FOUND_MESSAGE);
         }
     }
 
-    public function setPermission(Request $request, string $uuid) {
+    public function setRole(Request $request, string $uuid)
+    {
         $validator = Validator::make($request->all(), [
-            'role_id' => 'nullable|integer',
+            'role_id' => 'nullable|integer|exists:auth__role,id',
         ]);
 
         if ($validator->fails()) {
@@ -42,13 +43,13 @@ class UserController extends Controller
         $user = User::find($uuid);
         if ($user === null) {
             return back()
-                ->with('error', 'User does not exist');
+                ->with('error', UserEnum::USER_NOT_FOUND_MESSAGE);
         }
 
         $user->role_id = $request->role_id;
         $user->save();
 
-        return back()
-            ->with('error', 'Role changed');
+        return redirect(route('config.user.overview'))
+            ->with("message", UserEnum::USER_ROLE_CHANGED_MESSAGE);
     }
 }

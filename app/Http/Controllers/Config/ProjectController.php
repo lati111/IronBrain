@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Config;
 
+use App\Enum\ErrorEnum;
+use App\Enum\Config\ProjectEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Config\Project;
 use Illuminate\Http\Request;
@@ -12,17 +14,7 @@ class ProjectController extends Controller
 {
     public function overview()
     {
-        $page = isset($_GET["page"]) ? $_GET["page"] : 1;
-        $perPage = isset($_GET["perPage"]) ? $_GET["perPage"] : 10;
-        $projects = Project::offset(($page - 1) * $perPage)->limit($perPage)->get();
-        $projectCount = Project::all()->count();
-
-        return view('config.projects.overview', array_merge($this->getBaseVariables(), [
-            "projectCount" => $projectCount,
-            "projects" => $projects,
-            "perPage" => $perPage,
-            "page" => $page,
-        ]));
+        return view('config.projects.overview', $this->getBaseVariables());
     }
 
     public function new()
@@ -35,7 +27,7 @@ class ProjectController extends Controller
         $project = Project::find($id);
         if ($project === null) {
             // todo custom error screen
-            return redirect(route('config.projects.overview'))->with("error", "That route does not exist");
+            return redirect(route('config.projects.overview'))->with("error", ProjectEnum::PROJECT_NOT_FOUND_MESSAGE);
         }
 
         return view('config.projects.modify', array_merge($this->getBaseVariables(), [
@@ -46,12 +38,12 @@ class ProjectController extends Controller
     public function save(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'id' => 'nullable|exists:nav__project,id',
+            'id' => 'nullable|integer|exists:nav__project,id',
             'thumbnail' => 'nullable|mimes:png,jpg,jpeg,svg,webp|max:240',
             'name' => 'required|string|max:64',
-            'route' => 'required|string|max:255',
+            'route' => 'nullable|string|max:255',
             'description' => 'required|string',
-            'permission_id' => 'nullable|string"exists:auth__permission,permission',
+            'permission_id' => 'nullable|integer|exists:auth__permission,id',
             'order' => 'nullable|integer',
         ]);
 
@@ -61,10 +53,12 @@ class ProjectController extends Controller
                 ->withErrors($validator);
         }
 
-        if (Route::has($request->route) === false) {
-            return back()
-                ->withInput($request->all())
-                ->with('error', "Route does not exist");
+        if ($request->route !== null) {
+            if (Route::has($request->route) === false) {
+                return back()
+                    ->withInput($request->all())
+                    ->with('error', ErrorEnum::INVALID_ROUTE_MESSAGE);
+            }
         }
 
         $project = null;
@@ -75,7 +69,7 @@ class ProjectController extends Controller
             if ($request->thumbnail === null && $request->in_overview === "on") {
                 return back()
                     ->withInput($request->all())
-                    ->with('error', 'Thumbnail is required');
+                    ->with('error', ProjectEnum::MISSING_THUMBNAIL_MESSAGE);
             }
         }
 
@@ -112,7 +106,7 @@ class ProjectController extends Controller
 
         $project->save();
 
-        return redirect(route('config.projects.overview'))->with("message", "Changes saved");
+        return redirect(route('config.projects.overview'))->with("message", ProjectEnum::PROJECT_SAVED_MESSAGE);
     }
 
     public function delete(int $id)
@@ -120,10 +114,10 @@ class ProjectController extends Controller
         $project = Project::find($id);
         if ($project !== null) {
             $project->delete();
-            return redirect(route('config.projects.overview'))->with("message", "Project was deleted");
+            return redirect(route('config.projects.overview'))->with("message", ProjectEnum::PROJECT_DELETED_MESSAGE);
         } else {
             // todo custom error screen
-            return redirect(route('config.projects.overview'))->with("error", "Invalid project");
+            return redirect(route('config.projects.overview'))->with("error", ProjectEnum::PROJECT_NOT_FOUND_MESSAGE);
         }
     }
 }

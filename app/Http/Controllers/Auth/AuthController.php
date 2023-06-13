@@ -2,20 +2,29 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enum\Auth\UserEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\User;
+use App\Service\AvatarGenerator;
+use App\Service\AvatarGeneratorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Validator;
-use splitbrain\RingIcon\RingIconSVG;
-use Illuminate\Support\Facades\File;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
+    private AvatarGeneratorService $avatarGeneratorService;
+
+    public function __construct(
+        AvatarGeneratorService $avatarGeneratorService
+    ) {
+        $this->avatarGeneratorService = $avatarGeneratorService;
+    }
+
     public function showSignup(): View | RedirectResponse
     {
         if (Auth::user() !== null) {
@@ -34,7 +43,10 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:28',
             'email' => 'required|email|max:40|unique:auth__user,email',
-            'password' => 'required|string|min:8',
+            'password' => ['required', Password::min(8)
+                ->letters()
+                ->mixedCase()
+                ->numbers()],
             'repeat_password' => 'required|string',
         ]);
 
@@ -44,18 +56,10 @@ class AuthController extends Controller
                 ->withErrors($validator);
         }
 
-        $request->validate([
-            'password' => ['required', Password::min(8)
-                ->letters()
-                ->mixedCase()
-                ->numbers()
-                ->uncompromised()]
-        ]);
-
         if ($request->password !== $request->repeat_password) {
             return back()
                 ->withInput($request->all())
-                ->with('error', 'Passwords must match');
+                ->with('error', UserEnum::PASSWORDS_NOT_MATCHING_MESSAGE);
         }
 
         $user = User::create([
@@ -64,19 +68,9 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        //| profile picture
-        $path = sprintf('img/profile/%s', $user->uuid);
-        if (is_dir($path) === false) {
-            File::makeDirectory($path);
-        }
+        $this->avatarGeneratorService->generateProfilePicture($user);
 
-        $profilePicture = new RingIconSVG(128, 3);
-        $profilePicture->setMono(true);
-        $profilePicture->createImage($request->name . $request->email, sprintf('img/profile/%s/pfp.svg', $user->uuid));
-        $user->profile_picture = sprintf('%s/pfp.svg', $user->uuid);
-        $user->save();
-
-        return redirect(route('auth.login.show'))->with("message", "Account Created");
+        return redirect(route('auth.login.show'))->with("message", UserEnum::SIGNUP_SUCCESS_MESSAGE);
     }
 
     public function showLogin(): View | RedirectResponse
@@ -97,14 +91,20 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required',
             'password' => 'required',
+            'remember_me' => 'nullable'
         ]);
 
-        if (Auth::attempt($request->only(['email', 'password']))) {
+        $remember = false;
+        if ($request->remember_me === "on") {
+            $remember = true;
+        }
+
+        if (Auth::attempt($request->only(['email', 'password']), $remember)) {
             return redirect()->route("home.show")
-                ->with('message', 'Log in successful');
+                ->with('message', UserEnum::LOGIN_SUCCESS_MESSAGE);
         } else {
             return back()
-                ->with('error', 'Username or password is incorrect');
+                ->with('error', UserEnum::LOGIN_FAILED_MESSAGE);
         }
     }
 
@@ -116,6 +116,6 @@ class AuthController extends Controller
 
         Auth::logout();
         return redirect()->route("auth.login.show")
-                ->with('message', 'Logged out succesfully');
+                ->with('message', UserEnum::LOGOUT_MESSAGE);
     }
 }
