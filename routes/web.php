@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Projects\PKSanc\PKSancController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
@@ -22,4 +23,10 @@ Route::prefix('/auth')->group(function() {
 
     Route::get('/logout', [AuthController::class, 'logout'])
         ->name("auth.logout");
+});
+
+//| pksanc
+Route::prefix('/pksanc')->group(function() {
+    Route::get('/', [PKSancController::class, 'test'])
+        ->name('pksanc.home.show');
 });
