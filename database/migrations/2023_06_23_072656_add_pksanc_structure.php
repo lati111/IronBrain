@@ -23,11 +23,11 @@ return new class extends Migration
         Schema::create('pksanc__nature', function (Blueprint $table) {
             $table->string('nature', 255)->primary();
             $table->string('name', 255);
-            $table->integer('atk_modifier')->default(1);
-            $table->integer('def_modifier')->default(1);
-            $table->integer('spa_modifier')->default(1);
-            $table->integer('spd_modifier')->default(1);
-            $table->integer('spe_modifier')->default(1);
+            $table->decimal('atk_modifier')->default(1.0);
+            $table->decimal('def_modifier')->default(1.0);
+            $table->decimal('spa_modifier')->default(1.0);
+            $table->decimal('spd_modifier')->default(1.0);
+            $table->decimal('spe_modifier')->default(1.0);
             $table->timestamps();
         });
 

@@ -2,7 +2,7 @@
 
 namespace App\Enum\PKSanc;
 
-class ImportQueryEnum
+class ImportQueries
 {
     public const TYPE_QUERY =
         'query type_query {'.
@@ -16,11 +16,13 @@ class ImportQueryEnum
 
     public const NATURE_QUERY =
         'query nature_query {'.
-        '  type: pokemon_v2_nature {'.
-        '    type: name'.
+        '  nature: pokemon_v2_nature {'.
+        '    nature: name'.
         '    name: pokemon_v2_naturenames(where: {pokemon_v2_language: {name: {_eq: "en"}}}) {'.
         '      name'.
         '    }'.
+        '    increased_stat: increased_stat_id'.
+        '    decreased_stat: decreased_stat_id'.
         '  }'.
         '}';
 
@@ -62,7 +64,7 @@ class ImportQueryEnum
 
     public const ABILITY_QUERY =
         'query ability_query {'.
-        '  pokemon_v2_ability {'.
+        '  ability: pokemon_v2_ability {'.
         '    ability: name'.
         '    name: pokemon_v2_abilitynames(where: {pokemon_v2_language: {name: {_eq: "en"}}}) {'.
         '      name'.
@@ -76,15 +78,15 @@ class ImportQueryEnum
 
     public const POKEMON_QUERY =
         'query pokemon_query {'.
-        '  pokemon:pokemon_v2_pokemonform(where: {is_mega: {_eq: false}, is_battle_only: {_eq: false}}, order_by: {pokemon_v2_pokemon: {pokemon_v2_pokemonspecy: {id: asc}}}) {'.
+        '  pokemon: pokemon_v2_pokemonform(where: {is_mega: {_eq: false}, is_battle_only: {_eq: false}}, order_by: {pokemon_v2_pokemon: {pokemon_v2_pokemonspecy: {id: asc}}}) {'.
         '    pokemon: name'.
         '    form_index: form_order'.
         '    form_name: form_name'.
         '    details: pokemon_v2_pokemon {'.
         '      species: pokemon_v2_pokemonspecy {'.
         '        species: name'.
-        '        generation: pokemon_v2_generation {'.
-        '          generation: id'.
+        '        name: pokemon_v2_pokemonspeciesnames(where: {pokemon_v2_language: {name: {_eq: "en"}}}) {'.
+        '          name'.
         '        }'.
         '      }'.
         '      types: pokemon_v2_pokemontypes {'.
@@ -99,10 +101,16 @@ class ImportQueryEnum
         '        value: base_stat'.
         '      }'.
         '    }'.
+        '    pokedex_id: pokemon_id'.
+        '    generation: pokemon_v2_pokemonformgenerations(order_by: {generation_id: asc}, limit: 1) {'.
+        '      generation: generation_id'.
+        '    }'.
+        '    generation_backup: pokemon_v2_versiongroup {'.
+        '      generation: generation_id'.
+        '    }'.
         '    sprites: pokemon_v2_pokemonformsprites {'.
         '      sprites'.
         '    }'.
-        '    pokedex_id: pokemon_id'.
         '  }'.
         '}'.
         '';
