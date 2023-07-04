@@ -5,4 +5,5 @@
 ##user (v1.1)
 
 ##pksanc (v0.1)
-- adjust storage git ignores
+- height and weight to decimals
+- was egg to bool

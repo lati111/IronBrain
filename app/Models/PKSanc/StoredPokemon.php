@@ -17,6 +17,24 @@ class StoredPokemon extends Model
     protected $table = 'pksanc__stored_pokemon';
     protected $primaryKey = 'uuid';
 
+    public function sprite(): ?string
+    {
+        $pokemon = $this->Pokemon();
+        if ($this->gender === "F" && $pokemon->sprite_female !== null) {
+            if ($this->is_shiny === true) {
+                return $pokemon->sprite_female_shiny;
+            }
+
+            return $pokemon->sprite_female;
+        }
+
+        if ($this->is_shiny === true) {
+            return $pokemon->sprite_shiny;
+        }
+
+        return $pokemon->sprite;
+    }
+
     public function Owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_uuid', 'uuid');
@@ -27,54 +45,54 @@ class StoredPokemon extends Model
         return $this->belongsTo(Pokemon::class, 'pokemon', 'pokemon');
     }
 
-    public function Nature(): BelongsTo
+    public function Nature(): Nature
     {
-        return $this->belongsTo(Nature::class, 'nature', 'nature');
+        return $this->belongsTo(Nature::class, 'nature', 'nature')->first();
     }
 
-    public function Ability(): BelongsTo
+    public function Ability(): Ability
     {
-        return $this->belongsTo(Ability::class, 'ability', 'ability');
+        return $this->belongsTo(Ability::class, 'ability', 'ability')->first();
     }
 
-    public function Pokeball(): BelongsTo
+    public function Pokeball(): Pokeball
     {
-        return $this->belongsTo(Pokeball::class, 'pokeball', 'pokeball');
+        return $this->belongsTo(Pokeball::class, 'pokeball', 'pokeball')->first();
     }
 
-    public function HiddenPower(): BelongsTo
+    public function HiddenPower(): Type
     {
-        return $this->belongsTo(Type::class, 'hidden_power_type', 'type');
+        return $this->belongsTo(Type::class, 'hidden_power_type', 'type')->first();
     }
 
-    public function TeraType(): BelongsTo
+    public function TeraType(): Type
     {
-        return $this->belongsTo(Type::class, 'tera_type', 'type');
+        return $this->belongsTo(Type::class, 'tera_type', 'type')->first();
     }
 
-    public function Csv(): BelongsTo
+    public function Csv(): ImportCsv
     {
-        return $this->belongsTo(ImportCsv::class, 'import_csv', 'csv');
+        return $this->belongsTo(ImportCsv::class, 'import_csv', 'csv')->first();
     }
 
-    public function Stats(): HasOne
+    public function Stats(): Stats
     {
-        return $this->hasOne(Stats::class, 'uuid', 'pokemon_uuid');
+        return $this->hasOne(Stats::class, 'uuid', 'pokemon_uuid')->first();
     }
 
-    public function ContestStats(): HasOne
+    public function ContestStats(): ContestStats
     {
-        return $this->hasOne(ContestStats::class, 'uuid', 'pokemon_uuid');
+        return $this->hasOne(ContestStats::class, 'uuid', 'pokemon_uuid')->first();
     }
 
-    public function Moveset(): HasOne
+    public function Moveset(): Moveset
     {
-        return $this->hasOne(Moveset::class, 'uuid', 'pokemon_uuid');
+        return $this->hasOne(Moveset::class, 'uuid', 'pokemon_uuid')->first();
     }
 
-    public function Origin(): HasOne
+    public function Origin(): Origin
     {
-        return $this->hasOne(Origin::class, 'uuid', 'pokemon_uuid');
+        return $this->hasOne(Origin::class, 'uuid', 'pokemon_uuid')->first();
     }
 
     public function Ribbons(): HasMany

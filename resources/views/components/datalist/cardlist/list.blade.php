@@ -33,15 +33,17 @@
 
             <div class="flex items-center px-3 h-full"><div class="divider"></div></div>
 
-            <div class="flex flex-col items-center gap-3">
-                <div class="flex flex-col items-center gap-1">
-                    <span class="text-center" title="save file">Fire Type Only</span>
-                    <span class="text-center" title="caught game">Scarlet Compass</span>
-                </div>
-                <span class="text-center" title="caught location">Area 4 South</span>
-                <div class="flex flex-row items-center gap-1">
-                    <span class="text-center" title="trainer">Juliana</span>
-                    <img src="{{asset("img/project/pksanc/icon/gender/female.png")}}" alt="female gender icon" title="female" class="h-5">
+            <div>
+                <div class="flex flex-col items-center gap-3">
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="text-center" title="save file">Fire Type Only</span>
+                        <span class="text-center" title="caught game">Scarlet Compass</span>
+                    </div>
+                    <span class="text-center" title="caught location">Area 4 South</span>
+                    <div class="flex flex-row items-center gap-1">
+                        <span class="text-center" title="trainer">Juliana</span>
+                        <img src="{{asset("img/project/pksanc/icon/gender/female.png")}}" alt="female gender icon" title="female" class="h-5">
+                    </div>
                 </div>
             </div>
         </div>
