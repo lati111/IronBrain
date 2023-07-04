@@ -71,6 +71,8 @@ return [
 
     'links' => [
         public_path('img/project/thumbnail') => storage_path('app/project/thumbnail'),
+        public_path('img/project/pksanc/pokeball') => storage_path('app/project/pksanc/pokeball'),
+        public_path('img/project/pksanc/pokemon') => storage_path('app/project/pksanc/pokemon'),
     ],
 
 ];
