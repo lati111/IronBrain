@@ -27,6 +27,6 @@ Route::prefix('/auth')->group(function() {
 
 //| pksanc
 Route::prefix('/pksanc')->group(function() {
-    Route::get('/', [PKSancController::class, 'test'])
+    Route::get('/', [PKSancController::class, 'overview'])
         ->name('pksanc.home.show');
 });

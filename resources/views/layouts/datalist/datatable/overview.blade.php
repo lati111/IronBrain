@@ -28,7 +28,7 @@
 
         {{--| table |--}}
         <div class="flex flex-row justify-center mb-3">
-            @component('components.datatable.table')
+            @component('components.datalist.datatable.table')
                 @slot('headers')@yield('headers') @endslot
                 @hasSection('table-size')
                     @slot('table_size') @yield('table-size') @endslot

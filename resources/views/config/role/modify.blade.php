@@ -31,15 +31,15 @@
 {{--| permission table |--}}
 @if(isset($role))
     @section('headers')
-        @component('components.datatable.header')
+        @component('components.datalist.datatable.header')
             @slot('columnId')has_permission @endslot
             @slot('content') @endslot
         @endcomponent
-        @component('components.datatable.header')
+        @component('components.datalist.datatable.header')
             @slot('columnId')permission @endslot
             @slot('content')Permission @endslot
         @endcomponent
-        @component('components.datatable.header')
+        @component('components.datalist.datatable.header')
             @slot('columnId')description @endslot
             @slot('content')Description @endslot
         @endcomponent

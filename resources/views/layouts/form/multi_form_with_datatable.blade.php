@@ -56,7 +56,7 @@
         {{--| data table |--}}
         <div class="flex flex-row justify-center mb-3">
             @hasSection('datatable_url')
-                @component('components.datatable.table')
+                @component('components.datalist.datatable.table')
                     @slot('headers')
                         @yield('table_headers')
                     @endslot
