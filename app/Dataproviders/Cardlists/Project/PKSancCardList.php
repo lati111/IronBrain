@@ -25,7 +25,7 @@ class PKSancCardList extends AbstractCardlist
         '</div>';
 
     private const MINIMAL_INFO_BLOCK =
-        '<div class="flex flex-col items-center gap-3">'.
+        '<div class="flex flex-col items-center gap-2">'.
             '<span class="text-center" title="level">Level %s</span>'.
             '<span class="text-center" title="nature">%s</span>'.
             '<span class="text-center" title="ability">%s</span>'.
@@ -34,8 +34,8 @@ class PKSancCardList extends AbstractCardlist
 
     private const MINIMAL_TRAINER_BLOCK =
         '<div>'.
-            '<div class="flex flex-col items-center gap-3">'.
-                '<div class="flex flex-col items-center gap-1">'.
+            '<div class="flex flex-col items-center gap-2">'.
+                '<div class="flex flex-col items-center gap-0">'.
                     '<span class="text-center" title="save file">%s</span>'.
                     '<span class="text-center" title="caught game">%s</span>'.
                 '</div>'.
@@ -57,8 +57,9 @@ class PKSancCardList extends AbstractCardlist
             $iconList = $this->getIconList($pokemon);
 
             $spriteBlock = $this->getSpriteBlock(
-                $pokemon->sprite,
-                $pokemon->Pokemon->pokemon,
+                $pokemon->getSprite(),
+                $pokemon->Pokemon()->getName(),
+                $pokemon->Pokemon()->pokemon,
                 ($pokemon->nickname !== null) ? $pokemon->nickname : $pokemon->Pokemon()->species_name
             );
 
@@ -90,11 +91,11 @@ class PKSancCardList extends AbstractCardlist
         return response()->json($data, 200);
     }
 
-    private function getSpriteBlock(string $sprite, string $species, string $name)
+    private function getSpriteBlock(string $sprite, string $species_name, string $species, string $name)
     {
         return sprintf(
             self::SPRITE_BLOCK_HTML,
-            $species,
+            $species_name,
             'img/project/pksanc/pokemon/' . $sprite,
             $species,
             $name
@@ -109,9 +110,10 @@ class PKSancCardList extends AbstractCardlist
             $nature->name,
             $ability->name,
             asset(sprintf(
-                'img/project/pksanc/icon/type/%s_fill.png',
+                'img/project/pksanc/icon/type/%s_full.png',
                 $hiddenPower->type
-            ))
+            )),
+            $hiddenPower->name
         );
     }
 
@@ -176,7 +178,7 @@ class PKSancCardList extends AbstractCardlist
         }
 
         $teraType = $pokemon->TeraType();
-        $iconString = $this->getIcon(
+        $iconString .= $this->getIcon(
             asset('img/project/pksanc/icon/tera/' . $teraType->type . '.png'),
             $teraType->type . ' tera type icon',
             $teraType->name . ' tera type',
@@ -184,7 +186,7 @@ class PKSancCardList extends AbstractCardlist
         );
 
         if ($pokemon->is_alpha === true) {
-            $iconString = $this->getIcon(
+            $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/alpha.png'),
                 'aplha icon',
                 'Alpha',
@@ -193,7 +195,7 @@ class PKSancCardList extends AbstractCardlist
         }
 
         if ($pokemon->can_gigantamax === true) {
-            $iconString = $this->getIcon(
+            $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/dyna.png'),
                 'dynamax icon',
                 'Dynamax',
@@ -202,7 +204,7 @@ class PKSancCardList extends AbstractCardlist
         }
 
         if ($pokemon->has_n_sparkle === true) {
-            $iconString = $this->getIcon(
+            $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/n_sparkle.png'),
                 'N sparkle icon',
                 'N sparkle',
@@ -211,7 +213,7 @@ class PKSancCardList extends AbstractCardlist
         }
 
         if ($pokemon->is_shiny === true) {
-            $iconString = $this->getIcon(
+            $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/shiny.png'),
                 'shiny icon',
                 'Shiny',

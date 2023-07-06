@@ -1,5 +1,6 @@
 <?php
 
+use App\Dataproviders\Cardlists\Project\PKSancCardList;
 use App\Http\Controllers\Projects\PKSanc\PKSancController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
@@ -27,6 +28,11 @@ Route::prefix('/auth')->group(function() {
 
 //| pksanc
 Route::prefix('/pksanc')->group(function() {
+    // pages
     Route::get('/', [PKSancController::class, 'overview'])
         ->name('pksanc.home.show');
+
+    // data providers
+    Route::get('/data/overview', [PKSancCardList::class, 'overviewData'])
+        ->name('pksanc.overview.cardlist');
 });

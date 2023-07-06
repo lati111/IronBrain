@@ -2,6 +2,7 @@
 
 namespace App\Models\PKSanc;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,9 +18,18 @@ class StoredPokemon extends Model
     protected $table = 'pksanc__stored_pokemon';
     protected $primaryKey = 'uuid';
 
-    public function sprite(): ?string
+    public function getSprite(): string
     {
         $pokemon = $this->Pokemon();
+        if ($pokemon->sprite === null) {
+            $species = Pokemon::where('species', $pokemon->species)->where('form_index', 0)->first();
+            if ($species->sprite === null) {
+                return 'unknown_sprite.png';
+            }
+
+            $pokemon = $species;
+        }
+
         if ($this->gender === "F" && $pokemon->sprite_female !== null) {
             if ($this->is_shiny === true) {
                 return $pokemon->sprite_female_shiny;
@@ -35,14 +45,14 @@ class StoredPokemon extends Model
         return $pokemon->sprite;
     }
 
-    public function Owner(): BelongsTo
+    public function Owner(): User
     {
-        return $this->belongsTo(User::class, 'owner_uuid', 'uuid');
+        return $this->belongsTo(User::class, 'owner_uuid', 'uuid')->first();
     }
 
-    public function Pokemon(): BelongsTo
+    public function Pokemon(): Pokemon
     {
-        return $this->belongsTo(Pokemon::class, 'pokemon', 'pokemon');
+        return $this->belongsTo(Pokemon::class, 'pokemon', 'pokemon')->first();
     }
 
     public function Nature(): Nature
@@ -77,26 +87,26 @@ class StoredPokemon extends Model
 
     public function Stats(): Stats
     {
-        return $this->hasOne(Stats::class, 'uuid', 'pokemon_uuid')->first();
+        return $this->hasOne(Stats::class, 'pokemon_uuid', 'uuid')->first();
     }
 
     public function ContestStats(): ContestStats
     {
-        return $this->hasOne(ContestStats::class, 'uuid', 'pokemon_uuid')->first();
+        return $this->hasOne(ContestStats::class, 'pokemon_uuid', 'uuid')->first();
     }
 
     public function Moveset(): Moveset
     {
-        return $this->hasOne(Moveset::class, 'uuid', 'pokemon_uuid')->first();
+        return $this->hasOne(Moveset::class, 'pokemon_uuid', 'uuid')->first();
     }
 
     public function Origin(): Origin
     {
-        return $this->hasOne(Origin::class, 'uuid', 'pokemon_uuid')->first();
+        return $this->hasOne(Origin::class, 'pokemon_uuid', 'uuid')->first();
     }
 
     public function Ribbons(): HasMany
     {
-        return $this->hasMany(PokemonRibbons::class, 'uuid', 'pokemon_uuid');
+        return $this->hasMany(PokemonRibbons::class, 'uupokemon_uuidid', 'uuid');
     }
 }

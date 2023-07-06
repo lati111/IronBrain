@@ -15,13 +15,13 @@ class Origin extends Model
     protected $table = 'pksanc__origin';
     protected $primaryKey = 'pokemon_uuid';
 
-    public function Trainer(): BelongsTo
+    public function Trainer(): Trainer
     {
-        return $this->belongsTo(Trainer::class, 'trainer_uuid', 'uuid');
+        return $this->belongsTo(Trainer::class, 'trainer_uuid', 'uuid')->first();
     }
 
-    public function Game(): BelongsTo
+    public function Game(): Game
     {
-        return $this->belongsTo(Game::class, 'game', 'game');
+        return $this->belongsTo(Game::class, 'game', 'game')->first();
     }
 }

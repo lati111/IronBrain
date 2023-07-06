@@ -29,7 +29,6 @@
 @yield('scripts')
 @vite([
     'resources/ts/main.ts',
-    'resources/ts/components/datatable.ts',
-    'resources/ts/components/modal.ts',
+    'resources/ts/components/cardlist.ts',
 ])
 @stop

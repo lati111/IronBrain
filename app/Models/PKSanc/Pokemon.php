@@ -18,6 +18,15 @@ class Pokemon extends Model
     protected $primaryKey = 'pokemon';
     public $incrementing = false;
 
+    public function getName(): string {
+        $name = $this->species_name;
+        if ($this->form_name !== null) {
+            $name = $this->form_name . " " . $this->species_name;
+        }
+
+        return $name;
+    }
+
     public function PrimaryType(): BelongsTo
     {
         return $this->belongsTo(Type::class, 'primary_type', 'type');
