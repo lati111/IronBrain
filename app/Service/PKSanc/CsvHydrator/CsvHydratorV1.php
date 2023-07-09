@@ -130,8 +130,8 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         $pokemon->can_gigantamax = $this->parseBool($data['Can_gigantamax']);
         $pokemon->has_n_sparkle = $this->parseBool($data['Has_n_sparkle']);
         $pokemon->dynamax_level = intval($data['Dynamax_level']);
-        $pokemon->import_csv = $this->importCsv->csv;
-        $pokemon->import_line = $line;
+        $pokemon->csv_uuid = $this->importCsv->uuid;
+        $pokemon->csv_line = $line;
         $pokemon->owner_uuid = Auth::user()->uuid;
         $pokemon->save();
 

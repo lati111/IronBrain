@@ -84,7 +84,7 @@ class StoredPokemon extends Model
 
     public function Csv(): ImportCsv
     {
-        return $this->belongsTo(ImportCsv::class, 'import_csv', 'csv')->first();
+        return $this->belongsTo(ImportCsv::class, 'csv_uuid', 'uuid')->first();
     }
 
     public function Stats(): Stats

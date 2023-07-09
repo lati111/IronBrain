@@ -5,6 +5,7 @@ namespace App\Models\PKSanc;
 use App\Enum\PKSanc\StoragePaths;
 use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,12 +14,12 @@ class ImportCsv extends Model
 {
     use HasFactory;
     use HasTimestamps;
+    use HasUuids;
 
     //TODO make on delete for csv file
 
     protected $table = 'pksanc__import_csv';
-    protected $primaryKey = 'csv';
-    public $incrementing = false;
+    protected $primaryKey = 'uuid';
 
     public function getCsvPath(): string {
         $path = sprintf(StoragePaths::csv, $this->uploader_uuid, $this->name);

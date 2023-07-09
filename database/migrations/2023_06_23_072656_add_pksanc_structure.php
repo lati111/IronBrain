@@ -32,7 +32,8 @@ return new class extends Migration
         });
 
         Schema::create('pksanc__import_csv', function (Blueprint $table) {
-            $table->string('csv', 255)->primary();
+            $table->uuid()->primary();
+            $table->string('csv', 255);
             $table->string('game', 255);
             $table->string('name', 255);
             $table->integer('version');
@@ -135,9 +136,10 @@ return new class extends Migration
             $table->boolean('has_n_sparkle')->default(false);
             $table->boolean('can_gigantamax')->default(false);
             $table->integer('dynamax_level')->default(0);
-            $table->string('import_csv', 255);
-            $table->integer('import_line');
+            $table->uuid('csv_uuid');
+            $table->integer('csv_line');
             $table->foreignUuid('owner_uuid');
+            $table->timestamp('validated_at')->nullable();
             $table->timestamps();
 
             $table->foreign('pokemon')->references('pokemon')->on('pksanc__pokemon')->onDelete('restrict')->onUpdate('no action');
@@ -146,7 +148,7 @@ return new class extends Migration
             $table->foreign('pokeball')->references('pokeball')->on('pksanc__pokeball')->onDelete('restrict')->onUpdate('no action');
             $table->foreign('hidden_power_type')->references('type')->on('pksanc__type')->onDelete('restrict')->onUpdate('no action');
             $table->foreign('tera_type')->references('type')->on('pksanc__type')->onDelete('restrict')->onUpdate('no action');
-            $table->foreign('import_csv')->references('csv')->on('pksanc__import_csv')->onDelete('restrict')->onUpdate('no action');
+            $table->foreign('csv_uuid')->references('uuid')->on('pksanc__import_csv')->onDelete('restrict')->onUpdate('no action');
             $table->foreign('owner_uuid')->references('uuid')->on('auth__user')->onDelete('cascade')->onUpdate('no action');
         });
 
@@ -228,7 +230,6 @@ return new class extends Migration
             $table->foreign('game')->references('game')->on('pksanc__game')->onDelete('restrict')->onUpdate('no action');
         });
     }
-
 
     public function down(): void
     {
