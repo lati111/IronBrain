@@ -99,10 +99,11 @@ class ImportService
 
     public function importMove(array $moveData): bool
     {
-        $move = Move::where('move', $moveData['move'])->first();
+        $code = $this->formatCode($moveData['move']);
+        $move = Move::where('move', $code)->first();
         if ($move === null) {
             $move = new Move;
-            $move->move = $moveData['move'];
+            $move->move = $code;
         }
 
         $move->name = $moveData['name'][0]['name'];
@@ -119,10 +120,11 @@ class ImportService
 
     public function importAbility(array $abilityData): bool
     {
-        $ability = Ability::where('ability', $abilityData['ability'])->first();
+        $code = $this->formatCode($abilityData['ability']);
+        $ability = Ability::where('ability', $code)->first();
         if ($ability === null) {
             $ability = new Ability;
-            $ability->ability = $abilityData['ability'];
+            $ability->ability = $code;
         }
 
         $ability->name = $abilityData['name'][0]['name'];
@@ -134,10 +136,13 @@ class ImportService
 
     public function importPokeball(array $pokeballData): bool
     {
-        $pokeball = Pokeball::where('pokeball', $pokeballData['pokeball'])->first();
+        $code = str_replace('-ball', '', $pokeballData['pokeball']);
+        $code = $this->formatCode($code) . '-ball';
+
+        $pokeball = Pokeball::where('pokeball', $code)->first();
         if ($pokeball === null) {
             $pokeball = new Pokeball;
-            $pokeball->pokeball = $pokeballData['pokeball'];
+            $pokeball->pokeball = $code;
         }
 
         $pokeball->sprite = $this->importSprite(
@@ -153,10 +158,11 @@ class ImportService
 
     public function importPokemon(array $pokemonData): bool
     {
-        $pokemon = Pokemon::where('pokemon', $pokemonData['pokemon'])->first();
+        $code = $this->formatCode($pokemonData['pokemon']);
+        $pokemon = Pokemon::where('pokemon', $code)->first();
         if ($pokemon === null) {
             $pokemon = new Pokemon;
-            $pokemon->pokemon = $pokemonData['pokemon'];
+            $pokemon->pokemon = $code;
         }
 
         $pokemon->form_index = $pokemonData['form_index'] - 1;
@@ -237,5 +243,12 @@ class ImportService
         $text = str_replace('-', ' ', $oldText);
         $text = ucfirst($text);
         return $text;
+    }
+
+    private function formatCode(string $oldCode): string
+    {
+        $code = str_replace('-', '', $oldCode);
+        $code = strtolower($code);
+        return $code;
     }
 }

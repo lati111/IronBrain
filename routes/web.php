@@ -29,8 +29,14 @@ Route::prefix('/auth')->group(function() {
 //| pksanc
 Route::prefix('/pksanc')->group(function() {
     // pages
-    Route::get('/', [PKSancController::class, 'overview'])
+    Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');
+
+    Route::get('/deposit', [PKSancController::class, 'showDeposit'])
+        ->name('pksanc.deposit.show');
+
+    Route::post('/deposit/stage', [PKSancController::class, 'stageDepositAttempt'])
+        ->name('pksanc.deposit.stage.attempt');
 
     // data providers
     Route::get('/data/overview', [PKSancCardList::class, 'overviewData'])

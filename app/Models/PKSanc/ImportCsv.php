@@ -2,6 +2,7 @@
 
 namespace App\Models\PKSanc;
 
+use App\Enum\PKSanc\StoragePaths;
 use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +19,11 @@ class ImportCsv extends Model
     protected $table = 'pksanc__import_csv';
     protected $primaryKey = 'csv';
     public $incrementing = false;
+
+    public function getCsvPath(): string {
+        $path = sprintf(StoragePaths::csv, $this->uploader_uuid, $this->name);
+        return storage_path(sprintf('app/%s/%s', $path, $this->csv));
+    }
 
     public function Uploader(): BelongsTo
     {
