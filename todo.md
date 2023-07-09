@@ -8,8 +8,9 @@
 - add ribbon system
 - add romhack system
 - add game to trainer
+- add owner to trainer
 - fix update counters always being 0
-- update pokemon/trainer instead of creating a new one
+- remove all staged pokemon on failed update
 
 ##components
 - give form wrapper names for accessibility

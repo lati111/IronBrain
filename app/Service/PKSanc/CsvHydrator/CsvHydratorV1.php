@@ -3,7 +3,6 @@
 namespace App\Service\PKSanc\CsvHydrator;
 
 use App\Enum\PKSanc\ImportValidators;
-use App\Exceptions\Project\PKSanc\ImportException;
 use App\Models\PKSanc\ContestStats;
 use App\Models\PKSanc\Moveset;
 use App\Models\PKSanc\Origin;
@@ -88,17 +87,24 @@ class CsvHydratorV1 extends AbstractCsvHydrator
 
     protected function import(array $data, int $line): StoredPokemon
     {
-        $pokemon = $this->importPokemon($data, $line);
         $trainer = $this->importTrainer($data);
-        $this->importOrigin($data, $pokemon->uuid, $trainer->uuid);
-        $this->importStats($data, $pokemon->uuid);
-        $this->importContestStats($data, $pokemon->uuid);
-        $this->importMoves($data, $pokemon->uuid);
+        $pokemon = $this->getPokemon(
+            intval($data['PID']),
+            $this->parseDate($data['Met_date']),
+            $data['Met_game'],
+            $trainer,
+        );
+
+        $pokemon = $this->importPokemon($pokemon, $data, $line);
+        $this->importOrigin($data, $pokemon, $trainer);
+        $this->importStats($data, $pokemon);
+        $this->importContestStats($data, $pokemon);
+        $this->importMoves($data, $pokemon);
 
         return $pokemon;
     }
 
-    private function importPokemon(array $data, int $line): StoredPokemon
+    private function importPokemon(StoredPokemon $pokemon, array $data, int $line): StoredPokemon
     {
         $species = Pokemon::where('pokemon', $data['Species'])->where('form_index', $data['Form'])->first();
         if ($species === null) {
@@ -106,7 +112,6 @@ class CsvHydratorV1 extends AbstractCsvHydrator
             dd($data);
         }
 
-        $pokemon = new StoredPokemon();
         $pokemon->PID = intval($data['PID']);
         $pokemon->Nickname = $data['Nickname'];
         $pokemon->pokemon = $species->pokemon;
@@ -135,7 +140,7 @@ class CsvHydratorV1 extends AbstractCsvHydrator
 
     private function importTrainer(array $data): Trainer
     {
-        $trainer = new Trainer();
+        $trainer = $this->getTrainer(intval($data['Trainer_TID']), intval($data['Trainer_SID']), $data['Trainer_name']);
         $trainer->trainer_id = intval($data['Trainer_TID']);
         $trainer->secret_id = intval($data['Trainer_SID']);
         $trainer->name = $data['Trainer_name'];
@@ -146,11 +151,11 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         return $trainer;
     }
 
-    private function importOrigin(array $data, string $pokemon_uuid, string $trainer_uuid): Origin
+    private function importOrigin(array $data, StoredPokemon $pokemon, Trainer $trainer): Origin
     {
-        $origin = new Origin();
-        $origin->pokemon_uuid = $pokemon_uuid;
-        $origin->trainer_uuid = $trainer_uuid;
+        $origin = Origin::where('pokemon_uuid', $pokemon->uuid)->first() ?? new Origin();
+        $origin->pokemon_uuid = $pokemon->uuid;
+        $origin->trainer_uuid = $trainer->uuid;
         $origin->game = $data['Met_game'];
         $origin->met_date = $this->parseDate($data['Met_date']);
         $origin->met_location = $this->parseLocation($data['Met_location']);
@@ -161,10 +166,10 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         return $origin;
     }
 
-    private function importStats(array $data, string $pokemon_uuid): Stats
+    private function importStats(array $data, StoredPokemon $pokemon): Stats
     {
-        $stats = new Stats();
-        $stats->pokemon_uuid = $pokemon_uuid;
+        $stats = Stats::where('pokemon_uuid', $pokemon->uuid)->first() ?? new Stats();
+        $stats->pokemon_uuid = $pokemon->uuid;
         $stats->hp_iv = intval($data['HP_IV']);
         $stats->hp_ev = intval($data['HP_EV']);
         $stats->atk_iv = intval($data['ATK_IV']);
@@ -182,10 +187,10 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         return $stats;
     }
 
-    private function importContestStats(array $data, string $pokemon_uuid): ContestStats
+    private function importContestStats(array $data, StoredPokemon $pokemon): ContestStats
     {
-        $contestStats = new ContestStats();
-        $contestStats->pokemon_uuid = $pokemon_uuid;
+        $contestStats = ContestStats::where('pokemon_uuid', $pokemon->uuid)->first() ?? new ContestStats();
+        $contestStats->pokemon_uuid = $pokemon->uuid;
         $contestStats->beauty = intval($data['Beauty']);
         $contestStats->cool = intval($data['Cool']);
         $contestStats->cute = intval($data['Cute']);
@@ -197,11 +202,10 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         return $contestStats;
     }
 
-
-    private function importMoves(array $data, string $pokemon_uuid): Moveset
+    private function importMoves(array $data, StoredPokemon $pokemon): Moveset
     {
-        $moveset = new Moveset();
-        $moveset->pokemon_uuid = $pokemon_uuid;
+        $moveset = MoveSet::where('pokemon_uuid', $pokemon->uuid)->first() ?? new Moveset();
+        $moveset->pokemon_uuid = $pokemon->uuid;
         $moveset->move1 = ($data['Move1'] !== 'none') ? $data['Move1'] : null;
         $moveset->move1_pp_up = $data['Move1_pp_ups'];
         $moveset->move2 = ($data['Move2'] !== 'none') ? $data['Move2'] : null;
@@ -222,7 +226,8 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         return $date;
     }
 
-    private function parseLocation(string $location): string {
+    private function parseLocation(string $location): string
+    {
         $location = str_replace('_', ' ', $location);
         $location = ucfirst($location);
         return $location;

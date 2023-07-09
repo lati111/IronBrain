@@ -14,7 +14,7 @@ class ImportValidators
     public const LEVEL = 'required|integer|max:100';
     public const FRIENDSHIP = 'required|integer|max:255';
     public const POKEBALL = 'required|string|exists:pksanc__pokeball,pokeball';
-    public const SIZE = 'required|integer|max:255';
+    public const SIZE = 'required|integer';
     public const BOOL = 'required|string|csv_boolean';
     public const TYPE = 'required|string|exists:pksanc__type,type';
     public const CONTEST_STAT = 'required|integer|min:0|max:255';
