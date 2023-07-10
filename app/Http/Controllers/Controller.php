@@ -45,7 +45,8 @@ class Controller extends BaseController
                     }, 1);
             })
             ->where('in_nav', true)
-            ->orderBy('order', 'desc')
+            ->where('active', true)
+            ->orderBy('order', 'asc')
             ->get();
     }
 }
