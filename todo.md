@@ -11,6 +11,7 @@
 - add owner to trainer
 - fix update counters always being 0
 - remove all staged pokemon on failed update
+- alias for moves
 
 ##components
 - give form wrapper names for accessibility
