@@ -185,7 +185,7 @@ class PKSancCardList extends AbstractCardlist
             8
         );
 
-        if ($pokemon->is_alpha === true) {
+        if ($pokemon->is_alpha === 1) {
             $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/alpha.png'),
                 'aplha icon',
@@ -194,7 +194,7 @@ class PKSancCardList extends AbstractCardlist
             );
         }
 
-        if ($pokemon->can_gigantamax === true) {
+        if ($pokemon->can_gigantamax === 1) {
             $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/dyna.png'),
                 'dynamax icon',
@@ -203,7 +203,7 @@ class PKSancCardList extends AbstractCardlist
             );
         }
 
-        if ($pokemon->has_n_sparkle === true) {
+        if ($pokemon->has_n_sparkle === 1) {
             $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/n_sparkle.png'),
                 'N sparkle icon',
@@ -212,7 +212,7 @@ class PKSancCardList extends AbstractCardlist
             );
         }
 
-        if ($pokemon->is_shiny === true) {
+        if ($pokemon->is_shiny === 1) {
             $iconString .= $this->getIcon(
                 asset('img/project/pksanc/icon/shiny.png'),
                 'shiny icon',
