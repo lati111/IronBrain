@@ -17,6 +17,7 @@ return new class extends Migration
         Schema::create('pksanc__game', function (Blueprint $table) {
             $table->string('game', 255)->primary();
             $table->string('name', 255);
+            $table->string('original_game', 255)->nullable();
             $table->timestamps();
         });
 
@@ -37,6 +38,7 @@ return new class extends Migration
             $table->string('game', 255);
             $table->string('name', 255);
             $table->integer('version');
+            $table->boolean('validated')->default(false);
             $table->foreignUuid('uploader_uuid');
             $table->timestamps();
 
@@ -66,6 +68,7 @@ return new class extends Migration
         });
 
         Schema::create('pksanc__move', function (Blueprint $table) {
+            $table->string('alias', 255)->nullable();
             $table->string('move', 255)->primary();
             $table->string('name', 255);
             $table->integer('power')->nullable();
@@ -85,7 +88,12 @@ return new class extends Migration
             $table->uuid('uuid')->primary();
             $table->string('name', 32);
             $table->string('gender', 1);
+            $table->string('game', 255);
+            $table->foreignUuid('owner_uuid');
             $table->timestamps();
+
+            $table->foreign('owner_uuid')->references('uuid')->on('auth__user')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('game')->references('game')->on('pksanc__game')->onDelete('restrict')->onUpdate('no action');
         });
 
         Schema::create('pksanc__pokemon', function (Blueprint $table) {
@@ -148,7 +156,7 @@ return new class extends Migration
             $table->foreign('pokeball')->references('pokeball')->on('pksanc__pokeball')->onDelete('restrict')->onUpdate('no action');
             $table->foreign('hidden_power_type')->references('type')->on('pksanc__type')->onDelete('restrict')->onUpdate('no action');
             $table->foreign('tera_type')->references('type')->on('pksanc__type')->onDelete('restrict')->onUpdate('no action');
-            $table->foreign('csv_uuid')->references('uuid')->on('pksanc__import_csv')->onDelete('restrict')->onUpdate('no action');
+            $table->foreign('csv_uuid')->references('uuid')->on('pksanc__import_csv')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('owner_uuid')->references('uuid')->on('auth__user')->onDelete('cascade')->onUpdate('no action');
         });
 

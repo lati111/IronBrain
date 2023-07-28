@@ -6,12 +6,14 @@
 
 ##pksanc (v0.1)
 - add ribbon system
-- add romhack system
-- add game to trainer
-- add owner to trainer
+- add romhack system (already added to model)
+- add full pokemon profile screen
+- add pokedex system 
+- add filtering on box
 - fix update counters always being 0
 - remove all staged pokemon on failed update
-- alias for moves
+- alias for moves (already added to model)
+- add empty message to box
 
 ##components
 - give form wrapper names for accessibility
