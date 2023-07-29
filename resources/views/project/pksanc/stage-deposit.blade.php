@@ -3,6 +3,10 @@
 @section('htmlTitle', 'Deposit')
 @section('title', 'Deposit')
 
+@section('css')
+    @vite(['resources/css/project/pksanc/box.css'])
+@stop
+
 @section('url', route('pksanc.staging.cardlist', $importUuid))
 
 @section('before')

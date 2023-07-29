@@ -15,6 +15,5 @@
 - add empty message to box
 
 ##components
-- make cardlist auto-adjust size
 - give form wrapper names for accessibility
 - add pagination to datalists

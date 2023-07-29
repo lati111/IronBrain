@@ -17,7 +17,7 @@ class PKSancCardList extends AbstractCardlist
     private const ICON_HTML = "<img src='%s' alt='%s' title='%s' class='h-%s'>";
 
     private const SPRITE_BLOCK_HTML =
-        '<div class="flex flex-col justify-center gap-0 w-24">'.
+        '<div class="pksanc-minimal-block flex flex-col justify-center gap-0 w-24">'.
             '<span class="text-center" title="species">%s</span>'.
             '<img src="%s" alt="%s sprite" title="sprite" class="w-24 h-24">'.
             '<div class="flex flex-col items-center">'.
@@ -26,7 +26,7 @@ class PKSancCardList extends AbstractCardlist
         '</div>';
 
     private const MINIMAL_INFO_BLOCK =
-        '<div class="flex flex-col items-center gap-2">'.
+        '<div class="pksanc-minimal-block flex flex-col items-center gap-2">'.
             '<span class="text-center" title="level">Level %s</span>'.
             '<span class="text-center" title="nature">%s</span>'.
             '<span class="text-center" title="ability">%s</span>'.
@@ -35,7 +35,7 @@ class PKSancCardList extends AbstractCardlist
 
     private const MINIMAL_TRAINER_BLOCK =
         '<div>'.
-            '<div class="flex flex-col items-center gap-2">'.
+            '<div class="pksanc-minimal-block flex flex-col items-center gap-2">'.
                 '<div class="flex flex-col items-center gap-0">'.
                     '<span class="text-center" title="save file">%s</span>'.
                     '<span class="text-center" title="caught game">%s</span>'.

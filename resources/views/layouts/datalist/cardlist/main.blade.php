@@ -4,6 +4,7 @@
     @vite([
         'resources/css/components/datalist/cardlist.css'
     ])
+    @yield('css')
 @stop
 
 @section('onloadFunction') cardlistInit() @stop
