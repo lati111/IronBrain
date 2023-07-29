@@ -87,19 +87,16 @@ class CsvHydratorV1 extends AbstractCsvHydrator
 
     protected function import(array $data, int $line): StoredPokemon
     {
+        $pokemon = new StoredPokemon;
         $trainer = $this->importTrainer($data);
-        $pokemon = $this->getPokemon(
-            intval($data['PID']),
-            $this->parseDate($data['Met_date']),
-            $data['Met_game'],
-            $trainer,
-        );
 
         $pokemon = $this->importPokemon($pokemon, $data, $line);
         $this->importOrigin($data, $pokemon, $trainer);
         $this->importStats($data, $pokemon);
         $this->importContestStats($data, $pokemon);
         $this->importMoves($data, $pokemon);
+
+        $this->stagePokemon($pokemon);
 
         return $pokemon;
     }
@@ -145,7 +142,8 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         $trainer->secret_id = intval($data['Trainer_SID']);
         $trainer->name = $data['Trainer_name'];
         $trainer->gender = $data['Trainer_gender'];
-        //$trainer->game = $data['Trainer_game'];
+        $trainer->game = $data['Trainer_game'];
+        $trainer->owner_uuid = Auth::user()->uuid;
         $trainer->save();
 
         return $trainer;

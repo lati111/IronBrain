@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Projects\PKSanc;
 
+use App\Enum\PKSanc\PKSancStrings;
 use App\Enum\PKSanc\StoragePaths;
 use App\Http\Controllers\Controller;
-use App\Models\Auth\User;
 use App\Models\PKSanc\Game;
 use App\Models\PKSanc\ImportCsv;
 use App\Service\PKSanc\DepositService;
@@ -18,7 +18,8 @@ class PKSancController extends Controller
 {
     private DepositService $depositService;
 
-    public function __construct(DepositService $depositService) {
+    public function __construct(DepositService $depositService)
+    {
         $this->depositService = $depositService;
     }
 
@@ -71,7 +72,49 @@ class PKSancController extends Controller
 
         $this->depositService->stageImport($csv);
 
-        //TODO Pokemon staging screen
-        dd('success');
+        return redirect(route('pksanc.deposit.stage.show', $csv->uuid));
+    }
+
+    public function showDepositAttempt(string $importUuid)
+    {
+        $csv = ImportCsv::where('uuid', $importUuid)->first();
+        if ($csv === null) {
+            //TODO add error screen
+            dd(sprintf('No import csv matching the uuid %s found', $importUuid));
+        }
+
+        return view('project.pksanc.stage-deposit', array_merge($this->getBaseVariables(), [
+            'importUuid' => $importUuid,
+        ]));
+    }
+
+    public function depositConfirm(string $importUuid)
+    {
+        $csv = ImportCsv::where('uuid', $importUuid)->first();
+        if ($csv === null) {
+            //TODO add error screen
+            dd(sprintf('No import csv matching the uuid %s found', $importUuid));
+        }
+
+        foreach($csv->getPokemon as $pokemon) {
+            $this->depositService->confirmStaging($pokemon->getStaging());
+        }
+
+        return redirect(route('pksanc.home.show'))->with('message', PKSancStrings::DEPOSIT_SUCCESS);
+    }
+
+    public function depositCancel(string $importUuid)
+    {
+        $csv = ImportCsv::where('uuid', $importUuid)->first();
+        if ($csv === null) {
+            //TODO add error screen
+            dd(sprintf('No import csv matching the uuid %s found', $importUuid));
+        }
+
+        foreach($csv->getPokemon as $pokemon) {
+            $pokemon->delete();
+        }
+
+        return redirect(route('pksanc.home.show'))->with('message', PKSancStrings::DEPOSIT_CANCELLED);
     }
 }

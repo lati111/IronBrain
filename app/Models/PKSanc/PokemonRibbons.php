@@ -12,7 +12,7 @@ class PokemonRibbons extends Model
     use HasFactory;
     use HasTimestamps;
 
-    protected $table = 'pksanc__stored_pokemon_ribbons';
+    protected $table = 'pksanc__pokemon_ribbons';
     protected $primaryKey = 'uuid';
 
     public function Ribbon(): BelongsTo

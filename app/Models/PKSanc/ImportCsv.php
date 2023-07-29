@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ImportCsv extends Model
 {
@@ -24,6 +25,11 @@ class ImportCsv extends Model
     public function getCsvPath(): string {
         $path = sprintf(StoragePaths::csv, $this->uploader_uuid, $this->name);
         return storage_path(sprintf('app/%s/%s', $path, $this->csv));
+    }
+
+    public function getPokemon(): HasMany
+    {
+        return $this->hasMany(StoredPokemon::class, 'csv_uuid', 'uuid');
     }
 
     public function Uploader(): BelongsTo

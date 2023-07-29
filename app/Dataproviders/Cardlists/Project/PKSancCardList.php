@@ -3,6 +3,7 @@ namespace App\Dataproviders\Cardlists\Project;
 
 use App\Dataproviders\Cardlists\AbstractCardlist;
 use App\Models\PKSanc\Ability;
+use App\Models\PKSanc\ImportCsv;
 use App\Models\PKSanc\Nature;
 use App\Models\PKSanc\StoredPokemon;
 use App\Models\PKSanc\Type;
@@ -49,7 +50,58 @@ class PKSancCardList extends AbstractCardlist
 
     public function overviewData(Request $request)
     {
-        $pokemonCollection = StoredPokemon::where('owner_uuid', Auth::user()->uuid);
+        $pokemonCollection = StoredPokemon::select()
+            ->where('validated_at', '!=', null)
+            ->where('owner_uuid', Auth::user()->uuid);
+        $pokemonCollection = $this->applyTableFilters($request, $pokemonCollection)->get();
+
+        $data = [];
+        foreach ($pokemonCollection as $pokemon) {
+            $iconList = $this->getIconList($pokemon);
+
+            $spriteBlock = $this->getSpriteBlock(
+                $pokemon->getSprite(),
+                $pokemon->Pokemon()->getName(),
+                $pokemon->Pokemon()->pokemon,
+                ($pokemon->nickname !== null) ? $pokemon->nickname : $pokemon->Pokemon()->species_name
+            );
+
+            $infoBlock = $this->getMinimalInfoBlock(
+                $pokemon->Nature(),
+                $pokemon->Ability(),
+                $pokemon->HiddenPower(),
+                $pokemon->level
+            );
+
+            $origin = $pokemon->Origin();
+            $trainer = $origin->Trainer();
+            $trainerBlock = $this->getMinimalTrainerBlock(
+                $pokemon->Csv()->name,
+                $origin->Game()->name,
+                $origin->met_location,
+                $trainer->name,
+                $trainer->gender,
+            );
+
+            $data[] = [
+                $iconList,
+                $spriteBlock,
+                $infoBlock,
+                $trainerBlock
+            ];
+        }
+
+        return response()->json($data, 200);
+    }
+
+    public function stagingData(Request $request, string $importUuid)
+    {
+        $csv = ImportCsv::where('uuid', $importUuid)->first();
+        if ($csv === null) {
+            return response()->json(sprintf('No import csv matching the uuid %s found', $importUuid), 404);
+        }
+
+        $pokemonCollection = $csv->getPokemon();
         $pokemonCollection = $this->applyTableFilters($request, $pokemonCollection)->get();
 
         $data = [];
@@ -96,7 +148,7 @@ class PKSancCardList extends AbstractCardlist
         return sprintf(
             self::SPRITE_BLOCK_HTML,
             $species_name,
-            'img/project/pksanc/pokemon/' . $sprite,
+            asset('img/project/pksanc/pokemon/' . $sprite),
             $species,
             $name
         );

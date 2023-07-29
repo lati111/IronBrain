@@ -4,6 +4,7 @@ namespace App\Service\PKSanc\CsvHydrator;
 
 use App\Models\PKSanc\ImportCsv;
 use App\Models\PKSanc\Pokemon;
+use App\Models\PKSanc\StagedPokemon;
 use App\Models\PKSanc\StoredPokemon;
 use App\Models\PKSanc\Trainer;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +25,10 @@ abstract class AbstractCsvHydrator
         $this->loadData($data);
         if ($this->validate($data) === false) {
             //TODO formal error screen
+            foreach($this->importCsv->get() as $pokemon) {
+                $pokemon->delete();
+            }
+
             dd($this->data);
         }
         $pokemon = $this->import($data, $line);
@@ -43,17 +48,27 @@ abstract class AbstractCsvHydrator
 
     abstract protected function import(array $data, int $line): StoredPokemon;
 
-    protected function getPokemon(int $PID, string $metDate, string $game, Trainer $trainer): StoredPokemon
+    protected function stagePokemon(StoredPokemon $pokemon): StagedPokemon
     {
-        return StoredPokemon::select('pksanc__stored_pokemon.*')
+        $origin = $pokemon->Origin();
+        $existingPokemon = StoredPokemon::select('pksanc__stored_pokemon.*')
             ->where('owner_uuid', Auth::user()->uuid)
             ->rightJoin('pksanc__origin', 'pksanc__stored_pokemon.uuid', '=', 'pksanc__origin.pokemon_uuid')
-            ->where('trainer_uuid', $trainer->uuid)
-            //->where('validated_at', '!=', null)
-            ->where('met_date', $metDate)
-            ->where('game', $game)
-            ->where('PID', $PID)
-            ->first() ?? new StoredPokemon;
+            ->where('trainer_uuid', $origin->Trainer()->uuid)
+            ->where('validated_at', '!=', null)
+            ->where('met_date', $origin->met_date)
+            ->where('game', $origin->game)
+            ->where('PID', $pokemon->PID)
+            ->first();
+
+        $stagedPokemon = new StagedPokemon;
+        $stagedPokemon->new_pokemon_uuid = $pokemon->uuid;
+        if ($existingPokemon !== null) {
+            $stagedPokemon->old_pokemon_uuid = $existingPokemon->uuid;
+        }
+
+        $stagedPokemon->save();
+        return $stagedPokemon;
     }
 
     protected function getTrainer(int $tid, int $sid, string $name): Trainer

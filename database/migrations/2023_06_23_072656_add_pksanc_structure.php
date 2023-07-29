@@ -160,6 +160,16 @@ return new class extends Migration
             $table->foreign('owner_uuid')->references('uuid')->on('auth__user')->onDelete('cascade')->onUpdate('no action');
         });
 
+        Schema::create('pksanc__staged_pokemon', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('new_pokemon_uuid');
+            $table->foreignUuid('old_pokemon_uuid')->nullable();
+            $table->timestamps();
+
+            $table->foreign('new_pokemon_uuid')->references('uuid')->on('pksanc__stored_pokemon')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('old_pokemon_uuid')->references('uuid')->on('pksanc__stored_pokemon')->onDelete('set null')->onUpdate('no action');
+        });
+
         Schema::create('pksanc__stats', function (Blueprint $table) {
             $table->foreignUuid('pokemon_uuid')->primary();
             $table->integer('hp_iv');

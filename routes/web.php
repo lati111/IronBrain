@@ -32,13 +32,29 @@ Route::prefix('/pksanc')->group(function() {
     Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');
 
-    Route::get('/deposit', [PKSancController::class, 'showDeposit'])
+    Route::prefix('/deposit')->group(function() {
+        Route::get('/', [PKSancController::class, 'showDeposit'])
         ->name('pksanc.deposit.show');
 
-    Route::post('/deposit/stage', [PKSancController::class, 'stageDepositAttempt'])
-        ->name('pksanc.deposit.stage.attempt');
+        Route::prefix('/stage')->group(function() {
+            Route::post('/', [PKSancController::class, 'stageDepositAttempt'])
+                ->name('pksanc.deposit.stage.attempt');
+
+            Route::get('/{importUuid}', [PKSancController::class, 'showDepositAttempt'])
+                ->name('pksanc.deposit.stage.show');
+
+            Route::get('/{importUuid}/confirm', [PKSancController::class, 'depositConfirm'])
+                ->name('pksanc.deposit.stage.confirm');
+
+            Route::get('/{importUuid}/cancel', [PKSancController::class, 'depositCancel'])
+                ->name('pksanc.deposit.stage.cancel');
+        });
+    });
 
     // data providers
     Route::get('/data/overview', [PKSancCardList::class, 'overviewData'])
         ->name('pksanc.overview.cardlist');
+
+    Route::get('/data/staging/{importUuid}', [PKSancCardList::class, 'stagingData'])
+        ->name('pksanc.staging.cardlist');
 });

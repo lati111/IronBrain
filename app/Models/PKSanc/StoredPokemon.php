@@ -109,6 +109,11 @@ class StoredPokemon extends Model
 
     public function Ribbons(): HasMany
     {
-        return $this->hasMany(PokemonRibbons::class, 'uupokemon_uuidid', 'uuid');
+        return $this->hasMany(PokemonRibbons::class, 'pokemon_uuid', 'uuid');
+    }
+
+    public function getStaging(): ?StagedPokemon
+    {
+        return $this->hasOne(StagedPokemon::class, 'new_pokemon_uuid', 'uuid')->first();
     }
 }

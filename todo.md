@@ -11,10 +11,10 @@
 - add pokedex system 
 - add filtering on box
 - fix update counters always being 0
-- remove all staged pokemon on failed update
 - alias for moves (already added to model)
 - add empty message to box
 
 ##components
+- make cardlist auto-adjust size
 - give form wrapper names for accessibility
 - add pagination to datalists
