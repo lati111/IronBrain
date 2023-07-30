@@ -15,24 +15,32 @@ class ImportService
 {
     public function importType(array $typeData): bool
     {
+        $new = false;
         $type = Type::where('type', $typeData["type"])->first();
         if ($type === null) {
             $type = new Type;
             $type->type = $typeData["type"];
+            $new = true;
         }
 
         $type->name = $typeData["name"][0]["name"];
         $type->save();
+
+        if ($new === true) {
+            return true;
+        }
 
         return $type->wasChanged();
     }
 
     public function importNature(array $natureData): bool
     {
+        $new = false;
         $nature = Nature::where('nature', $natureData['nature'])->first();
         if ($nature === null) {
             $nature = new Nature;
             $nature->nature = $natureData['nature'];
+            $new = true;
         }
 
         $nature->name = $natureData['name'][0]['name'];
@@ -94,16 +102,22 @@ class ImportService
 
         $nature->save();
 
+        if ($new === true) {
+            return true;
+        }
+
         return $nature->wasChanged();
     }
 
     public function importMove(array $moveData): bool
     {
+        $new = false;
         $code = $this->formatCode($moveData['move']);
         $move = Move::where('move', $code)->first();
         if ($move === null) {
             $move = new Move;
             $move->move = $code;
+            $new = true;
         }
 
         $move->name = $moveData['name'][0]['name'];
@@ -115,27 +129,38 @@ class ImportService
         $move->description = ($moveData['description'] === null) ? $moveData['description'][0]['description'] : "";
         $move->save();
 
+        if ($new === true) {
+            return true;
+        }
+
         return $move->wasChanged();
     }
 
     public function importAbility(array $abilityData): bool
     {
+        $new = false;
         $code = $this->formatCode($abilityData['ability']);
         $ability = Ability::where('ability', $code)->first();
         if ($ability === null) {
             $ability = new Ability;
             $ability->ability = $code;
+            $new = true;
         }
 
         $ability->name = $abilityData['name'][0]['name'];
         $ability->description = ($abilityData['description'] !== []) ? $abilityData['description'][0]['description'] : "";
         $ability->save();
 
+        if ($new === true) {
+            return true;
+        }
+
         return $ability->wasChanged();
     }
 
     public function importPokeball(array $pokeballData): bool
     {
+        $new = false;
         $code = str_replace('-ball', '', $pokeballData['pokeball']);
         $code = $this->formatCode($code) . '-ball';
 
@@ -143,6 +168,7 @@ class ImportService
         if ($pokeball === null) {
             $pokeball = new Pokeball;
             $pokeball->pokeball = $code;
+            $new = true;
         }
 
         $pokeball->sprite = $this->importSprite(
@@ -153,16 +179,22 @@ class ImportService
         $pokeball->name = $pokeballData['name'][0]['name'];
         $pokeball->save();
 
+        if ($new === true) {
+            return true;
+        }
+
         return $pokeball->wasChanged();
     }
 
     public function importPokemon(array $pokemonData): bool
     {
+        $new = false;
         $code = $this->formatCode($pokemonData['pokemon']);
         $pokemon = Pokemon::where('pokemon', $code)->first();
         if ($pokemon === null) {
             $pokemon = new Pokemon;
             $pokemon->pokemon = $code;
+            $new = true;
         }
 
         $pokemon->form_index = $pokemonData['form_index'] - 1;
@@ -211,6 +243,10 @@ class ImportService
         $pokemon->generation = (isset($pokemonData['generation'][0])) ? $pokemonData['generation'][0]['generation'] : $pokemonData['generation_backup']['generation'];
         $pokemon->pokemon_type = PokemonTypes::FORM;
         $pokemon->save();
+
+        if ($new === true) {
+            return true;
+        }
 
         return $pokemon->wasChanged();
     }

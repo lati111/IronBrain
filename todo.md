@@ -10,7 +10,6 @@
 - add full pokemon profile screen
 - add pokedex system 
 - add filtering on box
-- fix update counters always being 0
 - alias for moves (already added to model)
 - add empty message to box
 
