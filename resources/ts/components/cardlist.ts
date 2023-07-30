@@ -29,6 +29,10 @@ async function loadCardlist(cardlist: Element) {
 
         cardlist.append(card);
     });
+
+    if (data.length === 0) {
+        cardlist.append(generateEmptyMessage());
+    }
 }
 
 function generateCardWrapper(): Element {
@@ -48,6 +52,13 @@ function generateCardWrapper(): Element {
     card.append(cardBody);
 
     return card;
+}
+
+function generateEmptyMessage(): Element {
+    const div:Element = document.createElement('div')
+    div.classList.add('p-20')
+    div.textContent = 'No results found'
+    return div
 }
 
 (<any>window).cardlistInit = cardlistInit;

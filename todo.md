@@ -11,7 +11,6 @@
 - add pokedex system 
 - add filtering on box
 - alias for moves (already added to model)
-- add empty message to box
 
 ##components
 - give form wrapper names for accessibility
