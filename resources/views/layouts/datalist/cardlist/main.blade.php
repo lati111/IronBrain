@@ -11,12 +11,16 @@
 
 @section('content')
     @yield('before')
-
-    <div class="flex justify-center">
+    @component('components.datalist.components.searchbar')
+        @slot("dataproviderID", "pksanc-box-cardlist")
+        @slot("searchfields", "nickname,pokemon")
+    @endcomponent
+    <div class="flex justify-center mt-4">
         <div>
             {{--| cardlist |--}}
             <div class="flex flex-row justify-center mb-3">
                 @component('components.datalist.cardlist.list')
+                    @slot("ID", "pksanc-box-cardlist")
                     @slot('dataUrl') @yield('url') @endslot
                 @endcomponent
             </div>

@@ -3,6 +3,7 @@
 namespace App\Dataproviders;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 abstract class AbstractDatalist
 {
@@ -12,8 +13,30 @@ abstract class AbstractDatalist
     }
 
     protected function applyTableFilters(Request $request, $builder) {
+        $builder = $this->applySearchbarFilters($request, $builder);
+
         return $builder
             ->offset(($request->get('page', 1) - 1) * $request->get('perpage', 10))
             ->take($request->get('perpage', 10));
+    }
+
+    private function applySearchbarFilters(Request $request, $builder) {
+        $validator = Validator::make($request->all(), [
+            "searchfields" => "string|required",
+            "searchterm" => "string|required"
+        ]);
+
+        if ($validator->fails() === false) {
+            $searchterm = $request->get("searchterm");
+            $searchfields = explode(",", $request->get("searchfields"));
+            $builder->where(function($query) use ($searchfields, $searchterm) {
+                foreach($searchfields as $searchfield) {
+                    $query->orWhere($searchfield, "LIKE", '%'.$searchterm.'%');
+                }
+            });
+
+        }
+
+        return $builder;
     }
 }

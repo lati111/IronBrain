@@ -1,4 +1,5 @@
 import { getData } from '../ajax.js';
+import { getUrl } from "./baseDataprovider.js";
 
 const divider = '<div class="flex items-center px-3 h-full"><div class="divider"></div></div>';
 
@@ -6,12 +7,13 @@ async function cardlistInit() {
     const cardlistCollection = document.querySelectorAll('div.cardlist');
 
     cardlistCollection.forEach(async (cardlist) => {
-        await loadCardlist(cardlist)
+        await loadCardlist(cardlist.id)
     });
 }
 
-async function loadCardlist(cardlist: Element) {
-    const url = cardlist.getAttribute('data-content-url')!;
+async function loadCardlist(dataproviderID:string) {
+    let cardlist:Element = document.querySelector('#'+dataproviderID)!;
+    let url = getUrl(dataproviderID, cardlist);
     const data = await getData(url);
     cardlist.innerHTML = "";
 
@@ -62,3 +64,4 @@ function generateEmptyMessage(): Element {
 }
 
 (<any>window).cardlistInit = cardlistInit;
+(<any>window).loadDataprovider = loadCardlist;
