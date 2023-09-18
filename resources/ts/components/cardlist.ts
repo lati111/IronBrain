@@ -37,6 +37,12 @@ async function loadCardlist(dataproviderID:string) {
     }
 }
 
+function searchbarEnterListener(e, dataproviderID:string) {
+    if (e.code === "Enter") {
+        loadCardlist(dataproviderID);
+    }
+}
+
 function generateCardWrapper(): Element {
     const card:Element = document.createElement('div')
     card.classList.add('card');
@@ -65,3 +71,4 @@ function generateEmptyMessage(): Element {
 
 (<any>window).cardlistInit = cardlistInit;
 (<any>window).loadDataprovider = loadCardlist;
+(<any>window).searchbarEnterListener = searchbarEnterListener;
