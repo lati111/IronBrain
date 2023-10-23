@@ -34,7 +34,12 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $formIndex = $validator->getData()[$parameters[0]];
-            return Pokemon::where('pokemon', $value)->where('form_index', $formIndex)->exists();
+            return Pokemon::where('form_index', $formIndex)
+                ->where(function ($query) use ($value) {
+                    $query
+                        ->orWhere('pokemon', $value)
+                        ->orWhere('species', $value);
+                })->exists();
         });
 
         Validator::extend('pksanc_move_exists', function ($attribute, $value, $parameters, $validator) {

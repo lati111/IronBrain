@@ -103,7 +103,11 @@ class CsvHydratorV1 extends AbstractCsvHydrator
 
     private function importPokemon(StoredPokemon $pokemon, array $data, int $line): StoredPokemon
     {
-        $species = Pokemon::where('pokemon', $data['Species'])->where('form_index', $data['Form'])->first();
+        $species = Pokemon::where('form_index', $data['Form'])->where(function ($query) use ($data) {
+            $query
+                ->orWhere('pokemon', $data['Species'])
+                ->orWhere('species', $data['Species']);
+        })->first();
         if ($species === null) {
             //TODO create proper error screen
             dd($data);
