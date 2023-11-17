@@ -32,22 +32,9 @@ export class DataProvider {
         }
 
         this.dataUrl = dataUrl;
-        let pageUrl = new URL(window.location.href);
-        let storedParams:string = pageUrl.searchParams.get(this.dataProviderID) ?? '';
-        if (storedParams !== '') {
-            storedParams = '?' + storedParams;
-        }
+        this.loadStoredUrlData(false)
 
-        const storedUrl:URL = new URL(this.dataUrl + storedParams);
-        this.initSearchbar(storedUrl);
-
-        this.pagination = document.querySelector('#'+this.dataProviderID+'-pagination');
-        const perpage = storedUrl.searchParams.get('perpage') ?? '6';
-        this.perpage = parseInt(perpage);
-        const page = storedUrl.searchParams.get('page') ?? '1';
-        this.page = parseInt(page);
-
-        this.loadPagination();
+        window.addEventListener("popstate", this.loadStoredUrlData.bind(this, true));
 
         this.dataHandler(this);
     }
@@ -226,12 +213,38 @@ export class DataProvider {
         return url;
     }
 
-    private update() {
-        let pageUrl = new URL(window.location.href);
-        const params:string = this.getUrl().toString().split('?')[1];
-        pageUrl.searchParams.set(this.dataProviderID, params);
-        window.history.pushState({urlPath:pageUrl.toString()}, '', pageUrl.toString());
+    private update(reload:boolean = false) {
+        if (reload === false) {
+            let pageUrl = new URL(window.location.href);
+            const params:string = this.getUrl().toString().split('?')[1];
+            pageUrl.searchParams.set(this.dataProviderID, params);
+            window.history.pushState({urlPath:pageUrl.toString()}, '', pageUrl.toString());
+        }
 
         this.dataHandler(this);
     }
+
+    public loadStoredUrlData(reload:boolean = false) {
+        let pageUrl = new URL(window.location.href);
+        let storedParams:string = pageUrl.searchParams.get(this.dataProviderID) ?? '';
+        if (storedParams !== '') {
+            storedParams = '?' + storedParams;
+        }
+
+        const storedUrl:URL = new URL(this.dataUrl + storedParams);
+        this.initSearchbar(storedUrl);
+
+        this.pagination = document.querySelector('#'+this.dataProviderID+'-pagination');
+        const perpage = storedUrl.searchParams.get('perpage') ?? '6';
+        this.perpage = parseInt(perpage);
+        const page = storedUrl.searchParams.get('page') ?? '1';
+        this.page = parseInt(page);
+
+        this.loadPagination();
+
+        if (reload === true) {
+            this.update(reload);
+        }
+    }
+
 }
