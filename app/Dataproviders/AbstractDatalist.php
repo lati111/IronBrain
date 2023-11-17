@@ -12,12 +12,16 @@ abstract class AbstractDatalist
         return csrf_token();
     }
 
-    protected function applyTableFilters(Request $request, $builder) {
+    protected function applyTableFilters(Request $request, $builder, bool $pagination = true) {
         $builder = $this->applySearchbarFilters($request, $builder);
 
-        return $builder
+        if ($pagination === true) {
+            $builder = $builder
             ->offset(($request->get('page', 1) - 1) * $request->get('perpage', 10))
             ->take($request->get('perpage', 10));
+        }
+
+        return $builder;
     }
 
     private function applySearchbarFilters(Request $request, $builder) {

@@ -26,6 +26,9 @@
             </div>
         </div>
     </div>
+    @component('components.datalist.components.pagination')
+        @slot("dataproviderID", "pksanc-box-cardlist")
+    @endcomponent
 
     @yield('after')
 @stop

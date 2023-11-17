@@ -1,6 +1,7 @@
 <?php
 
 use App\Dataproviders\Cardlists\Project\PKSancCardList;
+use App\Dataproviders\Datacounts\Project\PKSancCounts;
 use App\Http\Controllers\Projects\PKSanc\PKSancController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
@@ -54,6 +55,9 @@ Route::prefix('/pksanc')->group(function() {
     // data providers
     Route::get('/data/overview', [PKSancCardList::class, 'overviewData'])
         ->name('pksanc.overview.cardlist');
+
+    Route::get('/data/overview/count', [PKSancCounts::class, 'overviewCount'])
+        ->name('pksanc.overview.count');
 
     Route::get('/data/staging/{importUuid}', [PKSancCardList::class, 'stagingData'])
         ->name('pksanc.staging.cardlist');

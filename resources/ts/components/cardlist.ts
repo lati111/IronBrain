@@ -1,5 +1,5 @@
 import { getData } from '../ajax.js';
-import { getUrl } from "./baseDataprovider.js";
+import { DataProvider } from "./baseDataprovider.js";
 
 const divider = '<div class="flex items-center px-3 h-full"><div class="divider"></div></div>';
 
@@ -7,14 +7,13 @@ async function cardlistInit() {
     const cardlistCollection = document.querySelectorAll('div.cardlist');
 
     cardlistCollection.forEach(async (cardlist) => {
-        await loadCardlist(cardlist.id)
+        new DataProvider(cardlist.id, loadCardlist);
     });
 }
 
-async function loadCardlist(dataproviderID:string) {
-    let cardlist:Element = document.querySelector('#'+dataproviderID)!;
-    let url = getUrl(dataproviderID, cardlist);
-    const data = await getData(url);
+async function loadCardlist(dataprovider:DataProvider) {
+    let cardlist:Element = dataprovider.getElement();
+    const data = await getData(dataprovider.getUrl().toString());
     cardlist.innerHTML = "";
 
     data.forEach((cardData: any[]) => {
@@ -32,16 +31,13 @@ async function loadCardlist(dataproviderID:string) {
         cardlist.append(card);
     });
 
+    dataprovider.loadPagination();
+
     if (data.length === 0) {
         cardlist.append(generateEmptyMessage());
     }
 }
 
-function searchbarEnterListener(e, dataproviderID:string) {
-    if (e.code === "Enter") {
-        loadCardlist(dataproviderID);
-    }
-}
 
 function generateCardWrapper(): Element {
     const card:Element = document.createElement('div')
@@ -70,5 +66,3 @@ function generateEmptyMessage(): Element {
 }
 
 (<any>window).cardlistInit = cardlistInit;
-(<any>window).loadDataprovider = loadCardlist;
-(<any>window).searchbarEnterListener = searchbarEnterListener;
