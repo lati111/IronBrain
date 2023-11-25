@@ -3,16 +3,19 @@ import { getData } from '../ajax.js';
 export class DataProvider {
     private readonly dataProviderID:string;
     private readonly dataHandler:Function;
-    private readonly element:Element;
-    private readonly dataUrl:string;
+    private readonly element!: Element;
+    private readonly dataUrl!: string;
 
-    private searchbar:HTMLInputElement|null;
+    private searchbar: HTMLInputElement | null = null;
     private searchterm:string|null = null;
     private searchfields:string|null = null;
 
-    private pagination:HTMLElement|null;
-    private perpage:number;
-    private page:number;
+    private pagination: HTMLElement | null = null;
+    private perpage: number = 10;
+    private page: number = 1;
+
+    private filterlist: HTMLInputElement | null = null;
+    private filters:Array<{'filter':string|null, 'operator':string|null, 'value':string|null}> = [];
 
     constructor(dataproviderID:string, dataHandler:Function) {
         this.dataProviderID = dataproviderID;
@@ -20,14 +23,14 @@ export class DataProvider {
 
         const dataProviderElement:Element|null = document.querySelector('#'+dataproviderID);
         if (dataProviderElement === null) {
-            console.error('Could not find dataprovider with ID '+dataproviderID)
+            new Error('Could not find dataprovider with ID '+dataproviderID)
             return;
         }
 
         this.element = dataProviderElement;
         const dataUrl = this.element.getAttribute('data-content-url');
         if (dataUrl === null) {
-            console.error('Could not find attribute data-content-url on dataprovider with ID '+dataproviderID)
+            new Error('Could not find attribute data-content-url on dataprovider with ID '+dataproviderID)
             return;
         }
 
@@ -65,9 +68,15 @@ export class DataProvider {
         }
     }
 
-    public applySearchbar(e: { key: string | undefined; }) {
-        if (this.searchbar === null || (e.key !== undefined && e.key !== 'Enter')) {
+    public applySearchbar(e:Event|KeyboardEvent) {
+        if (this.searchbar === null) {
             return;
+        }
+
+        if (e instanceof KeyboardEvent) {
+            if (e.key !== undefined && e.key !== 'Enter') {
+                return;
+            }
         }
 
         const searchterm = this.searchbar.value;
@@ -193,6 +202,36 @@ export class DataProvider {
         return element;
     }
 
+    //| filters
+    private initFilters() {
+        this.filterlist = document.querySelector('#'+this.dataProviderID+'-filterlist');
+        if (this.filterlist !== null) {
+            const filtercontainer = this.filterlist.querySelector('.filter-container')!;
+            const observer = new MutationObserver(this.applyFilters.bind(this));
+            observer.observe(filtercontainer, {characterData: false, childList: true, attributes: false});
+        }
+    }
+
+    public applyFilters() {
+        if (this.filterlist === null) {
+            return;
+        }
+
+        this.filters = [];
+        const filterElements = this.filterlist.querySelectorAll('.filter');
+        for (const filterElement of filterElements) {
+            const filter = {
+                'filter': filterElement.getAttribute('data-filter'),
+                'operator': filterElement.getAttribute('data-operator'),
+                'value': filterElement.getAttribute('data-value'),
+            };
+
+            this.filters.push(filter);
+        }
+
+        this.update();
+    }
+
     //| utility
     public getElement(): Element {
         return this.element;
@@ -208,6 +247,10 @@ export class DataProvider {
         if (this.searchbar !== null) {
             url.searchParams.set('searchterm', ''+this.searchterm);
             url.searchParams.set('searchfields', ''+this.searchfields);
+        }
+
+        if (this.filterlist !== null) {
+            url.searchParams.set('filters', JSON.stringify(this.filters));
         }
 
         return url;
@@ -241,6 +284,7 @@ export class DataProvider {
         this.page = parseInt(page);
 
         this.loadPagination();
+        this.initFilters();
 
         if (reload === true) {
             this.update(reload);

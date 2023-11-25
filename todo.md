@@ -9,9 +9,10 @@
 - add romhack system (already added to model)
 - add full pokemon profile screen
 - add pokedex system 
-- add filtering on box
 - alias for moves (already added to model)
 
 ##components
 - give form wrapper names for accessibility
-- add pagination to datalists
+- make pagination truly optional
+- make proper traits, interfaces and abstracts for dataproviders
+- make select filter searchable

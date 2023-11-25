@@ -3,6 +3,7 @@
 namespace App\Dataproviders;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 
 abstract class AbstractDatalist
@@ -24,6 +25,23 @@ abstract class AbstractDatalist
         return $builder;
     }
 
+    protected function getCount(Request $request, $builder, bool $pagination = true) {
+        $count = $this->applyTableFilters($request, $builder, $pagination)->count();
+
+        if ($pagination === true) {
+            $perpage = $request->get('perpage', 10);
+
+            $pages = $count / $perpage;
+            if ($count % $perpage !== 0) {
+                $pages++;
+            }
+
+            return $pages;
+        }
+
+        return $count;
+    }
+
     private function applySearchbarFilters(Request $request, $builder) {
         $validator = Validator::make($request->all(), [
             "searchfields" => "string|required",
@@ -38,7 +56,6 @@ abstract class AbstractDatalist
                     $query->orWhere($searchfield, "LIKE", '%'.$searchterm.'%');
                 }
             });
-
         }
 
         return $builder;

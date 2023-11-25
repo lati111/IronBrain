@@ -11,10 +11,17 @@
 
 @section('content')
     @yield('before')
+
     @component('components.datalist.components.searchbar')
         @slot("dataproviderID", "pksanc-box-cardlist")
         @slot("searchfields", "nickname,pokemon")
     @endcomponent
+
+    @component('components.datalist.components.filterlist')
+        @slot("dataproviderID", "pksanc-box-cardlist")
+        @slot("route", 'pksanc.overview.filters')
+    @endcomponent
+
     <div class="flex justify-center mt-4">
         <div>
             {{--| cardlist |--}}
@@ -38,5 +45,7 @@
 @vite([
     'resources/ts/main.ts',
     'resources/ts/components/cardlist.ts',
+    'resources/ts/components/modal.ts',
+    'resources/ts/components/dataproviders/filterlist.ts',
 ])
 @stop
