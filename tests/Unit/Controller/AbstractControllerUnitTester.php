@@ -4,12 +4,14 @@ namespace Tests\Unit\Controller;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Testing\TestResponse;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Tests\Unit\AbstractUnitTester;
 
 abstract class AbstractControllerUnitTester extends AbstractUnitTester
 {
     //| routing asserts
-    protected function assertView(TestResponse $response, string $view, array $vars = [])
+    protected function assertView(TestResponse $response, string $view, array $vars = []): void
     {
         $vars = array_merge($vars, $this->getBaseRouteVars());
 
@@ -18,7 +20,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $response->assertViewHasAll($vars);
     }
 
-    protected function assertRedirect(TestResponse $response, string $route, array $vars = [])
+    protected function assertRedirect(TestResponse $response, string $route, array $vars = []): void
     {
         $response->assertValid();
         $response->assertRedirectToRoute($route);
@@ -27,7 +29,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         }
     }
 
-    protected function assertRedirectWithRouteParams(TestResponse $response, string $route, array $routeParams, array $vars = [])
+    protected function assertRedirectWithRouteParams(TestResponse $response, string $route, array $routeParams, array $vars = []): void
     {
         $response->assertValid();
         $response->assertRedirectToRoute($route, $routeParams);
@@ -37,7 +39,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
     }
 
     //| validation asserts
-    protected function assertValidationRequired(string $fieldName, array $response = [])
+    protected function assertValidationRequired(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -48,7 +50,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationTooLong(string $fieldName, int $maxLength, array $response = [])
+    protected function assertValidationTooLong(string $fieldName, int $maxLength, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -60,7 +62,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationTooShort(string $fieldName, int $maxLength, array $response = [])
+    protected function assertValidationTooShort(string $fieldName, int $maxLength, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -72,7 +74,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationString(string $fieldName, array $response = [])
+    protected function assertValidationString(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -83,7 +85,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationInteger(string $fieldName, array $response = [])
+    protected function assertValidationInteger(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -94,7 +96,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationBoolean(string $fieldName, array $response = [])
+    protected function assertValidationBoolean(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -105,7 +107,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationEmail(string $fieldName, array $response = [])
+    protected function assertValidationEmail(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -116,7 +118,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationTaken(string $fieldName, array $response = [])
+    protected function assertValidationTaken(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -127,7 +129,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationExists(string $fieldName, array $response = [])
+    protected function assertValidationExists(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -138,7 +140,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationMixedCase(string $fieldName, array $response = [])
+    protected function assertValidationMixedCase(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -149,7 +151,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationHasNumbers(string $fieldName, array $response = [])
+    protected function assertValidationHasNumbers(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -160,7 +162,7 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    protected function assertValidationImageFileType(string $fieldName, array $response = [])
+    protected function assertValidationImageFileType(string $fieldName, array $response = []): void
     {
         $fieldString = $this->formatValidationFieldName($fieldName);
         $message = sprintf(
@@ -171,19 +173,30 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
         $this->assertValidation($fieldName, $message, $response);
     }
 
-    private function formatValidationFieldName(string $fieldName)
+    protected function assertValidationCsvFileType(string $fieldName, array $response = []): void
+    {
+        $fieldString = $this->formatValidationFieldName($fieldName);
+        $message = sprintf(
+            'The %s field must be a file of type: csv, txt.',
+            $fieldString
+        );
+
+        $this->assertValidation($fieldName, $message, $response);
+    }
+
+    private function formatValidationFieldName(string $fieldName): array|string
     {
         $fieldName = strtolower(preg_replace('/(?<!^)[A-Z]/', ' $0', $fieldName));
         $fieldName = str_replace("_", " ", $fieldName);
         return $fieldName;
     }
 
-    protected function assertValidationValid(string $fieldName, array $response = [])
+    protected function assertValidationValid(string $fieldName, array $response = []): void
     {
         $this->assertEmpty(array_merge($this->getValidationErrors($fieldName, $response)));
     }
 
-    private function assertValidation(string $fieldName, string $message, array $response = [])
+    private function assertValidation(string $fieldName, string $message, array $response = []): void
     {
         $this->assertContains($message, $this->getValidationErrors($fieldName, $response));
     }
@@ -192,11 +205,10 @@ abstract class AbstractControllerUnitTester extends AbstractUnitTester
     {
         $errors = session('errors');
         $errors = ($errors !== null) ? $errors->get($fieldName) : [];
-        $errors = (isset($response[$fieldName])) ? array_merge($errors, $response[$fieldName]) : $errors;
-        return $errors;
+        return (isset($response[$fieldName])) ? array_merge($errors, $response[$fieldName]) : $errors;
     }
 
-    protected function getBaseRouteVars()
+    protected function getBaseRouteVars(): array
     {
         $controller = new BaseController();
         return $controller->getbaseRouteVars();

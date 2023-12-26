@@ -29,6 +29,12 @@ abstract class AbstractUnitTester extends Testcase
     }
 
     //| entity manipulation
+
+    /**
+     * Generates a uuid for a model that does not exist
+     * @param class-string<Model> $model Name of the model you want to generate a fake uuid for
+     * @return string Returns the fake uuid.
+     */
     protected function getFalseUuid(string $model): string
     {
         $saved_uuid = null;
@@ -53,6 +59,19 @@ abstract class AbstractUnitTester extends Testcase
         }
 
         return $saved_id;
+    }
+
+    protected function getFalseIdentifierString(string $model, string $column): string
+    {
+        $saved_identifier = null;
+        while ($saved_identifier === null) {
+            $identifier = $this->faker->regexify('[A-Za-z0-9]{12}');
+            if ($model::where($column, $identifier)->count() === 0) {
+                $saved_identifier = $identifier;
+            }
+        }
+
+        return $saved_identifier;
     }
 
     protected function getRandomEntity(string $model): Model|null

@@ -3,6 +3,7 @@
 use App\Dataproviders\Cardlists\Project\PKSanc\PKSancOverviewCardList;
 use App\Dataproviders\Cardlists\Project\PKSanc\PKSancStagingCardList;
 use App\Http\Controllers\Projects\PKSanc\PKSancController;
+use App\Http\Controllers\Projects\PKSanc\PKSancDepositController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
@@ -34,20 +35,20 @@ Route::prefix('/pksanc')->group(function() {
         ->name('pksanc.home.show');
 
     Route::prefix('/deposit')->group(function() {
-        Route::get('/', [PKSancController::class, 'showDeposit'])
-        ->name('pksanc.deposit.show');
+        Route::get('/', [PKSancDepositController::class, 'showDeposit'])
+            ->name('pksanc.deposit.show');
 
         Route::prefix('/stage')->group(function() {
-            Route::post('/', [PKSancController::class, 'stageDepositAttempt'])
+            Route::post('/', [PKSancDepositController::class, 'stageDepositAttempt'])
                 ->name('pksanc.deposit.stage.attempt');
 
-            Route::get('/{importUuid}', [PKSancController::class, 'showDepositAttempt'])
+            Route::get('/{importUuid}', [PKSancDepositController::class, 'showDepositAttempt'])
                 ->name('pksanc.deposit.stage.show');
 
-            Route::get('/{importUuid}/confirm', [PKSancController::class, 'depositConfirm'])
+            Route::get('/{importUuid}/confirm', [PKSancDepositController::class, 'depositConfirm'])
                 ->name('pksanc.deposit.stage.confirm');
 
-            Route::get('/{importUuid}/cancel', [PKSancController::class, 'depositCancel'])
+            Route::get('/{importUuid}/cancel', [PKSancDepositController::class, 'depositCancel'])
                 ->name('pksanc.deposit.stage.cancel');
         });
     });
