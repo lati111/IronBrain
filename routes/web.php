@@ -1,12 +1,12 @@
 <?php
 
-use App\Dataproviders\Cardlists\Project\PKSanc\PKSancOverviewCardList;
-use App\Dataproviders\Cardlists\Project\PKSanc\PKSancStagingCardList;
+use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
+use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Projects\PKSanc\PKSancController;
 use App\Http\Controllers\Projects\PKSanc\PKSancDepositController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\HomeController;
 
 Route::get('/', [HomeController::class, 'show'])->name("home.show");
 
@@ -54,15 +54,25 @@ Route::prefix('/pksanc')->group(function() {
     });
 
     // data providers
-    Route::get('/data/overview', [PKSancOverviewCardList::class, 'data'])
-        ->name('pksanc.overview.cardlist');
+    Route::prefix('/data/overview')->group(function() {
+        Route::get('/', [PKSancOverviewCardList::class, 'data'])
+            ->name('pksanc.overview.cardlist');
 
-    Route::get('/data/overview/count', [PKSancOverviewCardList::class, 'count'])
-        ->name('pksanc.overview.count');
+        Route::get('/count', [PKSancOverviewCardList::class, 'count'])
+            ->name('pksanc.overview.count');
 
-    Route::get('/data/overview/filters', [PKSancOverviewCardList::class, 'filters'])
-        ->name('pksanc.overview.filters');
+        Route::get('/filters', [PKSancOverviewCardList::class, 'filters'])
+            ->name('pksanc.overview.filters');
+    });
 
-    Route::get('/data/staging/{importUuid}', [PKSancStagingCardList::class, 'data'])
-        ->name('pksanc.staging.cardlist');
+    Route::prefix('/data/staging/{import_uuid}')->group(function() {
+        Route::get('/', [PKSancStagingCardList::class, 'data'])
+            ->name('pksanc.staging.cardlist');
+
+        Route::get('/count', [PKSancStagingCardList::class, 'count'])
+            ->name('pksanc.staging.count');
+
+        Route::get('/filters', [PKSancStagingCardList::class, 'filters'])
+            ->name('pksanc.staging.filters');
+    });
 });
