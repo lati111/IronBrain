@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exceptions\Project\PKSanc;
+namespace App\Exceptions\Modules\PKSanc;
 
 use App\Enum\PKSanc\ExceptionMessages;
 use App\Exceptions\IronBrainException;

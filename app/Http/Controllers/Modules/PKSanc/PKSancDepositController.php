@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Projects\PKSanc;
+namespace App\Http\Controllers\Modules\PKSanc;
 
 use App\Enum\PKSanc\PKSancStrings;
 use App\Enum\PKSanc\StoragePaths;
@@ -12,8 +12,8 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class PKSancDepositController extends Controller
@@ -31,7 +31,7 @@ class PKSancDepositController extends Controller
      */
     public function showDeposit(): View
     {
-        return view('project.pksanc.deposit', array_merge($this->getBaseVariables(), [
+        return view('modules.pksanc.deposit', array_merge($this->getBaseVariables(), [
             'gamesCollection' => Game::all(),
         ]));
     }
@@ -92,7 +92,7 @@ class PKSancDepositController extends Controller
             dd(sprintf('No import csv matching the uuid %s found', $importUuid));
         }
 
-        return view('project.pksanc.stage-deposit', array_merge($this->getBaseVariables(), [
+        return view('modules.pksanc.stage-deposit', array_merge($this->getBaseVariables(), [
             'importUuid' => $importUuid,
         ]));
     }

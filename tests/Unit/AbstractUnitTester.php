@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Auth\User;
 use Database\Seeders\AuthSeeder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,7 @@ abstract class AbstractUnitTester extends Testcase
     protected ?User $user = null;
 
     use WithFaker;
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function setUp(): void
     {

@@ -2,10 +2,7 @@
 
 namespace Tests\Unit\Controller;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Testing\TestResponse;
-use Psr\Container\ContainerExceptionInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use Tests\Unit\AbstractUnitTester;
 
 abstract class AbstractControllerUnitTester extends AbstractUnitTester

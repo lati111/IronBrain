@@ -36,6 +36,6 @@ class PKSancControllerTest extends AbstractControllerUnitTester
         $response = $this
             ->actingAs($this->getAdminUser())
             ->get(route('pksanc.home.show'));
-        $this->assertView($response, 'project.pksanc.home');
+        $this->assertView($response, 'modules.pksanc.home');
     }
 }

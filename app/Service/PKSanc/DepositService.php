@@ -3,7 +3,7 @@
 namespace App\Service\PKSanc;
 
 use App\Enum\PKSanc\CsvVersions;
-use App\Exceptions\Project\PKSanc\ImportException;
+use App\Exceptions\Modules\PKSanc\ImportException;
 use App\Models\PKSanc\ImportCsv;
 use App\Models\PKSanc\StagedPokemon;
 use App\Models\PKSanc\StoredPokemon;

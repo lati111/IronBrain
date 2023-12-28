@@ -4,6 +4,7 @@ namespace App\Service\PKSanc;
 
 use App\Enum\PKSanc\PokemonTypes;
 use App\Models\PKSanc\Ability;
+use App\Models\PKSanc\Game;
 use App\Models\PKSanc\Move;
 use App\Models\PKSanc\Nature;
 use App\Models\PKSanc\Pokeball;
@@ -13,6 +14,20 @@ use Illuminate\Support\Facades\Storage;
 
 class ImportService
 {
+    /**
+     * Sets the database connection used by the importer
+     * @param string $connection The name of the connection
+     */
+    public function setConnection(string $connection): void {
+        \Config::set('database.connections.mysql.database', $connection);
+        \DB::purge('mysql');
+    }
+
+    /**
+     * Parses the data from an array and saves them to the database as a type
+     * @param array $typeData An array containing the data of the type
+     * @return bool Returns whether the type was changed/saved or not
+     */
     public function importType(array $typeData): bool
     {
         $new = false;
@@ -33,6 +48,11 @@ class ImportService
         return $type->wasChanged();
     }
 
+    /**
+     * Parses the data from an array and saves them to the database as a nature
+     * @param array $natureData An array containing the data of the nature
+     * @return bool Returns whether the nature was changed/saved or not
+     */
     public function importNature(array $natureData): bool
     {
         $new = false;
@@ -109,6 +129,11 @@ class ImportService
         return $nature->wasChanged();
     }
 
+    /**
+     * Parses the data from an array and saves them to the database as a move
+     * @param array $moveData An array containing the data of the move
+     * @return bool Returns whether the move was changed/saved or not
+     */
     public function importMove(array $moveData): bool
     {
         $new = false;
@@ -136,6 +161,11 @@ class ImportService
         return $move->wasChanged();
     }
 
+    /**
+     * Parses the data from an array and saves them to the database as a ability
+     * @param array $abilityData An array containing the data of the ability
+     * @return bool Returns whether the ability was changed/saved or not
+     */
     public function importAbility(array $abilityData): bool
     {
         $new = false;
@@ -158,6 +188,11 @@ class ImportService
         return $ability->wasChanged();
     }
 
+    /**
+     * Parses the data from an array and saves them to the database as a pokeball
+     * @param array $pokeballData An array containing the data of the pokeball
+     * @return bool Returns whether the pokeball changed/saved or not
+     */
     public function importPokeball(array $pokeballData): bool
     {
         $new = false;
@@ -186,6 +221,11 @@ class ImportService
         return $pokeball->wasChanged();
     }
 
+    /**
+     * Parses the data from an array and saves them to the database as a pokemon
+     * @param array $pokemonData An array containing the data of the pokemon
+     * @return bool Returns whether the pokemon changed/saved or not
+     */
     public function importPokemon(array $pokemonData): bool
     {
         $new = false;
@@ -251,7 +291,42 @@ class ImportService
         return $pokemon->wasChanged();
     }
 
-    private function importSprite(?string $spriteString, string $spriteType, string $fileName = null): ?string
+    /**
+     * Gets the config JSON containing a list of games
+     * @return array Returns an array containing the games
+     */
+    public function getGamesJson(): array {
+        return Storage::json('/config/PKSanc/games.json');
+    }
+
+    /**
+     * Saves a game to the database
+     * @param string $name The display name of the game
+     * @param string $code The internal code used by PKSaveExtractor for the game
+     * @return bool Returns whether the pokemon changed/saved or not
+     */
+    public function importGame(string $name, string $code): bool {
+        $game = Game::where('game', $code)->first();
+        if ($game !== null) {
+            return false;
+        }
+
+        $game = new Game();
+        $game->game = $code;
+        $game->name = $name;
+        $game->save();
+
+        return true;
+    }
+
+    /**
+     * Downloads a sprite from the PokeAPI github and saves it
+     * @param ?string $spriteString The path to the sprite on the PokeAPI github. When null means the sprite does not exist.
+     * @param string $spriteType What kind of sprite it is, eg. pokeball or pokemon
+     * @param ?string $fileName The filename the file should be saved with, if null then the original name is used
+     * @return ?string Returns the relative path to the sprite, if any
+     */
+    private function importSprite(?string $spriteString, string $spriteType, ?string $fileName = null): ?string
     {
         if ($fileName === null) {
             $arr = explode('/', $spriteString);
@@ -260,7 +335,7 @@ class ImportService
 
         if ($spriteString !== null) {
             $spriteUrl = str_replace('/media/', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/', $spriteString);
-            $spritePath = sprintf('project/pksanc/%s/%s', $spriteType, $fileName);
+            $spritePath = sprintf('modules/pksanc/%s/%s', $spriteType, $fileName);
             if (Storage::missing($spritePath)) {
                 $contents = file_get_contents($spriteUrl);
                 if (getimagesizefromstring($contents) !== false) {
@@ -274,17 +349,25 @@ class ImportService
         return null;
     }
 
+    /**
+     * Formats the text in a display format
+     * @param string $oldText Text to be formatted
+     * @return string The formatted string
+     */
     private function formatText(string $oldText): string
     {
         $text = str_replace('-', ' ', $oldText);
-        $text = ucfirst($text);
-        return $text;
+        return ucfirst($text);
     }
 
+    /**
+     * Formats the text in as an internal code
+     * @param string $oldCode Text to be formatted
+     * @return string The formatted string
+     */
     private function formatCode(string $oldCode): string
     {
         $code = str_replace('-', '', $oldCode);
-        $code = strtolower($code);
-        return $code;
+        return strtolower($code);
     }
 }

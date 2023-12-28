@@ -4,8 +4,8 @@ use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Projects\PKSanc\PKSancController;
-use App\Http\Controllers\Projects\PKSanc\PKSancDepositController;
+use App\Http\Controllers\Modules\PKSanc\PKSancController;
+use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'show'])->name("home.show");

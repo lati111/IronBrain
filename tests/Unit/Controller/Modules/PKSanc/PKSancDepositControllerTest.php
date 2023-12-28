@@ -36,7 +36,7 @@ class PKSancDepositControllerTest extends AbstractControllerUnitTester
         $response = $this
             ->actingAs($this->getAdminUser())
             ->get(route('pksanc.deposit.show'));
-        $this->assertView($response, 'project.pksanc.deposit', ['gamesCollection']);
+        $this->assertView($response, 'modules.pksanc.deposit', ['gamesCollection']);
     }
 
 
