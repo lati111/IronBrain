@@ -1,0 +1,1 @@
+function r(){setTimeout(()=>{const e=document.querySelectorAll(".error-toast");for(let t=0;t<e.length;t++)e[t].remove();const o=document.querySelectorAll(".message-toast");for(let t=0;t<o.length;t++)o[t].remove()},5e3)}window.init=r;

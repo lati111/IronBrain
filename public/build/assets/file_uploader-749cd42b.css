@@ -1,0 +1,1 @@
+.file-uploader[type=file]::file-selector-button{border-bottom:none!important;background-color:transparent!important;color:var(--main-red)}.file-uploader[type=file]::file-selector-button:hover{color:var(--sub-red)}
