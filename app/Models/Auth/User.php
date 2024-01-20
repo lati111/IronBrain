@@ -12,6 +12,23 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @property string uuid
+ * @property string name The username for this user
+ * @property ?string pronouns Which pronouns to display on the user's profile
+ * @property ?string description Bio as defined by the user
+ * @property string email The email address this user is registered with
+ * @property ?string email_verified_at Date the email was verified at. Null if unverified
+ * @property string password The hashed user password
+ * @property string profile_picture Path to the user's profile picture
+ * @property ?int role_id The ID of the role the user has, null if no role is set
+ * @property ?string remember_token The token responsible for keeping a user logged in. Can be null
+ * @property bool active Whether the user is active or not
+ * @property string created_at The creation date of the model as a string
+ * @property string updated_at The date this model was last updated
+ * @property string deleted_at The date this model was deleted at
+ */
+
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasUuids, SoftDeletes;

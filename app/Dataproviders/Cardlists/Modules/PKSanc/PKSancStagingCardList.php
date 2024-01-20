@@ -13,14 +13,16 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
     /** {@inheritDoc} */
     public function data(Request $request): JsonResponse
     {
-        $importUuid = $request->input('import_uuid');
+        $importUuid = $request->route()->parameter('import_uuid');
         $csv = ImportCsv::where('uuid', $importUuid)->first();
         if ($csv === null) {
             return response()->json(sprintf('No import csv matching the uuid %s found', $importUuid), ResponseAlias::HTTP_NOT_FOUND);
         }
 
-        $pokemonCollection = $csv->getPokemon();
-        $pokemonCollection = $this->applyTableFilters($request, $pokemonCollection, false)->get();
+        $pokemonCollection = $csv->getPokemon()
+            ->where('validated_at', null)
+            ->where('owner_uuid', Auth::user()->uuid);
+        $pokemonCollection = $this->applyTableFilters($request, $pokemonCollection, true)->get();
 
         $data = [];
         foreach ($pokemonCollection as $pokemon) {
@@ -33,14 +35,14 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
     /** {@inheritDoc} */
     public function count(Request $request): JsonResponse
     {
-        $importUuid = $request->input('import_uuid');
+        $importUuid = $request->route()->parameter('import_uuid');
         $csv = ImportCsv::where('uuid', $importUuid)->first();
         if ($csv === null) {
             return response()->json(sprintf('No import csv matching the uuid %s found', $importUuid), ResponseAlias::HTTP_NOT_FOUND);
         }
 
-        $pokemonCollection = StoredPokemon::select()
-            ->where('validated_at', '!=', null)
+        $pokemonCollection = $csv->getPokemon()
+            ->where('validated_at', null)
             ->where('owner_uuid', Auth::user()->uuid);
         $count =  $this->getCount($request, $pokemonCollection);
 

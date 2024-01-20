@@ -13,6 +13,8 @@ use App\Dataproviders\Filters\PKSanc\PokemonTypeSelectFilter;
 use App\Dataproviders\Filters\SelectFilter;
 use App\Dataproviders\Interfaces\FilterableDataproviderInterface;
 use App\Dataproviders\Traits\Filterable;
+use App\Dataproviders\Traits\Paginatable;
+use App\Dataproviders\Traits\Searchable;
 use App\Models\PKSanc\Ability;
 use App\Models\PKSanc\Game;
 use App\Models\PKSanc\ImportCsv;
@@ -21,11 +23,45 @@ use App\Models\PKSanc\Origin;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
 use App\Models\PKSanc\Type;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implements FilterableDataproviderInterface
 {
-    use Filterable;
+    use Filterable, Searchable, Paginatable;
+
+    /** @var array $searchterms Columns that should be searched for in a query */
+    protected array $searchterms = ['nickname', 'pokemon'];
+
+    /**
+     * Applies filters to the search
+     * @param Request $request
+     * @param Builder|HasMany $builder
+     * @param bool $pagination
+     * @return Builder|HasMany|JsonResponse Returns the query or a json response
+     */
+    protected function applyTableFilters(Request $request, Builder|HasMany $builder, bool $pagination = true): Builder|HasMany|JsonResponse
+    {
+        $builder = $this->applySearch($request, $builder, $this->searchterms);
+
+        $builder = $this->applyFilters($request, $builder);
+        if ($builder instanceof JsonResponse) {
+            return $builder;
+        }
+
+        $this->setPerPage(12);
+        if ($pagination === true) {
+            $builder = $this->applyPagination($request, $builder);
+            if ($builder instanceof JsonResponse) {
+                return $builder;
+            }
+        }
+
+        return parent::applyTableFilters($request, $builder);
+    }
 
     /**
      * Returns possible filters
@@ -147,7 +183,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         ])->render();
 
         $origin = $pokemon->Origin();
-        $trainer = $origin->Trainer();
+        $trainer = $origin->GetPokemon();
         $gender = 'Male';
         $genderIconPath = asset('img/project/pksanc/icon/gender/male.png');
         if ($trainer->gender === 'F') {
@@ -157,7 +193,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         $trainerBlock = view('modules.pksanc.snippits.minimal_trainer_block', [
             'saveName' => $pokemon->Csv()->name,
-            'caughtGame' => $origin->Game()->name,
+            'caughtGame' => $origin->getGame()->name,
             'caughtLocation' => $origin->met_location,
             'trainerName' => $trainer->name,
             'trainer' => $trainer->name,
@@ -262,4 +298,5 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         return view('modules.pksanc.snippits.icon_block', ['icons' => $icons])->render();
     }
+
 }

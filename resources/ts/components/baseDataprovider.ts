@@ -49,7 +49,7 @@ export class DataProvider {
             const searchfields:string = this.searchbar.getAttribute("data-searchfields") ?? ''
             this.searchfields = searchfields;
 
-            this.searchterm = storedUrl.searchParams.get('searchterm') ?? '';
+            this.searchterm = storedUrl.searchParams.get('search') ?? '';
             this.searchbar.value = this.searchterm;
 
             this.searchbar.addEventListener('keydown', this.applySearchbar.bind(this));
@@ -245,8 +245,8 @@ export class DataProvider {
         }
 
         if (this.searchbar !== null) {
-            url.searchParams.set('searchterm', ''+this.searchterm);
-            url.searchParams.set('searchfields', ''+this.searchfields);
+            url.searchParams.set('search', ''+this.searchterm);
+            //url.searchParams.set('searchfields', ''+this.searchfields);
         }
 
         if (this.filterlist !== null) {

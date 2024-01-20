@@ -20,16 +20,19 @@ use App\Models\PKSanc\Origin;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
 use App\Models\PKSanc\Type;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response as ResponseAlias;
 
 class PKSancOverviewCardList extends AbstractPKSancOverviewCardList
 {
     /** {@inheritDoc} */
     public function data(Request $request): JsonResponse
     {
+        /** @var Builder $pokemonCollection */
         $pokemonCollection = StoredPokemon::select()
             ->where('validated_at', '!=', null)
             ->where('owner_uuid', Auth::user()->uuid);
@@ -56,6 +59,6 @@ class PKSancOverviewCardList extends AbstractPKSancOverviewCardList
             ->where('owner_uuid', Auth::user()->uuid);
         $count =  $this->getCount($request, $pokemonCollection, true);
 
-        return response()->json($count, Response::HTTP_OK);
+        return response()->json($count, ResponseAlias::HTTP_OK);
     }
 }
