@@ -109,7 +109,7 @@ class PKSancDepositController extends Controller
             dd(sprintf('No import csv matching the uuid %s found', $importUuid));
         }
 
-        foreach($csv->getPokemon as $pokemon) {
+        foreach($csv->Pokemon()->get() as $pokemon) {
             $this->depositService->confirmStaging($pokemon->getStaging());
         }
 
