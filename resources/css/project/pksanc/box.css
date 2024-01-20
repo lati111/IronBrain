@@ -1,0 +1,9 @@
+#top-bar-container {
+    width: 86%;
+    max-width: 1900px;
+}
+
+.pksanc-minimal-block {
+    min-width: 100px;
+    max-width: 100px;
+}

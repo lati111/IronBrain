@@ -112,7 +112,7 @@
         </div>
     </header>
 
-    <main>
+    <main class="relative">
         @yield('content')
     </main>
 </body>

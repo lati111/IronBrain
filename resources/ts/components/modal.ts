@@ -2,11 +2,11 @@ import { Modal } from 'flowbite'
 import type { ModalOptions, ModalInterface } from 'flowbite'
 
 var stored_form:HTMLFormElement;
-var stored_modal_data:Array<string>;
+var stored_modal_data:{[key: string]: string};
 var opened_modal:ModalInterface;
 
 
-function openModal(modalId:string) {
+export function openModal(modalId:string) {
     if (opened_modal !== undefined) {
         closeModal();
     }
@@ -24,7 +24,7 @@ function openModal(modalId:string) {
     opened_modal.show();
 }
 
-function closeModal() {
+export function closeModal() {
     opened_modal.hide();
 }
 
@@ -33,24 +33,14 @@ function store_form(form:HTMLFormElement) {
 }
 
 function store_modal_data(modal:Element) {
-    stored_modal_data = [];
-    modal.querySelectorAll('select').forEach(element => {
+    stored_modal_data = {};
+    const elements:NodeListOf<HTMLSelectElement|HTMLTextAreaElement|HTMLInputElement> = modal.querySelectorAll('select,textarea,input')
+    for (const element of elements) {
         if (element.hasAttribute('name') === true) {
-            stored_modal_data[element.name] = element.value;
+            const name:string = element.name;
+            stored_modal_data[name] = element.value;
         }
-    })
-
-    modal.querySelectorAll('textarea').forEach(element => {
-        if (element.hasAttribute('name') === true) {
-            stored_modal_data[element.name] = element.value;
-        }
-    })
-
-    modal.querySelectorAll('input').forEach(element => {
-        if (element.hasAttribute('name') === true) {
-            stored_modal_data[element.name] = element.value;
-        }
-    })
+    }
 }
 
 function submit_stored_form(includeModalData:Boolean = false) {
@@ -71,7 +61,7 @@ function submit_stored_form(includeModalData:Boolean = false) {
     stored_form.submit();
 }
 
-function load_select_modal(modal:Element, value) {
+function load_select_modal(modal:Element, value:string) {
     modal.querySelector('select')!.value = value;
 }
 

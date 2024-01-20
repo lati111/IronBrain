@@ -166,19 +166,19 @@
 {{--| submenu table |--}}
 @isset($project)
     @section('table_headers')
-        @component('components.datatable.header')
+        @component('components.datalist.datatable.header')
             @slot('columnId')name @endslot
             @slot('content')name @endslot
         @endcomponent
-        @component('components.datatable.header')
+        @component('components.datalist.datatable.header')
             @slot('columnId')route @endslot
             @slot('content')route @endslot
         @endcomponent
-        @component('components.datatable.header')
+        @component('components.datalist.datatable.header')
             @slot('columnId')order @endslot
             @slot('content')order @endslot
         @endcomponent
-        @component('components.datatable.header')
+        @component('components.datalist.datatable.header')
             @slot('columnId')actions @endslot
             @slot('content')
                 <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline" dusk="new_submenu">Add Submenu</a>
