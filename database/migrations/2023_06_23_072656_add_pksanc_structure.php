@@ -237,7 +237,7 @@ return new class extends Migration
             $table->foreignUuid('trainer_uuid');
             $table->string('game', 255);
             $table->date('met_date');
-            $table->string('met_location', 255);
+            $table->string('met_location', 255)->nullable();
             $table->integer('met_level');
             $table->boolean('was_egg');
             $table->timestamps();

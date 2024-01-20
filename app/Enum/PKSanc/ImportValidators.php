@@ -23,11 +23,11 @@ class ImportValidators
     public const MOVE = 'required|string|pksanc_move_exists';
     public const PP_UPS = 'required|integer|min:0|max:3';
     public const DATE = 'required|date';
-    public const LOCATION = 'required|string|max:255';
+    public const LOCATION = 'nullable|string|max:255';
     public const GAME = 'required|string|exists:pksanc__game,game';
     public const DYNAMAX_LEVEL = 'required|integer|min:0|max:10';
 
-    public const TRAINER_ID = 'required|integer|digits:5';
+    public const TRAINER_ID = 'required|integer|digits_between:1,8';
     public const TRAINER_NAME = 'required|string|max:32';
     public const TRAINER_GENDER = 'required|string|pksanc_trainer_gender';
 

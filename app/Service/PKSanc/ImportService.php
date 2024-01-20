@@ -207,7 +207,7 @@ class ImportService
         }
 
         $pokeball->sprite = $this->importSprite(
-            json_decode($pokeballData['sprite_string'][0]['sprite_string'], true)['default'],
+            $pokeballData['sprite_string'][0]['sprite_string']['default'],
             'pokeball',
         );
 
@@ -253,7 +253,6 @@ class ImportService
         $pokemon->base_spe = $pokemonData['details']['stats'][5]['value'];
 
         $sprites = $pokemonData['sprites'][0]['sprites'];
-        $sprites = json_decode($sprites, true);
 
         $pokemon->sprite = $this->importSprite(
             $sprites['front_default'],

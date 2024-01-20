@@ -228,8 +228,12 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         return $date;
     }
 
-    private function parseLocation(string $location): string
+    private function parseLocation(?string $location): string
     {
+        if ($location === null) {
+            return '';
+        }
+
         $location = str_replace('_', ' ', $location);
         $location = ucfirst($location);
         return $location;
