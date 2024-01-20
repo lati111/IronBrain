@@ -1,4 +1,4 @@
-@extends('layouts.datatable.overview')
+@extends('layouts.datalist.datatable.overview')
 @section('htmlTitle', 'Role Overview')
 @section('table_title', 'Role Overview')
 
@@ -7,23 +7,23 @@
 {{--| table |--}}
 @section('table-size', 'middle')
 @section('headers')
-    @component('components.datatable.header')
+    @component('components.datalist.datatable.header')
         @slot('columnId')profile_picture @endslot
         @slot('content')Profile picture @endslot
     @endcomponent
-    @component('components.datatable.header')
+    @component('components.datalist.datatable.header')
         @slot('columnId')name @endslot
         @slot('content')Name @endslot
     @endcomponent
-    @component('components.datatable.header')
+    @component('components.datalist.datatable.header')
         @slot('columnId')email @endslot
         @slot('content')Email @endslot
     @endcomponent
-    @component('components.datatable.header')
+    @component('components.datalist.datatable.header')
         @slot('columnId')role @endslot
         @slot('content')Role @endslot
     @endcomponent
-    @component('components.datatable.header')
+    @component('components.datalist.datatable.header')
         @slot('columnId')actions @endslot
         @slot('content')Actions @endslot
     @endcomponent

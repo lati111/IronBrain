@@ -2,10 +2,10 @@
 
 namespace App\Dataproviders\Datatables;
 
-use Illuminate\Contracts\Database\Eloquent\Builder;
+use App\Dataproviders\AbstractDatalist;
 use Illuminate\Http\Request;
 
-abstract class AbstractDatatable
+abstract class AbstractDatatable extends AbstractDatalist
 {
     private const MODIFY_BUTTON_HTML =
         "<div class='text-center'>".
@@ -31,11 +31,6 @@ abstract class AbstractDatatable
             "alt='%s'".
         "/>";
 
-    protected function getToken(Request $request): string {
-        $request->session()->token();
-        return csrf_token();
-    }
-
     protected function getModifyButton(string $route, ?string $id = ""): string {
         return sprintf(
             self::MODIFY_BUTTON_HTML,
@@ -59,11 +54,5 @@ abstract class AbstractDatatable
             $src,
             $alt,
         );
-    }
-
-    protected function applyTableFilters(Request $request, $builder) {
-        return $builder
-            ->offset(($request->get('page', 1) - 1) * $request->get('perpage', 10))
-            ->take($request->get('perpage', 10));
     }
 }
