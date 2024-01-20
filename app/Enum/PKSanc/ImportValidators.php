@@ -4,7 +4,7 @@ namespace App\Enum\PKSanc;
 
 class ImportValidators
 {
-    public const PID = 'required|integer|digits_between:8,12';
+    public const PID = 'required|integer|digits_between:1,12';
     public const NICKNAME = 'required|string|max:14';
     public const SPECIES = 'required|string|pksanc_pokemon_exists:%s';
     public const FORM_INDEX = 'required|integer';
