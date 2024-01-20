@@ -29,7 +29,9 @@ Route::prefix('/auth')->group(function() {
 });
 
 //| pksanc
-Route::prefix('/pksanc')->group(function() {
+Route::prefix('/pksanc')
+    ->middleware('auth:sanctum')
+    ->group(function() {
     // pages
     Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');

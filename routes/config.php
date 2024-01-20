@@ -13,7 +13,9 @@ use App\Http\Controllers\Config\PermissionController;
 use App\Http\Controllers\Config\RoleController;
 use App\Http\Controllers\Config\UserController;
 
-Route::prefix('/config')->group(function() {
+Route::prefix('/config')
+    ->middleware('auth:sanctum')
+    ->group(function() {
     //| project
     Route::prefix('/projects')->group(function() {
         // pages
