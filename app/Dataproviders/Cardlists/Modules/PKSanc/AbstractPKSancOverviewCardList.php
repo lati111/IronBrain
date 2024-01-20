@@ -166,7 +166,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         $spriteBlock = view('modules.pksanc.snippits.minimal_sprite_block', [
             'name' => $pokemon->Pokemon()->getName(),
             'speciesName' => ($pokemon->nickname !== null) ? $pokemon->nickname : $pokemon->Pokemon()->species_name,
-            'spritePath' => asset('img/project/pksanc/pokemon/' . $pokemon->getSprite()),
+            'spritePath' => asset('img/modules/pksanc/pokemon/' . $pokemon->getSprite()),
             'spriteName' => $pokemon->Pokemon()->pokemon,
         ])->render();
 
@@ -177,7 +177,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             'ability' => $pokemon->Ability()->name,
             'hiddenPower' => $hiddenPower->name,
             'hiddenPowerIconPath' => asset(sprintf(
-                'img/project/pksanc/icon/type/%s_full.png',
+                'img/modules/pksanc/icon/type/%s_full.png',
                 $hiddenPower->type
             ))
         ])->render();
@@ -185,10 +185,10 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         $origin = $pokemon->getOrigin();
         $trainer = $origin->getTrainer();
         $gender = 'Male';
-        $genderIconPath = asset('img/project/pksanc/icon/gender/male.png');
+        $genderIconPath = asset('img/modules/pksanc/icon/gender/male.png');
         if ($trainer->gender === 'F') {
             $gender = 'Female';
-            $genderIconPath = asset('img/project/pksanc/icon/gender/female.png');
+            $genderIconPath = asset('img/modules/pksanc/icon/gender/female.png');
         }
 
         $trainerBlock = view('modules.pksanc.snippits.minimal_trainer_block', [
@@ -219,7 +219,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         $icons = [];
         $pokeball = $pokemon->Pokeball();
         $icons[] = [
-            'src' => asset('img/project/pksanc/pokeball/' . $pokeball->sprite),
+            'src' => asset('img/modules/pksanc/pokeball/' . $pokeball->sprite),
             'alt' => $pokeball->name . ' icon',
             'title' => $pokeball->name . ' icon',
             'height' => 8
@@ -228,7 +228,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         switch ($pokemon->gender) {
             case 'M':
                 $icons[] = [
-                    'src' => asset('img/project/pksanc/icon/gender/male.png'),
+                    'src' => asset('img/modules/pksanc/icon/gender/male.png'),
                     'alt' => 'male icon',
                     'title' => 'Male',
                     'height' => 6
@@ -236,7 +236,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
                 break;
             case 'F':
                 $icons[] = [
-                    'src' => asset('img/project/pksanc/icon/gender/female.png'),
+                    'src' => asset('img/modules/pksanc/icon/gender/female.png'),
                     'alt' => 'female icon',
                     'title' => 'Female',
                     'height' => 6
@@ -244,7 +244,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
                 break;
             case '-':
                 $icons[] = [
-                    'src' => asset('img/project/pksanc/icon/gender/none.png'),
+                    'src' => asset('img/modules/pksanc/icon/gender/none.png'),
                     'alt' => 'genderless icon',
                     'title' => 'Genderless',
                     'height' => 6
@@ -254,7 +254,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         $teraType = $pokemon->TeraType();
         $icons[] = [
-            'src' => asset('img/project/pksanc/icon/tera/' . $teraType->type . '.png'),
+            'src' => asset('img/modules/pksanc/icon/tera/' . $teraType->type . '.png'),
             'alt' => $teraType->type . ' tera type icon',
             'title' => $teraType->name . ' tera type',
             'height' => 8
@@ -262,7 +262,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         if ($pokemon->is_alpha === 1) {
             $icons[] = [
-                'src' => asset('img/project/pksanc/icon/alpha.png'),
+                'src' => asset('img/modules/pksanc/icon/alpha.png'),
                 'alt' => 'aplha icon',
                 'title' => 'Alpha',
                 'height' => 6
@@ -271,7 +271,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         if ($pokemon->can_gigantamax === 1) {
             $icons[] = [
-                'src' => asset('img/project/pksanc/icon/dyna.png'),
+                'src' => asset('img/modules/pksanc/icon/dyna.png'),
                 'alt' => 'dynamax icon',
                 'title' => 'Dynamax',
                 'height' => 6
@@ -280,7 +280,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         if ($pokemon->has_n_sparkle === 1) {
             $icons[] = [
-                'src' => asset('img/project/pksanc/icon/n_sparkle.png'),
+                'src' => asset('img/modules/pksanc/icon/n_sparkle.png'),
                 'alt' => 'N sparkle icon',
                 'title' => 'N sparkle',
                 'height' => 6
@@ -289,7 +289,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         if ($pokemon->is_shiny === 1) {
             $icons[] = [
-                'src' => asset('img/project/pksanc/icon/shiny.png'),
+                'src' => asset('img/modules/pksanc/icon/shiny.png'),
                 'alt' => 'shiny icon',
                 'title' => 'Shiny',
                 'height' => 6
