@@ -114,7 +114,7 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         }
 
         $pokemon->PID = intval($data['PID']);
-        $pokemon->Nickname = $data['Nickname'];
+        $pokemon->nickname = $data['Nickname'];
         $pokemon->pokemon = $species->pokemon;
         $pokemon->ability = $data['Ability'];
         $pokemon->nature = $data['Nature'];

@@ -13,6 +13,13 @@ use Carbon\Carbon;
 
 class DepositService
 {
+
+    /**
+     * Imports a csv file and marks it's contents as staging
+     * @param ImportCsv $csv The csv file that should be imported
+     * @return ImportCsv Returns the imported csv
+     * @throws \Throwable
+     */
     public function stageImport(ImportCsv $csv): ImportCsv
     {
         $csvFile = fopen($csv->getCsvPath(), 'r');
@@ -45,6 +52,11 @@ class DepositService
         return $csv;
     }
 
+    /**
+     * Apply the given staged pokemon
+     * @param StagedPokemon $stagedPokemon
+     * @return StoredPokemon
+     */
     public function confirmStaging(StagedPokemon $stagedPokemon): StoredPokemon
     {
         $pokemon = $stagedPokemon->getOldPokemon();
@@ -66,20 +78,20 @@ class DepositService
             $pokemon->csv_uuid = $newPokemon->csv_uuid;
             $pokemon->csv_line = $newPokemon->csv_line;
 
-            $newOrigin = $newPokemon->Origin();
-            $oldOrigin = $pokemon->Origin();
+            $newOrigin = $newPokemon->getOrigin();
+            $oldOrigin = $pokemon->getOrigin();
             $newOrigin->pokemon_uuid = $oldOrigin->pokemon_uuid;
 
-            $newStats = $newPokemon->Stats();
-            $oldStats = $pokemon->Stats();
+            $newStats = $newPokemon->getStats();
+            $oldStats = $pokemon->getStats();
             $newStats->pokemon_uuid = $oldStats->pokemon_uuid;
 
-            $newContestStats = $newPokemon->ContestStats();
-            $oldContestStats = $pokemon->ContestStats();
+            $newContestStats = $newPokemon->getContestStats();
+            $oldContestStats = $pokemon->getContestStats();
             $newContestStats->pokemon_uuid = $oldContestStats->pokemon_uuid;
 
-            $newMoveset = $newPokemon->Moveset();
-            $oldMoveset = $pokemon->Moveset();
+            $newMoveset = $newPokemon->getMoveset();
+            $oldMoveset = $pokemon->getMoveset();
             $newMoveset->pokemon_uuid = $oldMoveset->pokemon_uuid;
 
             $newOrigin->save();
@@ -109,6 +121,15 @@ class DepositService
         return $pokemon;
     }
 
+    /**
+     * Get the correct csv hydrator for this version
+     * @param string $version The version of this csv as per PKSaveExtract
+     * @param string $headers The headers of this csv file
+     * @param ImportCsv $csv The csv model
+     * @return AbstractCsvHydrator Returns the correct hydrator
+     * @throws ImportException
+     * @throws \Throwable
+     */
     private function getImporter(string $version, string $headers, ImportCsv $csv): AbstractCsvHydrator
     {
         $version = floatval(substr($version, 1));

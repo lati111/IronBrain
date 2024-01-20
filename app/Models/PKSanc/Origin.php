@@ -23,12 +23,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class Origin extends Model
 {
-    use HasFactory;
-    use HasTimestamps;
-    use HasUuids;
+    use HasFactory, HasTimestamps, HasUuids;
 
+    /** { @inheritdoc } */
     protected $table = 'pksanc__origin';
+
+    /** { @inheritdoc } */
     protected $primaryKey = 'uuid';
+
+    /** { @inheritdoc } */
+    protected $casts = [
+        'was_egg' => 'boolean',
+    ];
 
     public function getOwner(): StoredPokemon
     {
@@ -37,7 +43,7 @@ class Origin extends Model
         return $pokemon;
     }
 
-    public function GetPokemon(): Trainer
+    public function getTrainer(): Trainer
     {
         /** @var Trainer $trainer */
         $trainer = $this->belongsTo(Trainer::class, 'trainer_uuid', 'uuid')->first();

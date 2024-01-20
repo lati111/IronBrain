@@ -19,7 +19,7 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
             return response()->json(sprintf('No import csv matching the uuid %s found', $importUuid), ResponseAlias::HTTP_NOT_FOUND);
         }
 
-        $pokemonCollection = $csv->getPokemon()
+        $pokemonCollection = $csv->Pokemon()
             ->where('validated_at', null)
             ->where('owner_uuid', Auth::user()->uuid);
         $pokemonCollection = $this->applyTableFilters($request, $pokemonCollection, true)->get();
@@ -41,7 +41,7 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
             return response()->json(sprintf('No import csv matching the uuid %s found', $importUuid), ResponseAlias::HTTP_NOT_FOUND);
         }
 
-        $pokemonCollection = $csv->getPokemon()
+        $pokemonCollection = $csv->Pokemon()
             ->where('validated_at', null)
             ->where('owner_uuid', Auth::user()->uuid);
         $count =  $this->getCount($request, $pokemonCollection);

@@ -37,7 +37,7 @@ return new class extends Migration
             $table->string('csv', 255);
             $table->string('game', 255);
             $table->string('name', 255);
-            $table->integer('version');
+            $table->decimal('version', 11, 2);
             $table->boolean('validated')->default(false);
             $table->foreignUuid('uploader_uuid');
             $table->timestamps();

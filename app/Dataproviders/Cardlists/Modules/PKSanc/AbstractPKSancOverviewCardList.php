@@ -182,8 +182,8 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             ))
         ])->render();
 
-        $origin = $pokemon->Origin();
-        $trainer = $origin->GetPokemon();
+        $origin = $pokemon->getOrigin();
+        $trainer = $origin->getTrainer();
         $gender = 'Male';
         $genderIconPath = asset('img/project/pksanc/icon/gender/male.png');
         if ($trainer->gender === 'F') {

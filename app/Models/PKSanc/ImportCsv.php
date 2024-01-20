@@ -58,7 +58,7 @@ class ImportCsv extends Model
      * Gets all the pokemon imported from this csv
      * @return HasMany Returns a HasMany relationship of this csv's pokemon
      */
-    public function getPokemon(): HasMany
+    public function Pokemon(): HasMany
     {
         return $this->hasMany(StoredPokemon::class, 'csv_uuid', 'uuid');
     }

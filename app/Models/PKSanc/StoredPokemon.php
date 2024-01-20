@@ -52,6 +52,14 @@ class StoredPokemon extends Model
     /** { @inheritdoc } */
     protected $primaryKey = 'uuid';
 
+    /** { @inheritdoc } */
+    protected $casts = [
+        'is_shiny' => 'boolean',
+        'is_alpha' => 'boolean',
+        'has_n_sparkle' => 'boolean',
+        'can_gigantamax' => 'boolean',
+    ];
+
     /**
      * Gets the path to the sprite that should be used for this pokemon
      * @return string Returns the path to the sprite
@@ -172,10 +180,21 @@ class StoredPokemon extends Model
     }
 
     /**
+     * Gets the origin of the pokemon
+     * @return Origin Returns the pokemon's origin
+     */
+    public function getOrigin(): Origin
+    {
+        /** @var Origin $origin */
+        $origin = $this->hasOne(Origin::class, 'pokemon_uuid', 'uuid')->first();
+        return $origin;
+    }
+
+    /**
      * Gets the statblock of the pokemon
      * @return Stats Returns the pokemon's stats
      */
-    public function Stats(): Stats
+    public function getStats(): Stats
     {
         /** @var Stats $stats */
         $stats = $this->hasOne(Stats::class, 'pokemon_uuid', 'uuid')->first();
@@ -186,7 +205,7 @@ class StoredPokemon extends Model
      * Gets the contest statblock of the pokemon
      * @return ContestStats Returns the pokemon's contest stats
      */
-    public function ContestStats(): ContestStats
+    public function getContestStats(): ContestStats
     {
         /** @var ContestStats $contestStats */
         $contestStats = $this->hasOne(ContestStats::class, 'pokemon_uuid', 'uuid')->first();
@@ -197,22 +216,11 @@ class StoredPokemon extends Model
      * Gets the contest statblock of the pokemon
      * @return Moveset Returns the pokemon's moveset
      */
-    public function Moveset(): Moveset
+    public function getMoveset(): Moveset
     {
         /** @var Moveset $moveset */
         $moveset = $this->hasOne(Moveset::class, 'pokemon_uuid', 'uuid')->first();
         return $moveset;
-    }
-
-    /**
-     * Gets pokemon's origin
-     * @return Origin Returns the pokemon's origin
-     */
-    public function Origin(): Origin
-    {
-        /** @var Origin $origin */
-        $origin = $this->hasOne(Origin::class, 'pokemon_uuid', 'uuid')->first();
-        return $origin;
     }
 
     /**
