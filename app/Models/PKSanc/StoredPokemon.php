@@ -67,6 +67,8 @@ class StoredPokemon extends Model
     public function getSprite(): string
     {
         $pokemon = $this->Pokemon();
+
+        //if pokemon has no sprites, attempt to use species sprites instead
         if ($pokemon->sprite === null) {
             $species = Pokemon::where('species', $pokemon->species)->where('form_index', 0)->first();
             if ($species->sprite === null) {
@@ -77,18 +79,22 @@ class StoredPokemon extends Model
         }
 
         if ($this->gender === "F" && $pokemon->sprite_female !== null) {
-            if ($this->is_shiny === true) {
+            if ($this->is_shiny === true && $pokemon->sprite_female_shiny !== null) {
                 return $pokemon->sprite_female_shiny;
             }
 
             return $pokemon->sprite_female;
         }
 
-        if ($this->is_shiny === true) {
+        if ($this->is_shiny === true && $pokemon->sprite_shiny !== null) {
             return $pokemon->sprite_shiny;
         }
 
-        return $pokemon->sprite;
+        if ($pokemon->sprite !== null) {
+            return $pokemon->sprite;
+        }
+
+        return 'unknown_sprite.png';
     }
 
     /**

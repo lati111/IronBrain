@@ -23,4 +23,4 @@ IronBrain is fully capable of running locally for both development and personal 
 ### Testing
 After editing the base code of IronBrain, we recommend running the tests to insure everything keeps running smoothly.
 - Browser tests: `php artisan dusk`. (a valid installation of [Google Chrome](https://www.google.com/chrome/) must be installed).
-- Unit tests: `php artisan test`. 
+- Unit tests: `php artisan test --testsuite=Unit`. 

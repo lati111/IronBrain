@@ -80,7 +80,7 @@ DROP TABLE IF EXISTS `auth__user`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `auth__user` (
   `uuid` char(36) NOT NULL,
-  `name` varchar(28) NOT NULL,
+  `name` varchar(64) NOT NULL,
   `pronouns` varchar(16) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `email` varchar(40) NOT NULL,

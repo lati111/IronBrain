@@ -3,13 +3,31 @@
 namespace App\Dataproviders\Datatables\Auth;
 
 use App\Dataproviders\Datatables\AbstractDatatable;
+use App\Dataproviders\Traits\Paginatable;
 use App\Models\Auth\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 use function PHPUnit\Framework\isNull;
 
 class UserDatatable extends AbstractDatatable
 {
+    Use Paginatable;
+    protected function applyTableFilters(Request $request, Builder|HasMany $builder, bool $pagination = true): Builder|HasMany|JsonResponse
+    {
+        $this->setPerPage(10);
+        if ($pagination === true) {
+            $builder = $this->applyPagination($request, $builder);
+            if ($builder instanceof JsonResponse) {
+                return $builder;
+            }
+        }
+
+        return parent::applyTableFilters($request, $builder);
+    }
+
     private const CHANGE_ROLE_BUTTON_HTML =
         "<div class='text-center'>".
             "<form action='%s' method='POST'>".
