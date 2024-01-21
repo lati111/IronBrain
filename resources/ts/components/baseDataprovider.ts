@@ -97,7 +97,7 @@ export class DataProvider {
             }
 
             let totalPages = 0;
-            let dataUrl = this.pagination.getAttribute('data-url');
+            let dataUrl = this.dataUrl + '/count';
             if (dataUrl !== null) {
                 dataUrl += '?' + this.getUrl().toString().split('?');
                 const data = await getData(dataUrl);
@@ -160,7 +160,7 @@ export class DataProvider {
             }
 
             // show right arrow
-            if (this.page !== totalPages) {
+            if (this.page !== totalPages && this.page !== 1) {
                 const nextpage:number = this.page + 1;
                 this.pagination.append(this.createPaginationNode('>', nextpage));
             } else {

@@ -25,7 +25,7 @@ abstract class AbstractCsvHydrator
         $this->loadData($data);
         if ($this->validate($data) === false) {
             //TODO formal error screen
-            foreach($this->importCsv->get() as $pokemon) {
+            foreach($this->importCsv->Pokemon()->get() as $pokemon) {
                 $pokemon->delete();
             }
 
