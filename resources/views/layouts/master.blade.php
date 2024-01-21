@@ -53,47 +53,49 @@
 
                 {{--| nav items |--}}
                 <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2" dusk="nav">
-                    {{-- <li><a href="/" class="nav-link interactive px-2 link-secondary">Overview</a></li> --}}
-                    @foreach ($navCollection as $nav)
-                        <li dusk="{{$nav->name}}">
-                            @if(count($nav->Submenu) > 0)
-                                <span class="nav-link interactive px-2 link-secondary dropdown-toggle
+                    @isset($navCollection)
+                        @foreach ($navCollection as $nav)
+                            <li dusk="{{$nav->name}}">
+                                @if(count($nav->Submenu) > 0)
+                                    <span class="nav-link interactive px-2 link-secondary dropdown-toggle
                                     @foreach ($nav->Submenu as $submenu)
                                         @if (Route::is($submenu->route))
                                             active
                                         @endif
                                     @endforeach
                                     " data-bs-toggle="dropdown" aria-expanded="false"
-                                >{{$nav->name}}</span>
+                                    >{{$nav->name}}</span>
 
-                                <ul class="dropdown-menu interactive px-2 link-secondary">
-                                    @foreach ($nav->Submenu as $submenu)
-                                        <li><a class="dropdown-item" href="{{route($submenu->route)}}">{{$submenu->name}}</a></li>
-                                    @endforeach
-                                </ul>
-                            @elseif ($nav->route !== null)
-                                <a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary
+                                    <ul class="dropdown-menu interactive px-2 link-secondary">
+                                        @foreach ($nav->Submenu as $submenu)
+                                            <li><a class="dropdown-item" href="{{route($submenu->route)}}">{{$submenu->name}}</a></li>
+                                        @endforeach
+                                    </ul>
+                                @elseif ($nav->route !== null)
+                                    <a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary
                                     @if (Route::is($nav->route))
                                         active
                                     @endif
                                 ">{{$nav->name}}</a>
-                            @endif
-                        </li>
-                    @endforeach
+                                @endif
+                            </li>
+                        @endforeach
+                    @endisset
+
                 </ul>
 
                 {{--| authentication |--}}
                 <div class="dropdown flex justify-center" dusk="auth_header">
-                    @if(isset($user))
+                    @if(Auth::user() !== null)
                         {{--| account icon |--}}
                             <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
                             data-bs-toggle="dropdown" aria-expanded="false" dusk="pfp_dropdown_toggle">
-                            <img src="{{asset(sprintf('img/profile/%s/pfp.svg', $user->uuid))}}" alt="pfp" width="32" height="32" class="rounded-circle">
+                            <img src="{{asset(sprintf('img/profile/%s/pfp.svg', Auth::user()->uuid))}}" alt="pfp" width="32" height="32" class="rounded-circle">
                         </a>
 
                         {{--| account dropdown |--}}
                         <ul class="dropdown-menu text-small shadow" dusk="pfp_dropdown">
-                            <li><span class="dropdown-item pointer-events-none">{{$user->name}}</span></li>
+                            <li><span class="dropdown-item pointer-events-none">{{Auth::user()->name}}</span></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
