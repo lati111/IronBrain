@@ -3,6 +3,10 @@
 @section('htmlTitle', 'Home')
 @section('title', 'Home')
 
+@section('header')
+    @vite(['resources/css/home.css'])
+@endsection
+
 @section('content')
     <section class="pt-3 pb-5 text-center container">
         <div class="row py-lg-3">
@@ -26,7 +30,9 @@
                     <div class="card shadow-sm">
                         <img src="{{asset("img/project/thumbnail/".$project["thumbnail"])}}" alt="{{$project["name"]}}">
                         <div class="card-body">
-                            <h4 class="title text-center">{{$project["name"]}}</h4>
+                            <h4 class="title text-center">
+                                <a href="{{route($project['route'])}}" class="interactive">{{$project["name"]}}</a>
+                            </h4>
                             <p class="card-text text-center">{{$project["description"]}}</p>
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-body-secondary" title="Last Updated">{{$project["timeAgo"]}}</small>

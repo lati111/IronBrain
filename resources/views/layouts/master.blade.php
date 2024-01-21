@@ -7,7 +7,7 @@
     <meta name="description" content="">
     <meta name="author" content="Lati111">
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <title>IronBrain | @yield('htmlTitle')</title>
+    <title>@yield('htmlTitle') | IronBrain</title>
 
     @vite(['resources/css/app.css','resources/ts/app.ts'])
     <link href="{{ asset('css/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
@@ -64,7 +64,7 @@
                                         @endif
                                     @endforeach
                                     " data-bs-toggle="dropdown" aria-expanded="false"
-                                />{{$nav->name}}</span>
+                                >{{$nav->name}}</span>
 
                                 <ul class="dropdown-menu interactive px-2 link-secondary">
                                     @foreach ($nav->Submenu as $submenu)

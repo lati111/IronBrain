@@ -1,0 +1,4 @@
+.card img {
+    height: 12em;
+    border-bottom: var(--main-grey) 2px solid;
+}
