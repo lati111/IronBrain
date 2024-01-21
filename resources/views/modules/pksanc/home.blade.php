@@ -1,7 +1,7 @@
 @extends('layouts.datalist.cardlist.main')
 
-@section('htmlTitle', 'Home')
-@section('title', 'Home')
+@section('htmlTitle', 'PKSanc Box')
+@section('title', 'Box')
 
 @section('css')
     @vite(['resources/css/project/pksanc/box.css'])

@@ -48,7 +48,7 @@ trait Filterable
         $validator = Validator::make($filters, [
             '*.filter' => 'required|string',
             '*.operator' => 'required|string',
-            '*.value' => 'required|string',
+            '*.value' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {

@@ -104,6 +104,8 @@ export class DataProvider {
                 totalPages = parseInt(data);
             }
 
+            this.pagination.innerHTML = '';
+
             // show left arrow
             if (this.page !== 1) {
                 const prevpage:number = this.page - 1;
@@ -229,6 +231,7 @@ export class DataProvider {
             this.filters.push(filter);
         }
 
+        this.page = 1;
         this.update();
     }
 

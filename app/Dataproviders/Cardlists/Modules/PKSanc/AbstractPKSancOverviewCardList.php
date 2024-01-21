@@ -34,7 +34,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
     use Filterable, Searchable, Paginatable;
 
     /** @var array $searchterms Columns that should be searched for in a query */
-    protected array $searchterms = ['nickname', 'pokemon'];
+    protected array $searchterms = ['pksanc__stored_pokemon.nickname', 'pksanc__stored_pokemon.pokemon'];
 
     /**
      * Applies filters to the search
@@ -82,7 +82,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         $filters['nature'] = $filter;
 
         $filter = new SelectFilter(new StoredPokemon, 'name',
-            new ForeignData(StoredPokemon::class, 'pokemon', Ability::class, 'ability'));
+            new ForeignData(StoredPokemon::class, 'ability', Ability::class, 'ability'));
         $filters['ability'] = $filter;
 
         $filter = new PokemonTypeSelectFilter();
@@ -93,7 +93,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         $filters['tera_type'] = $filter;
 
         $filter = new SelectFilter(new StoredPokemon, 'name',
-            new ForeignData(StoredPokemon::class, 'tera_type', Type::class, 'type'));
+            new ForeignData(StoredPokemon::class, 'hidden_power_type', Type::class, 'type'));
         $filters['hidden_power'] = $filter;
 
         $filter = new NumberFilter(new StoredPokemon, 'level');
@@ -260,7 +260,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             'height' => 8
         ];
 
-        if ($pokemon->is_alpha === 1) {
+        if ($pokemon->is_alpha === true) {
             $icons[] = [
                 'src' => asset('img/modules/pksanc/icon/alpha.png'),
                 'alt' => 'aplha icon',
@@ -269,7 +269,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             ];
         }
 
-        if ($pokemon->can_gigantamax === 1) {
+        if ($pokemon->can_gigantamax === true) {
             $icons[] = [
                 'src' => asset('img/modules/pksanc/icon/dyna.png'),
                 'alt' => 'dynamax icon',
@@ -278,7 +278,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             ];
         }
 
-        if ($pokemon->has_n_sparkle === 1) {
+        if ($pokemon->has_n_sparkle === true) {
             $icons[] = [
                 'src' => asset('img/modules/pksanc/icon/n_sparkle.png'),
                 'alt' => 'N sparkle icon',
@@ -287,7 +287,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             ];
         }
 
-        if ($pokemon->is_shiny === 1) {
+        if ($pokemon->is_shiny === true) {
             $icons[] = [
                 'src' => asset('img/modules/pksanc/icon/shiny.png'),
                 'alt' => 'shiny icon',

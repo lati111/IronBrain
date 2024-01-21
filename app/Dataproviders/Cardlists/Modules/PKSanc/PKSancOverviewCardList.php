@@ -35,7 +35,10 @@ class PKSancOverviewCardList extends AbstractPKSancOverviewCardList
         /** @var Builder $pokemonCollection */
         $pokemonCollection = StoredPokemon::select()
             ->where('validated_at', '!=', null)
-            ->where('owner_uuid', Auth::user()->uuid);
+            ->where('owner_uuid', Auth::user()->uuid)
+            ->orderBy('friendship', 'desc')
+            ->orderBy('level', 'desc')
+            ->orderBy('is_shiny', 'desc');
         $pokemonCollection = $this->applyTableFilters($request, $pokemonCollection);
         if ($pokemonCollection instanceof JsonResponse) {
             return $pokemonCollection;
@@ -54,10 +57,11 @@ class PKSancOverviewCardList extends AbstractPKSancOverviewCardList
     /** {@inheritDoc} */
     public function count(Request $request): JsonResponse
     {
+        /** @var Builder $pokemonCollection */
         $pokemonCollection = StoredPokemon::select()
             ->where('validated_at', '!=', null)
             ->where('owner_uuid', Auth::user()->uuid);
-        $count =  $this->getCount($request, $pokemonCollection, true);
+        $count =  $this->getCount($request, $pokemonCollection);
 
         return response()->json($count, ResponseAlias::HTTP_OK);
     }

@@ -21,7 +21,10 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
 
         $pokemonCollection = $csv->Pokemon()
             ->where('validated_at', null)
-            ->where('owner_uuid', Auth::user()->uuid);
+            ->where('owner_uuid', Auth::user()->uuid)
+            ->orderBy('friendship', 'desc')
+            ->orderBy('level', 'desc')
+            ->orderBy('is_shiny', 'desc');
         $pokemonCollection = $this->applyTableFilters($request, $pokemonCollection, true)->get();
 
         $data = [];
