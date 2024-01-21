@@ -15,7 +15,13 @@ class Role extends Model
 
     protected $table = 'auth__role';
 
-    public function hasPermission(Permission $permission) {
+    /** { @inheritdoc } */
+    protected $casts = [
+        'is_admin' => 'boolean',
+    ];
+
+    public function hasPermission(Permission $permission): int
+    {
         return $this
             ->hasMany(RolePermission::class, 'role_id')
             ->where('permission_id', $permission->id)

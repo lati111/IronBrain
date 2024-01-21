@@ -32,7 +32,7 @@ class PermissionGuard
                 return response(view('errors.auth.forbidden'));
             }
 
-            if ($role->admin === 1 || $role->hasPermission($permission)) {
+            if ($role->is_admin || $role->hasPermission($permission) > 0) {
                 continue;
             }
 
