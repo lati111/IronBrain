@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "40e81b87ab25ff34bdba11a94592537a",
+    "content-hash": "3d9adb3a5f90791d0bfd79df4b87ad0b",
     "packages": [
         {
             "name": "brick/math",
@@ -1498,6 +1498,49 @@
                 "source": "https://github.com/laravel/tinker/tree/v2.9.0"
             },
             "time": "2024-01-04T16:10:04+00:00"
+        },
+        {
+            "name": "lati111/laravel_dataproviders",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/lati111/laravel_dataproviders.git",
+                "reference": "f026bdd210f01f283c6e360268d4ba0d3ddbb9e7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/lati111/laravel_dataproviders/zipball/f026bdd210f01f283c6e360268d4ba0d3ddbb9e7",
+                "reference": "f026bdd210f01f283c6e360268d4ba0d3ddbb9e7",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/database": "^10.38",
+                "illuminate/http": "^10.0",
+                "php": "^8.1"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Lati111\\LaravelDataproviders\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "lati111",
+                    "email": "lati@ironbrain.io"
+                }
+            ],
+            "description": "A composer package for laravel to create interactable and customizable datatables through api calls",
+            "support": {
+                "issues": "https://github.com/lati111/laravel_dataproviders/issues",
+                "source": "https://github.com/lati111/laravel_dataproviders/tree/main"
+            },
+            "time": "2024-03-06T14:50:57+00:00"
         },
         {
             "name": "league/commonmark",
@@ -8726,7 +8769,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "lati111/laravel_dataproviders": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

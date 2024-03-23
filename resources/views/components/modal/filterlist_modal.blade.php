@@ -12,7 +12,7 @@
         </div>
     @endslot
     @slot('buttons')
-        <button type="button" onclick="closeModal()" class="cancel_interactive px-5 py-2.5 text-center">Cancel</button>
+        <button type="button" onclick="closeModal({{$id}})" class="cancel_interactive px-5 py-2.5 text-center">Cancel</button>
         <button type="button" onclick="addFilter()"
             class="interactive px-5 py-2.5 text-center" dusk="confirm"
             >Submit</button>

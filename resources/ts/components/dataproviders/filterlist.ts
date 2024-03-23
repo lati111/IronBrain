@@ -79,7 +79,7 @@ function addFilter() {
     }
 
     filterContainer.prepend(generateFilter(type, filter, operator, operatorText, value))
-    closeModal();
+    closeModal(modal.id);
 }
 
 function generateFilter(type:string, filter:string, operator:string, operatorText:string, value:string) {

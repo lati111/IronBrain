@@ -2,21 +2,21 @@
 @section('onloadFunctions')
     imageUploaderInit
     (
-        'filePreview',
-        'fileUploader',
-        'frame',
-        'inOverviewCheckbox'
+    'filePreview',
+    'fileUploader',
+    'frame',
+    'inOverviewCheckbox'
     );
     fillSelectWithPermissions(
-        'permissionSelect',
-        @if(isset($project))
-            @if($project->permission_id !== null)
-                '{{$project->permission_id}}'
-            @endif
-        @elseif(old('permission_id') !== null)
-            '{{old('permission_id')}}'
+    'permissionSelect',
+    @if(isset($project))
+        @if($project->permission_id !== null)
+            '{{$project->permission_id}}'
         @endif
-    );
+    @elseif(old('permission_id') !== null)
+        '{{old('permission_id')}}'
+    @endif
+);
 @stop
 
 @if(isset($project))
@@ -49,20 +49,24 @@
 {{--| left form |--}}
 @section('form_content_left')
     {{--| name field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Name  @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Name
+        @endslot
         @slot('input_html')
             <input type="text" name="name" class="smallInput underlined" placeholder="Name"
-                @isset($project) value="{{$project->name}}" @endisset
-                @if(old('name') !== null) value="{{old('name')}}" @endif
-                dusk="name_input"
+                   @isset($project) value="{{$project->name}}" @endisset
+                   @if(old('name') !== null) value="{{old('name')}}" @endif
+                   dusk="name_input"
             />
         @endslot
     @endcomponent
 
     {{--| image uploader |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Thumbnail  @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Thumbnail
+        @endslot
         @slot('input_html')
             @component('components.form.image_uploader')
                 @if(isset($project))
@@ -83,8 +87,10 @@
 {{--| right form |--}}
 @section('form_content_right')
     {{--| permission field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Permission @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Permission
+        @endslot
         @slot('input_html')
             @component('components.form.select.permission_list')
                 @slot('classes', 'mediumInput')
@@ -94,24 +100,32 @@
     @endcomponent
 
     {{--| route field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Route @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Route
+        @endslot
         @slot('input_html')
             <input type="text" name="route" class="smallInput underlined" placeholder="Route"
-                @isset($project) value="{{$project->route}}" @endisset
-                @if(old('route') !== null) value="{{old('route')}}" @endif
-                dusk="route_input"
+                   @isset($project) value="{{$project->route}}" @endisset
+                   @if(old('route') !== null) value="{{old('route')}}" @endif
+                   dusk="route_input"
             />
         @endslot
     @endcomponent
 
     {{--| description field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Description @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Description
+        @endslot
         @slot('input_html')
             <textarea name="description" class="mediumInput underlined" dusk="description_field"
-                style="height: 90px !important" placeholder="Description" required
-            >@if(isset($project)){{$project->description}}@elseif(old('description') !== null){{old('description')}}@endif</textarea>
+                      style="height: 90px !important" placeholder="Description" required
+            >@if(isset($project))
+                    {{$project->description}}
+                @elseif(old('description') !== null)
+                    {{old('description')}}
+                @endif</textarea>
         @endslot
     @endcomponent
 @stop
@@ -121,25 +135,26 @@
     <div class="flex flex-row justify-around gap-4 pt-3">
         {{--| in overview checkbox |--}}
         <div class="flex items-center justify-center">
-            <input id="inOverviewCheckbox" type="checkbox" name="in_overview" class="w-4 h-4 text-red-600 focus:ring-red-500"
-                @if(old('in_overview') === "on")
-                    checked
-                @elseif (isset($project) === true)
-                    @if ($project->in_overview === 1) checked @endif
-                @elseif(old('name') === null)
-                    checked
-                @endif
-                onchange="toggleThumbnailField()" dusk="in_overview_check">
+            <input id="inOverviewCheckbox" type="checkbox" name="in_overview"
+                   class="w-4 h-4 text-red-600 focus:ring-red-500"
+                   @if(old('in_overview') === "on")
+                       checked
+                   @elseif (isset($project) === true)
+                       @if ($project->in_overview === 1) checked @endif
+                   @elseif(old('name') === null)
+                       checked
+                   @endif
+                   onchange="toggleThumbnailField()" dusk="in_overview_check">
             <label for="default-checkbox" class="ml-2 text-sm" name="in_overview">Visible in overview?</label>
         </div>
 
         {{--| in nav checkbox |--}}
         <div class="flex items-center justify-center">
             <input id="inNavCheckbox" type="checkbox" name="in_nav" class="w-4 h-4 text-red-600 focus:ring-red-500"
-                @isset($project) @if ($project->in_nav === 1) checked @endif @endisset
-                @if(old('in_nav') === "on") checked @endif
-                onchange="toggleOrderField()" dusk="in_nav_check"
-                />
+                   @isset($project) @if ($project->in_nav === 1) checked @endif @endisset
+                   @if(old('in_nav') === "on") checked @endif
+                   onchange="toggleOrderField()" dusk="in_nav_check"
+            />
             <label for="default-checkbox" class="ml-2 text-sm" name="in_nav">Visible in navigation?</label>
         </div>
 
@@ -147,17 +162,18 @@
         <div id="orderField" class="flex items-center justify-center gap-2 m-0
             @if(isset($project))
                 @if ($project->in_nav === false) invisible" @endif
-            @elseif(old('in_nav') !== "on")
-                invisible"
-            @endif
+        @elseif(old('in_nav') !== "on")
+            invisible
+        "
+        @endif
 
         />
-            <label for="default-checkbox" class="ml-2 text-sm" name="order">Navigation order:</label>
-            <input type="number" name="order" class="w-16 h-4 pr-0 underlined" dusk="order_input"
-                @isset($project) value="{{$project->order}}" @endisset
-                @if(old('route') !== null) value="{{old('order')}}" @endif
-                />
-        </div>
+        <label for="default-checkbox" class="ml-2 text-sm" name="order">Navigation order:</label>
+        <input type="number" name="order" class="w-16 h-4 pr-0 underlined" dusk="order_input"
+               @isset($project) value="{{$project->order}}" @endisset
+               @if(old('route') !== null) value="{{old('order')}}" @endif
+        />
+    </div>
     </div>
 @stop
 
@@ -167,21 +183,36 @@
 @isset($project)
     @section('table_headers')
         @component('components.datalist.datatable.header')
-            @slot('columnId')name @endslot
-            @slot('content')name @endslot
-        @endcomponent
-        @component('components.datalist.datatable.header')
-            @slot('columnId')route @endslot
-            @slot('content')route @endslot
-        @endcomponent
-        @component('components.datalist.datatable.header')
-            @slot('columnId')order @endslot
-            @slot('content')order @endslot
-        @endcomponent
-        @component('components.datalist.datatable.header')
-            @slot('columnId')actions @endslot
+            @slot('columnId')
+                name
+            @endslot
             @slot('content')
-                <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline" dusk="new_submenu">Add Submenu</a>
+                name
+            @endslot
+        @endcomponent
+        @component('components.datalist.datatable.header')
+            @slot('columnId')
+                route
+            @endslot
+            @slot('content')
+                route
+            @endslot
+        @endcomponent
+        @component('components.datalist.datatable.header')
+            @slot('columnId')
+                order
+            @endslot
+            @slot('content')
+                order
+            @endslot
+        @endcomponent
+        @component('components.datalist.datatable.header')
+            @slot('columnId')
+                actions
+            @endslot
+            @slot('content')
+                <a href="{{route('config.projects.submenu.new', $project->id)}}" class="interactive no-underline"
+                   dusk="new_submenu">Add Submenu</a>
             @endslot
         @endcomponent
     @stop
@@ -190,43 +221,43 @@
 @endisset
 
 @section('scripts')
-@vite([
-    'resources/ts/components/form/image_uploader.ts',
-    'resources/ts/components/form/permission_select.ts',
-])
-<script>
-    function validate() {
-        if (fileUploader.classList.contains('hidden') === false) {
-            if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
+    @vite([
+        'resources/ts/components/form/image_uploader.ts',
+        'resources/ts/components/form/permission_select.ts',
+    ])
+    <script>
+        function validate() {
+            if (fileUploader.classList.contains('hidden') === false) {
+                if (form.querySelector('input[name="thumbnail"]').checkValidity() === false) {
+                    return false;
+                }
+            }
+
+            if (form.querySelector('input[name="name"]').checkValidity() === false) {
                 return false;
             }
+
+            if (form.querySelector('input[name="route"]').checkValidity() === false) {
+                return false;
+            }
+
+            if (form.querySelector('select[name="permission_id"]').checkValidity() === false) {
+                return false;
+            }
+
+            if (form.querySelector('textarea[name="description"]').checkValidity() === false) {
+                return false;
+            }
+
+            form.submit();
         }
 
-        if (form.querySelector('input[name="name"]').checkValidity() === false) {
-            return false;
+        function toggleOrderField() {
+            if (inNavCheckbox.checked) {
+                orderField.classList.remove("invisible");
+            } else {
+                orderField.classList.add("invisible");
+            }
         }
-
-        if (form.querySelector('input[name="route"]').checkValidity() === false) {
-            return false;
-        }
-
-        if (form.querySelector('select[name="permission_id"]').checkValidity() === false) {
-            return false;
-        }
-
-        if (form.querySelector('textarea[name="description"]').checkValidity() === false) {
-            return false;
-        }
-
-        form.submit();
-    }
-
-    function toggleOrderField() {
-        if (inNavCheckbox.checked) {
-            orderField.classList.remove("invisible");
-        } else {
-            orderField.classList.add("invisible");
-        }
-    }
-</script>
+    </script>
 @stop

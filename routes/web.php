@@ -4,6 +4,7 @@ use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +55,10 @@ Route::prefix('/pksanc')
                 ->name('pksanc.deposit.stage.cancel');
         });
     });
+
+    // api calls
+    Route::post('/romhacks/add', [PKSancContributionController::class, 'addRomhack'])
+        ->name('pksanc.games.romhacks.add');
 
     // data providers
     Route::prefix('/data/overview')->group(function() {

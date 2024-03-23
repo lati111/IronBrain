@@ -2,23 +2,29 @@
 
 namespace App\Models\PKSanc;
 
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\AbstractModel;
 
 /**
+ * @inheritDoc
  * @property string game The code for this game as used in PKHeX
  * @property string name The display name for this game
  * @property ?string original_game which game this game is based of, in the case of romhacks. Otherwise null
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
+ * @property boolean is_romhack Whether this game is a romhack or not
  */
 
-class Game extends Model
+class Game extends AbstractModel
 {
-    use HasTimestamps;
-
+    /** { @inheritdoc } */
     protected $table = 'pksanc__game';
+
+    /** { @inheritdoc } */
     protected $primaryKey = 'game';
-    public $incrementing = false;
+
+    /** { @inheritdoc } */
+    protected $keyType = 'string';
+
+    /** { @inheritdoc } */
+    protected $casts = [
+        'is_romhack' => 'boolean',
+    ];
 }

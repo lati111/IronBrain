@@ -6,46 +6,54 @@
 
 @section('form_content')
     {{--| username  field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Username @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Username
+        @endslot
         @slot('input_html')
-        <input type="text" name="name" class="largeInput underlined" placeholder="Name"
-            @if(old('name') !== null) value="{{old('name')}}" @endif
-            dusk="name_input" required autocomplete="off"
-        />
+            <input type="text" name="name" class="largeInput underlined" placeholder="Name"
+                   @if(old('name') !== null) value="{{old('name')}}" @endif
+                   dusk="name_input" required autocomplete="off"
+            />
         @endslot
     @endcomponent
 
     {{--| email field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Email @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Email
+        @endslot
         @slot('input_html')
-        <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
-            @if(old('email') !== null) value="{{old('email')}}" @endif
-            dusk="email_input" required autocomplete="new-email"
-        />
+            <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
+                   @if(old('email') !== null) value="{{old('email')}}" @endif
+                   dusk="email_input" required autocomplete="new-email"
+            />
         @endslot
     @endcomponent
 
     {{--| password field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Password @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Password
+        @endslot
         @slot('input_html')
-        <input type="password" name="password" class="largeInput underlined" placeholder="Password"
-            @if(old('password') !== null) value="{{old('password')}}" @endif
-            dusk="password_input" required autocomplete="new-password"
-        />
+            <input type="password" name="password" class="largeInput underlined" placeholder="Password"
+                   @if(old('password') !== null) value="{{old('password')}}" @endif
+                   dusk="password_input" required autocomplete="new-password"
+            />
         @endslot
     @endcomponent
 
     {{--| repeat password field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Repeat Password @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Repeat Password
+        @endslot
         @slot('input_html')
-        <input type="password" name="repeat_password" class="largeInput underlined" placeholder="Repeat Password"
-            @if(old('repeat_password') !== null) value="{{old('repeat_password')}}" @endif
-            dusk="repeat_password_input" required
-        />
+            <input type="password" name="repeat_password" class="largeInput underlined" placeholder="Repeat Password"
+                   @if(old('repeat_password') !== null) value="{{old('repeat_password')}}" @endif
+                   dusk="repeat_password_input" required
+            />
         @endslot
     @endcomponent
 @stop

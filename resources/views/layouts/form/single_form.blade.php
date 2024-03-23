@@ -17,7 +17,7 @@
                 <form id="form" action="@yield('submit_route')" method="POST" enctype="multipart/form-data">
                     @csrf
 
-                    <div class="flex flex-col justify-center gap-4">
+                    <div class="flex flex-col justify-center align-items-center gap-4">
                         @yield('form_content')
                     </div>
 

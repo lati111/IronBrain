@@ -1,6 +1,6 @@
 const toasts:Element = document.querySelector('#toasts')!;
 
-function init() {
+function toastInit() {
     setTimeout(() => {
         const errorToasts = document.querySelectorAll(".error-toast");
         for (let i = 0; i < errorToasts.length; i++) {
@@ -60,4 +60,4 @@ function generateRandomString(length: number): string {
     return result;
 }
 
-(<any>window).init = init;
+(<any>window).toastInit = toastInit;
