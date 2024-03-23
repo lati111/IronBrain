@@ -45,7 +45,7 @@ function generateCardWrapper(): Element {
     card.classList.add('flex');
     card.classList.add('flex-col');
     card.classList.add('justify-center');
-    card.classList.add('shadow-sm');
+    card.classList.add('shadow');
     card.classList.add('p-3');
 
     const cardBody:Element = document.createElement('div');

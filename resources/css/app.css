@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 :root:root {
     --bs-body-font-family: 'Platform';
@@ -70,18 +70,19 @@ input.underlined, select.underlined, textarea.underlined {
     color: var(--sub-grey) !important;
 }
 
-.smallInput {
+.defaultInputHeight {
     height: 24px;
+}
+
+.smallInput {
     width: 300px
 }
 
 .mediumInput {
-    height: 24px;
     width: 300px;
 }
 
 .largeInput {
-    height: 24px;
     width: 425px;
 }
 
