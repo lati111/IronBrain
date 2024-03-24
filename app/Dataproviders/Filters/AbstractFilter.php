@@ -23,6 +23,12 @@ abstract class AbstractFilter
             $this->foreignData->linkForeignTable($builder);
         }
 
+        if ($this->column instanceof CustomColumn) {
+            $builder = $this->column->applySelector($builder);
+            $builder->having($this->column->getAlias(), $operator, $value);
+            return;
+        }
+
         $builder->where($this->column, $operator, $value);
     }
 

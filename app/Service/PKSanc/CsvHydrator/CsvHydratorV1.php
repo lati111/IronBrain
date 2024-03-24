@@ -127,8 +127,8 @@ class CsvHydratorV1 extends AbstractCsvHydrator
         $pokemon->hidden_power_type = $data['HP_type'];
         $pokemon->tera_type = $data['Tera_type'];
         $pokemon->is_shiny = $this->parseBool($data['Is_shiny']);
-        $pokemon->is_alpha = $this->parseBool($data['Is_alpha']);
-        $pokemon->can_gigantamax = $this->parseBool($data['Can_gigantamax']);
+        $pokemon->is_alpha = $this->parseBool($data['Can_gigantamax']);
+        $pokemon->can_gigantamax = $this->parseBool($data['Is_alpha']);
         $pokemon->has_n_sparkle = $this->parseBool($data['Has_n_sparkle']);
         $pokemon->dynamax_level = intval($data['Dynamax_level']);
         $pokemon->csv_uuid = $this->importCsv->uuid;

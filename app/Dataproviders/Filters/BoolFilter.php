@@ -13,6 +13,10 @@ class BoolFilter extends AbstractFilter
         parent::__construct($model, $column, $foreignData);
     }
 
+    public function handle($builder, string $operator, string $value) {
+        parent::handle($builder, $operator, true);
+    }
+
     protected function getOperators(): array {
         switch($this->operatorTypes) {
             default:

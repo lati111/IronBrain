@@ -15,7 +15,7 @@ class CustomColumn
     }
 
     public function applySelector($builder) {
-        return $builder->select(DB::raw(sprintf('%s as %s', $this->selector, $this->alias)));
+        return $builder->addSelect(DB::raw(sprintf('%s as %s', $this->selector, $this->alias)));
     }
 
     public function getAlias(): string {
