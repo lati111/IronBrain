@@ -2,6 +2,7 @@
 
 namespace App\Models\PKSanc;
 
+use App\Models\AbstractModel;
 use Database\Factories\Modules\PKSanc\MovesetFactory;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string updated_at The date this model was last updated
  */
 
-class Moveset extends Model
+class Moveset extends AbstractModel
 {
     use HasFactory;
     use HasTimestamps;

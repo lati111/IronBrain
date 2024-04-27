@@ -2,6 +2,7 @@
 
 namespace App\Models\PKSanc;
 
+use App\Models\AbstractModel;
 use Database\Factories\Modules\PKSanc\ContestStatblockFactory;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string updated_at The date this model was last updated
  */
 
-class ContestStats extends Model
+class ContestStats extends AbstractModel
 {
     use HasFactory;
     use HasTimestamps;

@@ -2,6 +2,7 @@
 
 namespace App\Models\PKSanc;
 
+use App\Models\AbstractModel;
 use Database\Factories\Modules\PKSanc\OriginFactory;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string updated_at The date this model was last updated
  */
 
-class Origin extends Model
+class Origin extends AbstractModel
 {
     use HasFactory, HasTimestamps, HasUuids;
 

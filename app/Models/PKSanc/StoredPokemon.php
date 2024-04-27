@@ -2,15 +2,13 @@
 
 namespace App\Models\PKSanc;
 
+use App\Models\AbstractModel;
 use App\Models\Auth\User;
 use Database\Factories\Modules\PKSanc\StoredPokemonFactory;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string PID The pokemon's identifier as provided by PKHeX
@@ -40,7 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string updated_at The date this model was last updated
  */
 
-class StoredPokemon extends Model
+class StoredPokemon extends AbstractModel
 {
     use HasFactory;
     use HasTimestamps;
