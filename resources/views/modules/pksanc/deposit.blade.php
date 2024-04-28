@@ -15,6 +15,7 @@
 @section('onloadFunction', 'init()')
 
 @section('form_content')
+    {{--| info blurb |--}}
     <div class="text-center">
         <div>Import a set of pokemon from a save file into PKSanc.</div>
         <p>
@@ -62,16 +63,11 @@
             @endslot
             @slot('classes', 'largeInput')
             @slot('input_html')
-                <div class="flex gap-1 defaultInputHeight">
-                    <select name="game" class="underlined py-0 grow">
-                        <option>Select a game</option>
-                        @foreach ($gamesCollection as $game)
-                            <option value="{{$game->game}}">{{$game->name}}</option>
-                        @endforeach
-                    </select>
-                    <button type="button" class="interactive font-bold text-xl" title="add game"
-                            onclick="openModal('add_romhack_modal')">+
-                    </button>
+                <div class="flex gap-1 h-8">
+                    <x-datalist.dataselect.dataselect id="game-selector" name="game" url="{{route('pksanc.games.dataselect')}}" identifier="game" label="name" dynamicloading="false">
+                    </x-datalist.dataselect.dataselect>
+
+                    <button type="button" class="interactive font-bold text-2xl" title="add game" onclick="openModal('add_romhack_modal')">+</button>
                 </div>
             @endslot
         @endcomponent
@@ -89,7 +85,7 @@
                     Romhack name
                 @endslot
                 @slot('input_html')
-                    <input type="text" name="romhack_name" class="mediumInput underlined" placeholder="Name" required>
+                    <input type="text" name="romhack_name" class="mediumInput underlined h-8" placeholder="Name" required>
                 @endslot
             @endcomponent
 
@@ -99,7 +95,7 @@
                 @endslot
                 @slot('input_html')
                     <select name="romhack_original_game" class="mediumInput underlined py-0">
-                        <option>Select a game</option>
+                        <option>Original game</option>
                         @foreach ($gamesCollection as $game)
                             @if ($game->original_game === null)
                                 <option value="{{$game->game}}">{{$game->name}}</option>
@@ -110,7 +106,7 @@
             @endcomponent
         @endslot
         @slot('buttons')
-            <button type="button" onclick="closeModal()" class="cancel_interactive px-5 py-2.5 text-center">Cancel
+            <button type="button" onclick="closeModal('add_romhack_modal')" class="cancel_interactive px-5 py-2.5 text-center">Cancel
             </button>
             <button type="button" onclick="saveRomhack();"
                     class="interactive px-5 py-2.5 text-center" dusk="confirm">Submit

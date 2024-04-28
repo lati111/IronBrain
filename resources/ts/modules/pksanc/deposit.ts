@@ -2,11 +2,15 @@ import {closeModal, init as initModals} from "../../components/modal";
 import {IronbrainError} from "../../Exceptions/IronbrainError";
 import {toast} from "../../main";
 import {postData} from "../../ajax";
+import {DataSelect} from "../../components/datalists/DataSelect";
 
 const romhackModalId: string = 'add_romhack_modal';
 
-function init() {
+async function init() {
     initModals();
+
+    const gameSelect = new DataSelect('game-selector')
+    await gameSelect.init();
 }
 
 async function saveRomhack() {

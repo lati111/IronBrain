@@ -1,8 +1,9 @@
 <?php
 
-use App\Dataproviders\Cardlists\Modules\Config\ProjectOverviewCardlist;
+use App\Dataproviders\Cardlists\Config\ProjectOverviewCardlist;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
+use App\Dataproviders\SelectorLists\Modules\PKSanc\GameDataSelect;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
@@ -95,4 +96,12 @@ Route::prefix('/pksanc')
         Route::get('/filters', [PKSancStagingCardList::class, 'filters'])
             ->name('pksanc.staging.filters');
     });
+
+        Route::prefix('/data/games/dataselect')->group(function() {
+            Route::get('/', [GameDataSelect::class, 'data'])
+                ->name('pksanc.games.dataselect');
+
+            Route::get('/pages', [GameDataSelect::class, 'count'])
+                ->name('pksanc.games.pages');
+        });
 });

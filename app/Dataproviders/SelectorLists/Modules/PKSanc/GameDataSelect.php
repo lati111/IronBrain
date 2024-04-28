@@ -1,32 +1,20 @@
 <?php
-namespace App\Dataproviders\Cardlists\Modules\Config;
+namespace App\Dataproviders\SelectorLists\Modules\PKSanc;
 
 use App\Dataproviders\Cardlists\AbstractCardlist;
-use App\Dataproviders\Interfaces\FilterableDataproviderInterface;
-use App\Exceptions\IronBrainException;
 use App\Models\Config\Project;
-use App\Models\PKSanc\Ability;
 use App\Models\PKSanc\Game;
-use App\Models\PKSanc\ImportCsv;
-use App\Models\PKSanc\Nature;
-use App\Models\PKSanc\Origin;
-use App\Models\PKSanc\Pokeball;
-use App\Models\PKSanc\Pokemon;
-use App\Models\PKSanc\StoredPokemon;
-use App\Models\PKSanc\Trainer;
 use App\Service\TimeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
-use Lati111\LaravelDataproviders\Traits\Filterable;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
 
-class ProjectOverviewCardlist extends AbstractCardlist
+class GameDataSelect extends AbstractCardlist
 {
-    use Dataprovider, Paginatable, Searchable;
+    use Dataprovider, Searchable;
 
     /**
      * Gets the data after being modified by the query parameters
@@ -37,11 +25,12 @@ class ProjectOverviewCardlist extends AbstractCardlist
     {
         $data = $this->getData($request)
             ->get()
-            ->map(function (Project $module) {
-                $module['route'] = route($module['route']);
-                $module['thumbnail'] = asset('img/project/thumbnail/'.$module['thumbnail']);
-                $module['time_ago'] = TimeService::time_elapsed_string($module->updated_at);
-                return $module;
+            ->map(function (Game $game) {
+                if ($game->is_romhack) {
+                    $game['name'] .= ' (romhack)';
+                }
+
+                return $game;
             });
 
         return response()->json($data, 200);
@@ -51,10 +40,7 @@ class ProjectOverviewCardlist extends AbstractCardlist
     protected function getContent(Request $request): Builder
     {
         /** @var Builder $modules */
-        $modules = Project::select()
-            ->where('in_overview', true)
-            ->where('active', true)
-            ->orderBy('updated_at', 'desc');
+        $modules = Game::select();
 
         return $modules;
     }
@@ -72,6 +58,6 @@ class ProjectOverviewCardlist extends AbstractCardlist
     /** { @inheritdoc } */
     function getSearchFields(): array
     {
-        return ['name', 'description'];
+        return ['name'];
     }
 }

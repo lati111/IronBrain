@@ -173,7 +173,7 @@ img.interactive:hover, img.interactive.active, img.interactive:focus {
     color: var(--main-black) !important;
 }
 
-input.underlined, select.underlined, textarea.underlined {
+.underlined {
     border: none !important;
     border-bottom: 1px var(--main-grey) solid !important;
 }
@@ -231,4 +231,20 @@ header {
 
 h1 {
     font-size: 2em;
+}
+
+h2 {
+    font-size: 1.8em;
+}
+
+h3 {
+    font-size: 1.6em;
+}
+
+h4 {
+    font-size: 1.4em;
+}
+
+h5 {
+    font-size: 1.2em;
 }

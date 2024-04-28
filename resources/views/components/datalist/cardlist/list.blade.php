@@ -30,7 +30,7 @@
         class="dataprovider cardlist text-center w-full"
     >
         <div id="{{$id}}-spinner" class="spinner flex justify-center py-6">
-            <img src="{{asset('img/icons/loading.svg')}}" class="animate-spin" alt="bezig met laden">
+            <img src="{{asset('img/icons/loading.svg')}}" class="animate-spin" alt="loading">
         </div>
 
         <div id="{{$id}}-content" class="hidden flex justify-center flex-wrap gap-6"></div>
