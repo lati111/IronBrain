@@ -11,8 +11,8 @@
         {{$buttons_center_right ?? ''}}
         @component('components.datalist.parts.perpage_select')
             @slot('id', $id.'-pagination-perpage-selector')
-            @slot('selected_option', 9)
-            @slot('options', [3,6,9,12,18,30])
+            @slot('selected_option', intval($perpage ?? 9))
+            @slot('options', $perpageoptions ?? [3,6,9,12,18,30])
         @endcomponent
         {{$buttons_right ?? ''}}
     </div>

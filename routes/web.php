@@ -2,6 +2,7 @@
 
 use App\Dataproviders\Cardlists\Config\ProjectOverviewCardlist;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
+use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancPokedexCardList;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
 use App\Dataproviders\SelectorLists\Modules\PKSanc\GameDataSelect;
 use App\Http\Controllers\Auth\AuthController;
@@ -51,6 +52,9 @@ Route::prefix('/pksanc')
     Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');
 
+    Route::get('/pokedex', [PKSancController::class, 'showPokedex'])
+        ->name('pksanc.pokedex.show');
+
     Route::prefix('/deposit')->group(function() {
         Route::get('/', [PKSancDepositController::class, 'showDeposit'])
             ->name('pksanc.deposit.show');
@@ -97,11 +101,22 @@ Route::prefix('/pksanc')
             ->name('pksanc.staging.filters');
     });
 
-        Route::prefix('/data/games/dataselect')->group(function() {
-            Route::get('/', [GameDataSelect::class, 'data'])
-                ->name('pksanc.games.dataselect');
+    Route::prefix('/data/pokedex')->group(function() {
+        Route::get('/', [PKSancPokedexCardList::class, 'data'])
+            ->name('pksanc.pokedex.cardlist');
 
-            Route::get('/pages', [GameDataSelect::class, 'count'])
-                ->name('pksanc.games.pages');
-        });
+        Route::get('/pages', [PKSancPokedexCardList::class, 'count'])
+            ->name('pksanc.pokedex.pages');
+
+//        Route::get('/filters', [PKSancOverviewCardList::class, 'filters'])
+//            ->name('pksanc.pokedex.filters');
+    });
+
+    Route::prefix('/data/games/dataselect')->group(function() {
+        Route::get('/', [GameDataSelect::class, 'data'])
+            ->name('pksanc.games.dataselect');
+
+        Route::get('/pages', [GameDataSelect::class, 'count'])
+            ->name('pksanc.games.pages');
+    });
 });

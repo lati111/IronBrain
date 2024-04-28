@@ -25,7 +25,7 @@
         {{--| pokemon info list |--}}
         <div class="pksanc-minimal-block flex flex-col justify-center gap-0 w-24">
             <span class="text-center" title="species" data-name="nickname"></span>
-            <img src="sprite" data-name="sprite" data-alt-name="pokemon" title="sprite"
+            <img data-name="sprite" data-alt-name="pokemon" title="sprite"
                  class="w-24 h-24">
             <div class="flex flex-col items-center">
                 <span class="text-center" data-name="pokemon_name" title="name"></span>

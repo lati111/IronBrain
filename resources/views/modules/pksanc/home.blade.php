@@ -15,8 +15,9 @@
 
 @section('content')
     {{--| title |--}}
-    <div id="flex justify-center">
+    <div class="flex justify-center">
         <div id="top-bar-container" class="relative">
+            <a href="{{route('pksanc.pokedex.show')}}" class="interactive">Pokedex</a>
             <a href="{{route('pksanc.deposit.show')}}" class="interactive absolute right-0 top-0">Deposit Pokemon</a>
         </div>
     </div>
