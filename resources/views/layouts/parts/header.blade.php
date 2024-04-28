@@ -21,7 +21,7 @@
                                     @endforeach
                                 </x-lists.dropdown.main>
                             @elseif ($nav->route !== null)
-                                <x-lists.dropdown.false-dropdown title="{{$nav->name}}" cls="@if (Route::is($submenu->route))active @endif"/>
+                                <x-lists.dropdown.false-dropdown href="{{route($nav->route)}}" title="{{$nav->name}}" cls="@if (Route::is($submenu->route))active @endif"/>
                             @endif
                         </li>
                     @endforeach
