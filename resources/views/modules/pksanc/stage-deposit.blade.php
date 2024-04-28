@@ -1,20 +1,17 @@
-@extends('layouts.master')
+@extends('layouts.main')
 
 @section('htmlTitle', 'Deposit')
 @section('title', 'Deposit')
 
-@section('css')
+@section('header')
     @vite([
         'resources/css/components/datalist/cardlist.css',
-        'resources/css/project/pksanc/box.css'
+        'resources/css/project/pksanc/box.css',
+        'resources/ts/modules/pksanc/box.ts'
     ])
 @stop
 
-@section('script')
-    @vite(['resources/ts/modules/pksanc/box.ts'])
-@stop
-
-@section('onloadFunction', 'init()')
+@section('onload_functions', 'init()')
 
 @section('content')
 <div class="flex flex-col justify-center text-center mb-3">

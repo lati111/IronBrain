@@ -94,3 +94,7 @@ input.underlined, select.underlined, textarea.underlined {
 .datatable-middle {
     height: 52px;
 }
+
+h1 {
+    font-size: 2em;
+}

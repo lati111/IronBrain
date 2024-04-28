@@ -1,5 +1,6 @@
 <?php
 
+use App\Dataproviders\Cardlists\Modules\Config\ProjectOverviewCardlist;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
 use App\Http\Controllers\Auth\AuthController;
@@ -9,7 +10,19 @@ use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [HomeController::class, 'show'])->name("home.show");
+//| home
+Route::prefix('/')->group(function() {
+    Route::get('/', [HomeController::class, 'show'])->name("home.show");
+
+    // data providers
+    Route::prefix('/home/data/overview')->group(function() {
+        Route::get('/', [ProjectOverviewCardlist::class, 'data'])
+            ->name('home.overview.cardlist');
+
+        Route::get('/pages', [ProjectOverviewCardlist::class, 'count'])
+            ->name('home.overview.pages');
+    });
+});
 
 //| authentication
 Route::prefix('/auth')->group(function() {

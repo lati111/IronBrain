@@ -23,7 +23,7 @@
         data-content-url="{{$url}}"
         data-pagination-ID="{{$id}}-pagination"
         data-searchbar-ID="{{$id}}-searchbar"
-        data-empty-body="<p><class='text-center w-full'>Geen resultaten</p>"
+        data-empty-body="<p><class='text-center w-full'>No results</p>"
         @if(($history ?? true) === false || ($history ?? 'true') === 'false')data-history="false" @endif
         @if(($dynamic ?? false) === true || ($dynamic ?? 'false') === 'true')data-dynamic-url="true" @endif
         @isset($activity_column)data-activity-key="{{$activity_column}}" @endisset
