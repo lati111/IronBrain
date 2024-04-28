@@ -1505,12 +1505,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/lati111/laravel_dataproviders.git",
-                "reference": "f026bdd210f01f283c6e360268d4ba0d3ddbb9e7"
+                "reference": "f5081da44bd06b5e2a9b48f3c8c1f09b39eed332"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/lati111/laravel_dataproviders/zipball/f026bdd210f01f283c6e360268d4ba0d3ddbb9e7",
-                "reference": "f026bdd210f01f283c6e360268d4ba0d3ddbb9e7",
+                "url": "https://api.github.com/repos/lati111/laravel_dataproviders/zipball/f5081da44bd06b5e2a9b48f3c8c1f09b39eed332",
+                "reference": "f5081da44bd06b5e2a9b48f3c8c1f09b39eed332",
                 "shasum": ""
             },
             "require": {
@@ -1540,7 +1540,7 @@
                 "issues": "https://github.com/lati111/laravel_dataproviders/issues",
                 "source": "https://github.com/lati111/laravel_dataproviders/tree/main"
             },
-            "time": "2024-03-06T14:50:57+00:00"
+            "time": "2024-03-26T13:26:31+00:00"
         },
         {
             "name": "league/commonmark",

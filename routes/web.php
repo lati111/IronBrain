@@ -65,8 +65,8 @@ Route::prefix('/pksanc')
         Route::get('/', [PKSancOverviewCardList::class, 'data'])
             ->name('pksanc.overview.cardlist');
 
-        Route::get('/count', [PKSancOverviewCardList::class, 'count'])
-            ->name('pksanc.overview.count');
+        Route::get('/pages', [PKSancOverviewCardList::class, 'count'])
+            ->name('pksanc.overview.pages');
 
         Route::get('/filters', [PKSancOverviewCardList::class, 'filters'])
             ->name('pksanc.overview.filters');
@@ -76,8 +76,8 @@ Route::prefix('/pksanc')
         Route::get('/', [PKSancStagingCardList::class, 'data'])
             ->name('pksanc.staging.cardlist');
 
-        Route::get('/count', [PKSancStagingCardList::class, 'count'])
-            ->name('pksanc.staging.count');
+        Route::get('/pages', [PKSancStagingCardList::class, 'count'])
+            ->name('pksanc.staging.pages');
 
         Route::get('/filters', [PKSancStagingCardList::class, 'filters'])
             ->name('pksanc.staging.filters');

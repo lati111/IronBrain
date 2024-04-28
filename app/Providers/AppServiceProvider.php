@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Enum\PKSanc\Genders;
+use App\Models\AbstractModel;
 use App\Models\PKSanc\Move;
 use App\Models\PKSanc\Pokemon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Validator;
@@ -52,6 +54,30 @@ class AppServiceProvider extends ServiceProvider
 
         Validator::extend('pksanc_trainer_gender', function ($attribute, $value, $parameters, $validator) {
             return in_array($value, Genders::trainerGenders);
+        });
+
+        Builder::macro('jointable', function (AbstractModel|string $foreignTable, AbstractModel|string $localTable, string $foreignkey, string $operator, string $localkey = 'uuid') {
+            if ($foreignTable instanceof AbstractModel) {
+                $foreignTable = $foreignTable::getTableName();
+            }
+
+            if ($localTable instanceof AbstractModel) {
+                $localTable = $localTable::getTableName();
+            }
+
+            return $this->join($foreignTable, $localTable.'.'.$foreignkey, $operator, $foreignTable.'.'.$localkey);
+        });
+
+        Builder::macro('leftjointable', function (AbstractModel|string $foreignTable, AbstractModel|string $localTable, string $foreignkey, string $operator, string $localkey = 'uuid') {
+            if ($foreignTable instanceof AbstractModel) {
+                $foreignTable = $foreignTable::getTableName();
+            }
+
+            if ($localTable instanceof AbstractModel) {
+                $localTable = $localTable::getTableName();
+            }
+
+            return $this->leftJoin($foreignTable, $localTable.'.'.$foreignkey, $operator, $foreignTable.'.'.$localkey);
         });
     }
 }
