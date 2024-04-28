@@ -1,4 +1,4 @@
-<div id="pokemon-cardlist-template" class="card flex flex-col justify-center rounded shadow p-3">
+<div id="pokemon-cardlist-template" class="card flex flex-col justify-center rounded shadow border gray-border p-3">
     {{--| icon list |--}}
     <div class="card-body flex justify-center items-center">
         <div class="flex flex-col justify-center items-center h-full w-8 my-2 gap-2">

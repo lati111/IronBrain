@@ -8,7 +8,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <title>@yield('htmlTitle') | IronBrain</title>
 
-        @vite(['resources/css/app.css','resources/ts/app.ts', 'resources/ts/main.ts'])
+        @vite(['resources/css/app.css', 'resources/ts/app.ts', 'resources/ts/main.ts'])
         @yield('header')
     </head>
 

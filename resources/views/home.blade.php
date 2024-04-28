@@ -38,7 +38,7 @@
                     <div class="card-body">
                         <h4 class="title text-center">
                             <a data-attribute-name="route" data-settable-attribute="href" class="interactive">
-                                <span data-name="name"></span>
+                                <span class="text-xl" data-name="name"></span>
                             </a>
                         </h4>
 
