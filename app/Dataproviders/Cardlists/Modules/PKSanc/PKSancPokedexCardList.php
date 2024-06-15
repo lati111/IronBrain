@@ -1,20 +1,28 @@
 <?php
 namespace App\Dataproviders\Cardlists\Modules\PKSanc;
 
+use App\Dataproviders\Cardlists\AbstractCardlist;
+use App\Dataproviders\Filters\PKSanc\PokemonTypeSelectFilter;
+use App\Dataproviders\Interfaces\FilterableDataproviderInterface;
 use App\Exceptions\IronBrainException;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Lati111\LaravelDataproviders\Filters\Conditions\IsConditionFilter;
+use Lati111\LaravelDataproviders\Filters\NumberFilter;
+use Lati111\LaravelDataproviders\Filters\SelectFilter;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Filterable;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
+use Symfony\Component\HttpFoundation\Response;
 
-class PKSancPokedexCardList extends AbstractPKSancOverviewCardList
+class PKSancPokedexCardList extends AbstractCardlist implements FilterableDataproviderInterface
 {
-    use Dataprovider, Paginatable, Searchable;
+    use Dataprovider, Paginatable, Searchable, Filterable;
 
     /**
      * Gets the data after being modified by the query parameters
@@ -92,9 +100,30 @@ class PKSancPokedexCardList extends AbstractPKSancOverviewCardList
         return response()->json($this->getPages($request), 200);
     }
 
+    // Method to be called from a route to get filter options
+    public function filters(Request $request): JsonResponse
+    {
+        // Gets either a list of available filters, or a list of available options for a filter if one is specified
+        $data = $this->getFilterData($request);
+
+        // Return the data as a JsonResponse
+        return response()->json($data, Response::HTTP_OK);
+    }
+
     /** { @inheritdoc } */
     function getSearchFields(): array
     {
         return ['species_name', 'form_name'];
+    }
+
+    public function getFilterList(): array {
+        $filters = [];
+
+        $filter = new NumberFilter(new Pokemon(), 'generation');
+        $filters['generation'] = $filter;
+
+        $filters['type'] = new PokemonTypeSelectFilter();
+
+        return $filters;
     }
 }

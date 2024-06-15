@@ -12,7 +12,7 @@ async function init() {
     await overview.init();
 
     initModals();
-    
+
     (<any>window).openFilterModal = overview.openFilterModal.bind(overview);
 }
 

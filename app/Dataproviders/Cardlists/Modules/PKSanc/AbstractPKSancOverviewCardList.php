@@ -2,7 +2,7 @@
 namespace App\Dataproviders\Cardlists\Modules\PKSanc;
 
 use App\Dataproviders\Cardlists\AbstractCardlist;
-use App\Dataproviders\Filters\PKSanc\PokemonTypeSelectFilter;
+use App\Dataproviders\Filters\PKSanc\StoredPokemonTypeSelectFilter;
 use App\Dataproviders\Interfaces\FilterableDataproviderInterface;
 use App\Exceptions\IronBrainException;
 use App\Models\PKSanc\Ability;
@@ -181,7 +181,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             new ForeignTable(StoredPokemon::class, 'ability', Ability::class, 'ability'));
         $filters['ability'] = $filter;
 
-        $filter = new PokemonTypeSelectFilter();
+        $filter = new StoredPokemonTypeSelectFilter();
         $filters['type'] = $filter;
 
         $filter = new SelectFilter(new StoredPokemon, 'name',

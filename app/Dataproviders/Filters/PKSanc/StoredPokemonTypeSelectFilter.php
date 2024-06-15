@@ -10,13 +10,15 @@ use Lati111\LaravelDataproviders\Exceptions\DataproviderException;
 use Lati111\LaravelDataproviders\Filters\AbstractFilter;
 use Lati111\LaravelDataproviders\Filters\ForeignTable;
 
-class PokemonTypeSelectFilter extends AbstractFilter
+class StoredPokemonTypeSelectFilter extends AbstractFilter
 {
     /** { @inheritdoc } */
     protected string $type = 'select';
 
     public function __construct() {
-        parent::__construct(new Pokemon(), 'name');
+        parent::__construct(new StoredPokemon, 'name',
+            new ForeignTable(StoredPokemon::class, 'pokemon', Pokemon::class, 'pokemon')
+        );
     }
 
     /** { @inheritdoc } */

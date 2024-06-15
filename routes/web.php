@@ -109,8 +109,8 @@ Route::prefix('/pksanc')
         Route::get('/pages', [PKSancPokedexCardList::class, 'count'])
             ->name('pksanc.pokedex.pages');
 
-//        Route::get('/filters', [PKSancOverviewCardList::class, 'filters'])
-//            ->name('pksanc.pokedex.filters');
+        Route::get('/filters', [PKSancPokedexCardList::class, 'filters'])
+            ->name('pksanc.pokedex.filters');
     });
 
     Route::prefix('/data/games/dataselect')->group(function() {

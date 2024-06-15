@@ -41,9 +41,11 @@
         @if(($history ?? true) === false || ($history ?? 'true') === 'false')data-history="false" @endif
         @if(($dynamic ?? false) === true || ($dynamic ?? 'false') === 'true')data-dynamic-url="true" @endif
         @isset($activity_column)data-activity-key="{{$activity_column}}" @endisset
-        data-option-content-cls="block p-2 border-transparent border-l-4 group-hover:border-red-600 group-hover:bg-gray-100 h-9"
-        data-filter-item-container-cls="underlined flex gap-2 justify-center px-2"
-        data-filter-delete-button-content="<img src='{{asset('img/icons/x.svg')}}' alt='delete' class='interactive w-5 h-5'>"
+        @if(($filtering ?? false) === true || ($filtering ?? 'false') === 'true')
+            data-option-content-cls="block p-2 border-transparent border-l-4 group-hover:border-red-600 group-hover:bg-gray-100 h-9"
+            data-filter-item-container-cls="underlined flex gap-2 justify-center px-2"
+            data-filter-delete-button-content="<img src='{{asset('img/icons/x.svg')}}' alt='delete' class='interactive w-5 h-5'>"
+        @endif
         class="dataprovider cardlist text-center w-full mt-6"
     >
         {{--| Load spinner |--}}
