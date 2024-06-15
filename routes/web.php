@@ -4,6 +4,7 @@ use App\Dataproviders\Cardlists\Config\ProjectOverviewCardlist;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancPokedexCardList;
 use App\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
+use App\Dataproviders\SelectorLists\Modules\PKSanc\FilterSelects\OwnedPokemonSpecies;
 use App\Dataproviders\SelectorLists\Modules\PKSanc\GameDataSelect;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
@@ -119,4 +120,12 @@ Route::prefix('/pksanc')
         Route::get('/pages', [GameDataSelect::class, 'count'])
             ->name('pksanc.games.pages');
     });
+
+        Route::prefix('/data/owned-species/dataselect')->group(function() {
+            Route::get('/', [OwnedPokemonSpecies::class, 'data'])
+                ->name('pksanc.owned-species.dataselect');
+
+            Route::get('/pages', [OwnedPokemonSpecies::class, 'count'])
+                ->name('pksanc.owned-species.pages');
+        });
 });

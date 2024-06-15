@@ -64,7 +64,8 @@
             @slot('classes', 'largeInput')
             @slot('input_html')
                 <div class="flex gap-1 h-8">
-                    <x-datalist.dataselect.dataselect id="game-selector" name="game" url="{{route('pksanc.games.dataselect')}}" identifier="game" label="name" dynamicloading="false">
+                    <x-datalist.dataselect.dataselect id="game-selector" name="game"
+                        url="{{route('pksanc.games.dataselect')}}" identifier="game" label="name" dynamicloading="false">
                     </x-datalist.dataselect.dataselect>
 
                     <button type="button" class="interactive font-bold text-2xl" title="add game" onclick="openModal('add_romhack_modal')">+</button>
