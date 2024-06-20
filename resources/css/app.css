@@ -1,6 +1,127 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-Regular.eot');
+    src: local('Platform Regular'), local('Platform-Regular'),
+    url('../../public/font/Platform-Regular.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-Regular.woff2') format('woff2'),
+    url('../../public/font/Platform-Regular.woff') format('woff'),
+    url('../../public/font/Platform-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-MediumItalic.eot');
+    src: local('Platform Medium Italic'), local('Platform-MediumItalic'),
+    url('../../public/font/Platform-MediumItalic.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-MediumItalic.woff2') format('woff2'),
+    url('../../public/font/Platform-MediumItalic.woff') format('woff'),
+    url('../../public/font/Platform-MediumItalic.ttf') format('truetype');
+    font-weight: 500;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-BoldItalic.eot');
+    src: local('Platform Bold Italic'), local('Platform-BoldItalic'),
+    url('../../public/font/Platform-BoldItalic.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-BoldItalic.woff2') format('woff2'),
+    url('../../public/font/Platform-BoldItalic.woff') format('woff'),
+    url('../../public/font/Platform-BoldItalic.ttf') format('truetype');
+    font-weight: bold;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Platform Hairline';
+    src: url('../../public/font/Platform-Hairline.eot');
+    src: local('Platform Hairline'), local('Platform-Hairline'),
+    url('../../public/font/Platform-Hairline.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-Hairline.woff2') format('woff2'),
+    url('../../public/font/Platform-Hairline.woff') format('woff'),
+    url('../../public/font/Platform-Hairline.ttf') format('truetype');
+    font-weight: 200;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Platform Hairline';
+    src: url('../../public/font/Platform-HairlineItalic.eot');
+    src: local('Platform Hairline Italic'), local('Platform-HairlineItalic'),
+    url('../../public/font/Platform-HairlineItalic.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-HairlineItalic.woff2') format('woff2'),
+    url('../../public/font/Platform-HairlineItalic.woff') format('woff'),
+    url('../../public/font/Platform-HairlineItalic.ttf') format('truetype');
+    font-weight: 200;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-Medium.eot');
+    src: local('Platform Medium'), local('Platform-Medium'),
+    url('../../public/font/Platform-Medium.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-Medium.woff2') format('woff2'),
+    url('../../public/font/Platform-Medium.woff') format('woff'),
+    url('../../public/font/Platform-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-RegularItalic.eot');
+    src: local('Platform Regular Italic'), local('Platform-RegularItalic'),
+    url('../../public/font/Platform-RegularItalic.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-RegularItalic.woff2') format('woff2'),
+    url('../../public/font/Platform-RegularItalic.woff') format('woff'),
+    url('../../public/font/Platform-RegularItalic.ttf') format('truetype');
+    font-weight: normal;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-Bold.eot');
+    src: local('Platform Bold'), local('Platform-Bold'),
+    url('../../public/font/Platform-Bold.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-Bold.woff2') format('woff2'),
+    url('../../public/font/Platform-Bold.woff') format('woff'),
+    url('../../public/font/Platform-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-Light.eot');
+    src: local('Platform Light'), local('Platform-Light'),
+    url('../../public/font/Platform-Light.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-Light.woff2') format('woff2'),
+    url('../../public/font/Platform-Light.woff') format('woff'),
+    url('../../public/font/Platform-Light.ttf') format('truetype');
+    font-weight: 300;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Platform';
+    src: url('../../public/font/Platform-LightItalic.eot');
+    src: local('Platform Light Italic'), local('Platform-LightItalic'),
+    url('../../public/font/Platform-LightItalic.eot?#iefix') format('embedded-opentype'),
+    url('../../public/font/Platform-LightItalic.woff2') format('woff2'),
+    url('../../public/font/Platform-LightItalic.woff') format('woff'),
+    url('../../public/font/Platform-LightItalic.ttf') format('truetype');
+    font-weight: 300;
+    font-style: italic;
+}
+
 
 :root:root {
     --bs-body-font-family: 'Platform';
@@ -9,6 +130,10 @@
     --main-grey: #B3B3B3;
     --sub-grey: #4f4f4f;
     --main-black: #000000;
+}
+
+body {
+    font-family: var(--bs-body-font-family);
 }
 
 #logo {
@@ -48,7 +173,7 @@ img.interactive:hover, img.interactive.active, img.interactive:focus {
     color: var(--main-black) !important;
 }
 
-input.underlined, select.underlined, textarea.underlined {
+.underlined {
     border: none !important;
     border-bottom: 1px var(--main-grey) solid !important;
 }
@@ -70,18 +195,19 @@ input.underlined, select.underlined, textarea.underlined {
     color: var(--sub-grey) !important;
 }
 
-.smallInput {
+.defaultInputHeight {
     height: 24px;
+}
+
+.smallInput {
     width: 300px
 }
 
 .mediumInput {
-    height: 24px;
     width: 300px;
 }
 
 .largeInput {
-    height: 24px;
     width: 425px;
 }
 
@@ -92,4 +218,33 @@ input.underlined, select.underlined, textarea.underlined {
 
 .datatable-middle {
     height: 52px;
+}
+
+.gray-border {
+    border-color: #dee2e6;
+}
+
+header {
+    background: rgba(248, 249, 250, 1) !important;
+    border-bottom: 1px solid #dee2e6;
+}
+
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1.8em;
+}
+
+h3 {
+    font-size: 1.6em;
+}
+
+h4 {
+    font-size: 1.4em;
+}
+
+h5 {
+    font-size: 1.2em;
 }

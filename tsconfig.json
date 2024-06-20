@@ -7,7 +7,7 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "lib": [
-            "es5", "es6", "dom", "dom.iterable"
+            "ES2022","es5", "es6", "dom", "dom.iterable"
         ]
     },
     "$schema": "https://json.schemastore.org/tsconfig",

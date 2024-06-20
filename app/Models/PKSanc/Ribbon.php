@@ -2,11 +2,12 @@
 
 namespace App\Models\PKSanc;
 
+use App\Models\AbstractModel;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Ribbon extends Model
+class Ribbon extends AbstractModel
 {
     use HasFactory;
     use HasTimestamps;

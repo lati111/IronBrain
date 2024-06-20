@@ -3,6 +3,7 @@
 namespace App\Models\PKSanc;
 
 use App\Enum\PKSanc\StoragePaths;
+use App\Models\AbstractModel;
 use App\Models\Auth\User;
 use Database\Factories\Modules\PKSanc\ImportCsvFactory;
 use Database\Factories\Modules\PKSanc\StoredPokemonFactory;
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string updated_at The date this model was last updated
  */
 
-class ImportCsv extends Model
+class ImportCsv extends AbstractModel
 {
     use HasFactory;
     use HasTimestamps;

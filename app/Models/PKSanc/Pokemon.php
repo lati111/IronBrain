@@ -2,6 +2,7 @@
 
 namespace App\Models\PKSanc;
 
+use App\Models\AbstractModel;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string form_name The display version of the form name
  * @property int form_index The index of this form, as stated in PokeAPI and PKHeX
  * @property int pokedex_id The pokedex number of this pokemon from the national dex
+ * @property int internal_pokedex_id The pokedex number of this pokemon internally used in pksanc
  * @property string primary_type The pokemon's primary typing, as per the Type model
  * @property string secondary_type The pokemon's secondary typing, as per the Type model. Can be same as primary type
  * @property int base_hp The pokemon's base HP stat
@@ -33,15 +35,46 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string updated_at The date this model was last updated
  */
 
-class Pokemon extends Model
+class Pokemon extends AbstractModel
 {
     use HasTimestamps;
 
     //TODO make on delete for sprites
 
+    /** { @inheritdoc } */
     protected $table = 'pksanc__pokemon';
+
+    /** { @inheritdoc } */
     protected $primaryKey = 'pokemon';
+
+    /** { @inheritdoc } */
     public $incrementing = false;
+
+    public $fillable = ['internal_pokedex_id'];
+
+
+    /** { @inheritdoc } */
+    protected static function booted(): void
+    {
+        static::creating(function(Pokemon $pokemon) {
+            if ($pokemon->form_index === 0) {
+                $pokemon->internal_pokedex_id = $pokemon->pokedex_id;
+
+                Pokemon::where('species', $pokemon->species)->update([
+                    'internal_pokedex_id' => $pokemon->pokedex_id
+                ]);
+                return;
+            }
+
+            $pkmn = Pokemon::where('species', $pokemon->species)->where('form_index', 0)->first();
+            if ($pkmn === null) {
+                $pokemon->internal_pokedex_id = '9999999';
+                return;
+            }
+
+            $pokemon->internal_pokedex_id = $pkmn->pokedex_id;
+        });
+    }
 
     public function getName(): string {
         $name = $this->species_name;

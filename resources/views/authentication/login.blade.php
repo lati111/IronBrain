@@ -6,23 +6,27 @@
 
 @section('form_content')
     {{--| email field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Email @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Email
+        @endslot
         @slot('input_html')
             <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
-                @if(old('email') !== null) value="{{old('email')}}" @endif
-                dusk="email_input" required
+                   @if(old('email') !== null) value="{{old('email')}}" @endif
+                   dusk="email_input" required
             />
         @endslot
     @endcomponent
 
     {{--| password field |--}}
-    @component('components.form.input_wrapper')
-        @slot('label_text')Password @endslot
+    @component('components.form.input-wrapper')
+        @slot('label_text')
+            Password
+        @endslot
         @slot('input_html')
             <input type="password" name="password" class="largeInput underlined" placeholder="Password"
-                @if(old('password') !== null) value="{{old('password')}}" @endif
-                dusk="password_input" required
+                   @if(old('password') !== null) value="{{old('password')}}" @endif
+                   dusk="password_input" required
             />
         @endslot
     @endcomponent

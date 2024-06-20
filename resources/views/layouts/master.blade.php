@@ -10,117 +10,23 @@
     <title>@yield('htmlTitle') | IronBrain</title>
 
     @vite(['resources/css/app.css','resources/ts/app.ts'])
-    <link href="{{ asset('css/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     @yield('header')
 </head>
 
-<body onload="init(); @yield('onloadFunction')" class="relative">
-    <div class="absolute flex flex-col gap-2 top-3 left-3 w-64" dusk="toasts">
-        @if ($error = Session::get('error'))
-            @component('components.toast')
-                @slot('id') error-toast-0 @endslot
-                @slot('text') {{$error}} @endslot
-                @slot('class') error-toast @endslot
-            @endcomponent
-        @endif
-        @foreach ($errors->all() as $error)
-            @component('components.toast')
-                @slot('id') error-toast-{{$loop->index + 1}} @endslot
-                @slot('text') {{$error}} @endslot
-                @slot('class') error-toast @endslot
-            @endcomponent
-        @endforeach
-
-        @if ($message = Session::get('message'))
-            @component('components.toast')
-                @slot('id') message-toast-0 @endslot
-                @slot('text') {{$message}} @endslot
-                @slot('class') message-toast @endslot
-            @endcomponent
-        @endif
-    </div>
+<body onload="toastInit(); @yield('onloadFunction')" class="relative">
+    {{--| header |--}}
+    @include('layouts.parts.toasts')
 
     {{--| header |--}}
-    <header class="p-3 mb-3 border-bottom bg-body-tertiary">
-        <div class="container">
-            <div class="flex items-center justify-center flex-wrapjustify-content-lg-start">
-                {{--| logo |--}}
-                <a href="/"
-                    class="flex items-center link-body-emphasis text-decoration-none">
-                    <img src="{{ asset('img/logo_cropped.svg') }}" alt="IronBrain" class="" width="160"
-                        height="40" role="img" aria-label="IronBrain" id="logo"/>
-                </a>
+    @include('layouts.parts.header')
 
-                {{--| nav items |--}}
-                <ul class="nav col-12 col-lg-auto me-lg-auto justify-content-center mb-md-0 ml-2" dusk="nav">
-                    @isset($navCollection)
-                        @foreach ($navCollection as $nav)
-                            <li dusk="{{$nav->name}}">
-                                @if(count($nav->Submenu) > 0)
-                                    <span class="nav-link interactive px-2 link-secondary dropdown-toggle
-                                    @foreach ($nav->Submenu as $submenu)
-                                        @if (Route::is($submenu->route))
-                                            active
-                                        @endif
-                                    @endforeach
-                                    " data-bs-toggle="dropdown" aria-expanded="false"
-                                    >{{$nav->name}}</span>
-
-                                    <ul class="dropdown-menu interactive px-2 link-secondary">
-                                        @foreach ($nav->Submenu as $submenu)
-                                            <li><a class="dropdown-item" href="{{route($submenu->route)}}">{{$submenu->name}}</a></li>
-                                        @endforeach
-                                    </ul>
-                                @elseif ($nav->route !== null)
-                                    <a href="{{route($nav->route)}}" class="nav-link interactive px-2 link-secondary
-                                    @if (Route::is($nav->route))
-                                        active
-                                    @endif
-                                ">{{$nav->name}}</a>
-                                @endif
-                            </li>
-                        @endforeach
-                    @endisset
-
-                </ul>
-
-                {{--| authentication |--}}
-                <div class="dropdown flex justify-center" dusk="auth_header">
-                    @if(Auth::user() !== null)
-                        {{--| account icon |--}}
-                            <a href="#" class="flex items-center link-dark text-decoration-none dropdown-toggle"
-                            data-bs-toggle="dropdown" aria-expanded="false" dusk="pfp_dropdown_toggle">
-                            <img src="{{asset(sprintf('img/profile/%s/pfp.svg', Auth::user()->uuid))}}" alt="pfp" width="32" height="32" class="rounded-circle">
-                        </a>
-
-                        {{--| account dropdown |--}}
-                        <ul class="dropdown-menu text-small shadow" dusk="pfp_dropdown">
-                            <li><span class="dropdown-item pointer-events-none">{{Auth::user()->name}}</span></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li><a class="dropdown-item" href="{{route('auth.logout')}}" dusk="logout">Sign out</a></li>
-                        </ul>
-                    @else
-                        {{--| login / sign up |--}}
-                        <div class="flex justify-center gap-3">
-                            <a href="{{route('auth.login.show')}}" class="interactive" dusk="login">Log In</a>
-                            <a href="{{route('auth.signup.show')}}" class="interactive" dusk="signup">Sign Up</a>
-                        </div>
-                    @endif
-
-                </div>
-            </div>
-        </div>
-    </header>
-
+    {{--| body |--}}
     <main class="relative">
         @yield('content')
     </main>
 </body>
 
 @vite(['resources/ts/main.ts'])
-<script src="{{ asset('js/bootstrap/bootstrap.bundle.js') }}"></script>
 @yield('script')
 
 </html>

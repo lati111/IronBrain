@@ -3,7 +3,7 @@
     <div class="relative w-full max-w-md max-h-full">
         <div class="relative bg-white rounded-lg shadow">
             <button type="button"
-                class="absolute top-3 right-2.5 interactive rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" onclick="closeModal()">
+                class="absolute top-3 right-2.5 interactive rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" onclick="closeModal('delete_modal')">
                 <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
                     xmlns="http://www.w3.org/2000/svg">
                     <path fill-rule="evenodd"
@@ -22,12 +22,12 @@
                 <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">{{ $text }}</h3>
                 <button type="button" class="mr-2 px-5 py-2.5 interactive"
                     dusk="delete_confirm"
-                    onclick="closeModal(); @isset($confirmFunction) {{$confirmFunction}} @endisset"
-                />
+                    onclick="closeModal('delete_modal'); @isset($confirmFunction) {{$confirmFunction}} @endisset">
                     Yes, I'm sure
                 </button>
-                <button onclick="closeModal()" type="button" class="mr-2 px-5 py-2.5 cancel_interactive" dusk="delete_cancel">No,
-                    cancel</button>
+                <button onclick="closeModal('delete_modal')" type="button" class="mr-2 px-5 py-2.5 cancel_interactive" dusk="delete_cancel">No,
+                    cancel
+                </button>
             </div>
         </div>
     </div>
