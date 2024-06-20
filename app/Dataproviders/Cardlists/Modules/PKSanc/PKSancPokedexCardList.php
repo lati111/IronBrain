@@ -4,7 +4,9 @@ namespace App\Dataproviders\Cardlists\Modules\PKSanc;
 use App\Dataproviders\Cardlists\AbstractCardlist;
 use App\Dataproviders\Filters\PKSanc\PokemonTypeSelectFilter;
 use App\Dataproviders\Interfaces\FilterableDataproviderInterface;
+use App\Enum\PKSanc\PokedexMarkings;
 use App\Exceptions\IronBrainException;
+use App\Models\PKSanc\PokedexMarking;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
 use Illuminate\Database\Eloquent\Builder;
@@ -57,7 +59,9 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
     /** { @inheritdoc } */
     protected function getContent(Request $request): Builder
     {
-        $unowned = StoredPokemon::selectRaw('count(*)')
+        $user = Auth::user();
+
+        $owned = StoredPokemon::selectRaw('count(*)')
             ->whereRaw(sprintf("`%s`.`pokemon` = `%s`.`pokemon`", Pokemon::getTableName(), StoredPokemon::getTableName()))
             ->toSql();
 
@@ -72,10 +76,18 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
             ->whereRaw(sprintf("`%s`.`pokemon` = `%s`.`pokemon`", Pokemon::getTableName(), StoredPokemon::getTableName()))
             ->toSql();
 
+        // marked as caught
+        $markedAsRead = PokedexMarking::selectRaw('count(*)')
+            ->whereRaw(sprintf("`%s`.`pokedex_id` = `%s`.`pokedex_id`", PokedexMarking::getTableName(), Pokemon::getTableName()))
+            ->whereRaw(sprintf("`%s`.`form_index` = `%s`.`form_index`", PokedexMarking::getTableName(), Pokemon::getTableName()))
+            ->whereRaw(sprintf("`%s`.`marking` = '%s'", PokedexMarking::getTableName(), PokedexMarkings::CAUGHT))
+            ->whereRaw(sprintf("`%s`.`user_uuid` = '%s'", PokedexMarking::getTableName(), $user->uuid))
+            ->toSql();
+
         /** @var Builder $pokemonCollection */
         $pokemonCollection = Pokemon::selectRaw(sprintf(
-                '(%s) as `amount_owned`, (%s) as `shinies_owned`, ((%s) = 0) as `unowned`',
-                $amountOwned, $shiniesOwned, $unowned
+                '(%s) as `amount_owned`, (%s) as `shinies_owned`, ((%s) > 0) as `owned`, ((%s) = 0) as `unowned`, ((%s) > 0) as `marked-as-read`',
+                $amountOwned, $shiniesOwned, $owned, $owned, $markedAsRead
             ))
             ->orderBy('internal_pokedex_id')
             ->orderBy('form_index')
@@ -84,6 +96,7 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
                 'species_name',
                 'form_name',
                 'pokedex_id',
+                'form_index',
                 'sprite'
             ]);
 

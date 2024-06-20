@@ -11,6 +11,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
+use App\Http\Controllers\Modules\PKSanc\PKSancPokdexController;
 use Illuminate\Support\Facades\Route;
 
 //| home
@@ -78,6 +79,12 @@ Route::prefix('/pksanc')
     // api calls
     Route::post('/romhacks/add', [PKSancContributionController::class, 'addRomhack'])
         ->name('pksanc.games.romhacks.add');
+
+    Route::post('/pokedex/mark', [PKSancPokdexController::class, 'setPokedexMarking'])
+        ->name('pksanc.pokedex.mark');
+
+    Route::post('/pokedex/unmark', [PKSancPokdexController::class, 'setPokedexMarking'])
+        ->name('pksanc.pokedex.unmark');
 
     // data providers
     Route::prefix('/data/overview')->group(function() {

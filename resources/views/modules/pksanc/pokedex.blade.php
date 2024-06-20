@@ -29,6 +29,8 @@
         <x-datalist.cardlist.list id="pokedex-cardlist" url="{{route('pksanc.pokedex.cardlist')}}" perpage="12" :perpageoptions="$perpageoptions" filtering="true">
             {{--| template |--}}
             <x-datalist.cardlist.template id="pokedex-cardlist">
+                <input type="hidden" name="pokedex_id">
+                <input type="hidden" name="form_index">
                 <div class="flex justify-center">
                     <div class="flex flex-col justify-center items-center h-full mr-1 w-8 gap-2">
                         <div class="flex justify-center items-center gap-1 h-6">
@@ -54,6 +56,25 @@
                             <span class="text-center" data-name="species_name" title="name"></span>
                             <span class="text-center" data-name="form_name" title="name"></span>
                         </div>
+                    </div>
+
+                    <div class="flex items-center px-3 h-full">
+                        <div class="divider"></div>
+                    </div>
+
+                    <div class="flex flex-col justify-center items-center h-full mr-1 w-8 gap-2">
+                        <div class="flex justify-center items-center gap-1 h-6">
+                            <x-form.input.checkbox name="" data-hide-if-true-name="unowned" checked disabled>
+                                Read
+                            </x-form.input.checkbox>
+                            <x-form.input.checkbox name="marked-as-read" onchange="markAsRead(this.closest('.card'), this.checked)" data-hide-if-true-name="owned">
+                                Read
+                            </x-form.input.checkbox>
+                        </div>
+{{--                        <div class="flex justify-center items-center gap-1 h-6 w-6">--}}
+{{--                            <button><img src="{{asset('img/icons/visible.svg')}}" class="interactive"></button>--}}
+{{--                            <button class="hidden"><img src="{{asset('img/icons/invisible.svg')}}" class="interactive"></button>--}}
+{{--                        </div>--}}
                     </div>
                 </div>
             </x-datalist.cardlist.template>
