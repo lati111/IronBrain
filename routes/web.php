@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Modules\Compendium\StatblockController;
+use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
 use App\Http\Controllers\Modules\PKSanc\PKSancPokdexController;
@@ -74,3 +76,13 @@ Route::prefix('/pksanc')
         });
     });
 });
+
+//| compendium
+Route::prefix('/compendium')
+    ->group(function() {
+        Route::get('/test', [StatblockController::class, 'showStatblock'])
+            ->name("compendium.test");
+
+        Route::get('/data', [StatblockController::class, 'getData'])
+            ->name("compendium.data");
+    });
