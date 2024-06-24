@@ -8,6 +8,7 @@ use App\Dataproviders\SelectorLists\Modules\PKSanc\FilterSelects\OwnedPokemonSpe
 use App\Dataproviders\SelectorLists\Modules\PKSanc\GameDataSelect;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Modules\Compendium\StatblockController;
 use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
@@ -136,3 +137,13 @@ Route::prefix('/pksanc')
                 ->name('pksanc.owned-species.pages');
         });
 });
+
+//| compendium
+Route::prefix('/compendium')
+    ->group(function() {
+        Route::get('/test', [StatblockController::class, 'showStatblock'])
+            ->name("compendium.test");
+
+        Route::get('/data', [StatblockController::class, 'getData'])
+            ->name("compendium.data");
+    });
