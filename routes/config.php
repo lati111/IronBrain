@@ -1,17 +1,17 @@
 <?php
 
-use App\Dataproviders\Datatables\Auth\PermissionDatatable;
-use App\Dataproviders\Datatables\Config\ProjectDatatable;
-use App\Dataproviders\Datatables\Auth\RoleDatatable;
-use App\Dataproviders\Datatables\Auth\UserDatatable;
-use App\Dataproviders\Datatables\Config\SubmenuDatatable;
-use App\Dataproviders\SelectorLists\Auth\PermissionSelectorList;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Config\ProjectController;
-use App\Http\Controllers\Config\SubmenuController;
 use App\Http\Controllers\Config\PermissionController;
+use App\Http\Controllers\Config\ProjectController;
 use App\Http\Controllers\Config\RoleController;
+use App\Http\Controllers\Config\SubmenuController;
 use App\Http\Controllers\Config\UserController;
+use App\Http\Dataproviders\Datatables\Auth\PermissionDatatable;
+use App\Http\Dataproviders\Datatables\Auth\RoleDatatable;
+use App\Http\Dataproviders\Datatables\Auth\UserDatatable;
+use App\Http\Dataproviders\Datatables\Config\ProjectDatatable;
+use App\Http\Dataproviders\Datatables\Config\SubmenuDatatable;
+use App\Http\Dataproviders\SelectorLists\Auth\PermissionSelectorList;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('/config')
     ->middleware('auth:sanctum')
