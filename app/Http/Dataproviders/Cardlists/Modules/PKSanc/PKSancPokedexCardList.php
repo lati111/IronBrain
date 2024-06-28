@@ -1,11 +1,14 @@
 <?php
 namespace App\Http\Dataproviders\Cardlists\Modules\PKSanc;
 
+use App\Enum\GenericStringEnum;
 use App\Enum\PKSanc\PokedexMarkings;
 use App\Exceptions\IronBrainException;
 use App\Http\Dataproviders\Cardlists\AbstractCardlist;
 use App\Http\Dataproviders\Filters\PKSanc\PokemonTypeSelectFilter;
 use App\Http\Dataproviders\Interfaces\FilterableDataproviderInterface;
+use App\Http\Dataproviders\Traits\HasFilters;
+use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\PKSanc\PokedexMarking;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
@@ -22,7 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PKSancPokedexCardList extends AbstractCardlist implements FilterableDataproviderInterface
 {
-    use Dataprovider, Paginatable, Searchable, Filterable;
+    use Dataprovider, Paginatable, HasPages, Searchable, Filterable, HasFilters;
 
     /**
      * Gets the data after being modified by the query parameters
@@ -48,10 +51,10 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
                     return $pkmn;
                 });
         } catch (IronBrainException $e) {
-            return response()->json($e->publicMessage, $e->getCode());
+            return $this->respond($e->getCode(), $e->publicMessage);
         }
 
-        return response()->json($data, 200);
+        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
     }
 
     /** { @inheritdoc } */
@@ -99,26 +102,6 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
             ]);
 
         return $pokemonCollection;
-    }
-
-    /**
-     * Gets the amount of pages that exists with the given query parameters
-     * @param Request $request The request parameters as given by Laravel
-     * @return JsonResponse The amount of pages in JSON format
-     */
-    public function count(Request $request): JsonResponse
-    {
-        return response()->json($this->getPages($request), 200);
-    }
-
-    // Method to be called from a route to get filter options
-    public function filters(Request $request): JsonResponse
-    {
-        // Gets either a list of available filters, or a list of available options for a filter if one is specified
-        $data = $this->getFilterData($request);
-
-        // Return the data as a JsonResponse
-        return response()->json($data, Response::HTTP_OK);
     }
 
     /** { @inheritdoc } */
