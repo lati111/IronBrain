@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
+use App\Http\Controllers\Modules\PKSanc\PKSancPokdexController;
 use Illuminate\Support\Facades\Route;
 
 //| home
@@ -37,7 +38,7 @@ Route::prefix('/pksanc')
     Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');
 
-    Route::get('/pokedex', [PKSancController::class, 'showPokedex'])
+    Route::get('/pokedex', [PKSancPokdexController::class, 'showPokedex'])
         ->name('pksanc.pokedex.show');
 
     Route::prefix('/deposit')->group(function() {
