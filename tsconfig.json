@@ -5,11 +5,8 @@
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "lib": [
-            "ES2022","es5", "es6", "dom", "dom.iterable"
-        ]
+        "forceConsistentCasingInFileNames": true
     },
     "$schema": "https://json.schemastore.org/tsconfig",
     "display": "Recommended"
-  }
+}

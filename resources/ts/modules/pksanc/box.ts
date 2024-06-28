@@ -16,8 +16,6 @@ async function init() {
     (<any>window).openFilterModal = overview.openFilterModal.bind(overview);
 }
 
-
-
 function filterAddedEvent() {
     closeModal("pokemon-cardlist-filter-modal");
 }

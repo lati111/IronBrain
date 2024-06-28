@@ -1,17 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\Modules\PKSanc;
+namespace App\Http\Api\Modules\PKSanc;
 
-use App\Http\Controllers\Controller;
+use App\Enum\PKSanc\ContributionStrings;
+use App\Http\Api\AbstractApi;
 use App\Models\PKSanc\Game;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
-class PKSancContributionController extends Controller
+class ContributionApi extends AbstractApi
 {
     /**
      * Adds a new romhack
@@ -48,6 +47,6 @@ class PKSancContributionController extends Controller
         $romhack->is_romhack = true;
         $romhack->save();
 
-        return response()->json($romhack, Response::HTTP_CREATED);
+        return $this->respond(Response::HTTP_CREATED, ContributionStrings::ROMHACK_ADDED, $romhack);
     }
 }

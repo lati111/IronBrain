@@ -1,7 +1,6 @@
 import {DataCardlist} from "../../components/datalists/DataCardlist";
 import {closeModal, init as initModals} from "../../components/modal";
 import {postData} from "../../ajax";
-import {toast} from "../../main";
 
 /**
  * Initializes the pksanc box page
@@ -29,15 +28,14 @@ async function markAsRead(card: HTMLElement, addMarking: boolean = true) {
     formdata.append('form_index', formIndex)
     formdata.append('marking', 'CAUGHT')
 
+    let response;
     if (addMarking) {
-        if (await postData('/pksanc/pokedex/mark', formdata) === true) {
-            toast('Pokemon marked as caught')
-        }
+        response = await postData('/pksanc/pokedex/mark', formdata);
     } else {
-        if (await postData('/pksanc/pokedex/unmark', formdata) === true) {
-            toast('Pokemon no longer marked as caught')
-        }
+        response = await postData('/pksanc/pokedex/unmark', formdata);
     }
+
+    response?.announce();
 }
 
 // async function markAsHidden(card: HTMLElement, addMarking: boolean = true) {

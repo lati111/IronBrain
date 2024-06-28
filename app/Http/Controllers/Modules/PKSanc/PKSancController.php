@@ -15,15 +15,4 @@ class PKSancController extends Controller
     {
         return view('modules.pksanc.home', $this->getBaseVariables());
     }
-
-    /**
-     * Shows the PKSanc pokedex
-     * @return View Returns a View of the page
-     */
-    public function showPokedex(): View
-    {
-        return view('modules.pksanc.pokedex', array_merge($this->getBaseVariables(), [
-            'perpageoptions' => ['21']
-        ]));
-    }
 }

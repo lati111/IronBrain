@@ -1,7 +1,8 @@
 //| ajax requests
 import {toast} from "./main";
+import {GenericFormData} from "axios";
 
-export async function postData(url:string, data:FormData|string = new FormData(), whitelist:string[] = []) {
+export async function postData(url: string, data: GenericFormData|string = new FormData, whitelist: string[] = []) {
     url = urlFormatter(url);
 
     let csrf = document.querySelector('meta[name="csrf-token"]');

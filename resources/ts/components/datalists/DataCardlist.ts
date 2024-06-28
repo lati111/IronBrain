@@ -9,14 +9,14 @@ export class DataCardlist extends LaravelDataCardList {
     /** @inheritDoc */
     async fetchData(url: string): Promise<any> {
         const response = await fetchGet(url);
-        return response;
+        return response.data;
     }
 
     /** @inheritDoc */
     async postData(url: string, parameters: FormData): Promise<any> {
         const response = await fetchPost(url, parameters);
-        //response?.announce();
-        return response;
+        response?.announce();
+        return response?.data;
     }
 
     public openFilterModal (modalId:string) {
