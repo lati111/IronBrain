@@ -2,6 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 
+Route::prefix('/home/data/overview')->group(function() {
+    Route::get('/', [App\Http\Dataproviders\Cardlists\Config\ModuleOverviewCardlist::class, 'data'])
+        ->name('home.overview.cardlist');
+
+    Route::get('/pages', [App\Http\Dataproviders\Cardlists\Config\ModuleOverviewCardlist::class, 'count'])
+        ->name('home.overview.pages');
+});
+
 Route::prefix('/pksanc/data')
     ->middleware('auth:sanctum')
     ->group(function() {

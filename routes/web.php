@@ -2,29 +2,13 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
-use App\Http\Dataproviders\Cardlists\Config\ProjectOverviewCardlist;
-use App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList;
-use App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancPokedexCardList;
-use App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList;
-use App\Http\Dataproviders\SelectorLists\Modules\PKSanc\FilterSelects\OwnedPokemonSpecies;
-use App\Http\Dataproviders\SelectorLists\Modules\PKSanc\GameDataSelect;
 use Illuminate\Support\Facades\Route;
 
 //| home
 Route::prefix('/')->group(function() {
     Route::get('/', [HomeController::class, 'show'])->name("home.show");
-
-    // data providers
-    Route::prefix('/home/data/overview')->group(function() {
-        Route::get('/', [ProjectOverviewCardlist::class, 'data'])
-            ->name('home.overview.cardlist');
-
-        Route::get('/pages', [ProjectOverviewCardlist::class, 'count'])
-            ->name('home.overview.pages');
-    });
 });
 
 //| authentication

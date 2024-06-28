@@ -1,7 +1,9 @@
 {{--| Container |--}}
 <div id="{{$id}}-disable-container" class="flex flex-col gap-2 justify-center max-w-screen-2xl w-full">
     {{--| Filter list modal |--}}
-    <x-datalist.parts.filterlist-modal id="{{$id}}"></x-datalist.parts.filterlist-modal>
+    @if(($filtering ?? false) === true || ($filtering ?? 'false') === 'true')
+        <x-datalist.parts.filterlist-modal id="{{$id}}"></x-datalist.parts.filterlist-modal>
+    @endif
 
     {{--| Per page selector |--}}
     <div class="hidden">

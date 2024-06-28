@@ -1,7 +1,9 @@
 <?php
 namespace App\Http\Dataproviders\Cardlists\Config;
 
+use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\Cardlists\AbstractCardlist;
+use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Config\Project;
 use App\Service\TimeService;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,10 +12,11 @@ use Illuminate\Http\Request;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
+use Symfony\Component\HttpFoundation\Response;
 
-class ProjectOverviewCardlist extends AbstractCardlist
+class ModuleOverviewCardlist extends AbstractCardlist
 {
-    use Dataprovider, Paginatable, Searchable;
+    use Dataprovider, Paginatable, HasPages, Searchable;
 
     /**
      * Gets the data after being modified by the query parameters
@@ -31,7 +34,7 @@ class ProjectOverviewCardlist extends AbstractCardlist
                 return $module;
             });
 
-        return response()->json($data, 200);
+        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
     }
 
     /** { @inheritdoc } */
@@ -44,16 +47,6 @@ class ProjectOverviewCardlist extends AbstractCardlist
             ->orderBy('updated_at', 'desc');
 
         return $modules;
-    }
-
-    /**
-     * Gets the amount of pages that exists with the given query parameters
-     * @param Request $request The request parameters as given by Laravel
-     * @return JsonResponse The amount of pages in JSON format
-     */
-    public function count(Request $request): JsonResponse
-    {
-        return response()->json($this->getPages($request), 200);
     }
 
     /** { @inheritdoc } */
