@@ -2,10 +2,9 @@
 
 namespace App\Service\Compendium;
 
-use App\Enum\Compendium\Elements;
 use App\Models\Compendium\ResistanceModifier;
 
-class ResistanceService
+class CompendiumFactory
 {
     /** Create or get a resistance modifier
      * @param string $element The element to be modified
@@ -13,7 +12,8 @@ class ResistanceService
      * @param bool $isBase If this resistance determines the base resistance, or if it modifies them
      * @return ResistanceModifier The modifier
      */
-    public static function getOrCreateModifier(string $element, int $stage, bool $isBase) {
+    public static function getOrCreateResistanceModifier(string $element, int $stage, bool $isBase): ResistanceModifier
+    {
         $modifier = ResistanceModifier::where('element', $element)
             ->where('stage', $stage)
             ->where('is_base', $isBase)

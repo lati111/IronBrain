@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Modules\Compendium;
 
 use App\Http\Controllers\Controller;
+use App\Models\Compendium\Action;
 use App\Models\Compendium\CreatureTemplate;
 use App\Models\Compendium\CreatureTemplateResistance;
 use App\Models\Compendium\ResistanceModifier;
@@ -19,9 +20,16 @@ class StatblockController extends Controller
 
     public function getData() {
         $data = Statblock::select()
-            ->with('resistances')
-            ->first();
+            ->with([
+                'actions',
+                'resistances',
+                'proficiencies',
+                'statModifiers',
+                'rollModifiers',
+                'resources',
+            ])->first();
 
+        dd($data->toArray());
         return response()->json($data, 200);
     }
 }
