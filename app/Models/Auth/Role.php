@@ -21,12 +21,16 @@ class Role extends AbstractModel
         'is_admin' => 'boolean',
     ];
 
-    public function hasPermission(Permission $permission): int
+    public function hasPermission(Permission $permission): bool
     {
+        if ($this->is_admin) {
+            return true;
+        }
+
         return $this
             ->hasMany(RolePermission::class, 'role_id')
             ->where('permission_id', $permission->id)
-            ->count();
+            ->exists();
     }
 
     public function Users(): HasMany {

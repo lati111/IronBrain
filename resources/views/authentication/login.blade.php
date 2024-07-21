@@ -8,12 +8,12 @@
     {{--| email field |--}}
     @component('components.form.input-wrapper')
         @slot('label_text')
-            Email
+            Username
         @endslot
         @slot('input_html')
-            <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
-                   @if(old('email') !== null) value="{{old('email')}}" @endif
-                   dusk="email_input" required
+            <input type="text" name="username" class="largeInput underlined" placeholder="Username"
+                   @if(old('username') !== null) value="{{old('username')}}" @endif
+                   dusk="username_input" required
             />
         @endslot
     @endcomponent

@@ -27,7 +27,7 @@ class PermissionGuard
                 continue;
             }
 
-            $role = $user->Role()->first();
+            $role = $user->role()->first();
             if ($role === null) {
                 return response(view('errors.auth.forbidden'));
             }

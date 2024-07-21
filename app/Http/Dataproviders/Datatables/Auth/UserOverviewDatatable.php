@@ -13,11 +13,18 @@ use Illuminate\Http\Request;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
+use Lati111\LaravelDataproviders\Traits\Sortable;
 use Symfony\Component\HttpFoundation\Response;
 
 class UserOverviewDatatable extends AbstractApi
 {
-    use Dataprovider, Paginatable, HasPages, Searchable;
+    use Dataprovider, Paginatable, HasPages, Searchable, Sortable;
+
+    function __construct() {
+        $this->columnAliases = [
+            'role' => 'role_id'
+        ];
+    }
 
     /**
      * Gets the data after being modified by the query parameters
@@ -39,7 +46,7 @@ class UserOverviewDatatable extends AbstractApi
         $query = User::select([
             sprintf('%s.uuid', User::getTableName()),
             sprintf('%s.profile_picture', User::getTableName()),
-            sprintf('%s.name', User::getTableName()),
+            sprintf('%s.username', User::getTableName()),
             sprintf('%s.email', User::getTableName()),
             sprintf('%s.name as role', Role::getTableName()),
 
@@ -51,7 +58,20 @@ class UserOverviewDatatable extends AbstractApi
     /** { @inheritdoc } */
     function getSearchFields(): array
     {
-        return [sprintf('%s.name', User::getTableName()), 'email'];
+        return [
+            sprintf('%s.name', User::getTableName()),
+            'email'
+        ];
+    }
+
+    /** { @inheritdoc } */
+    function getAllowedSortColumns(): array
+    {
+        return [
+            sprintf('%s.name', User::getTableName()),
+            'email',
+            'role_id'
+        ];
     }
 }
 

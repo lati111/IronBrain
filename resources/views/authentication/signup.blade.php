@@ -11,9 +11,9 @@
             Username
         @endslot
         @slot('input_html')
-            <input type="text" name="name" class="largeInput underlined" placeholder="Name"
-                   @if(old('name') !== null) value="{{old('name')}}" @endif
-                   dusk="name_input" required autocomplete="off"
+            <input type="text" name="username" class="largeInput underlined" placeholder="Username"
+                   @if(old('username') !== null) value="{{old('username')}}" @endif
+                   dusk="username_input" autocomplete="new-username" required
             />
         @endslot
     @endcomponent
@@ -21,12 +21,12 @@
     {{--| email field |--}}
     @component('components.form.input-wrapper')
         @slot('label_text')
-            Email
+            Email (optional)
         @endslot
         @slot('input_html')
             <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
                    @if(old('email') !== null) value="{{old('email')}}" @endif
-                   dusk="email_input" required autocomplete="new-email"
+                   dusk="email_input" autocomplete="new-email"
             />
         @endslot
     @endcomponent

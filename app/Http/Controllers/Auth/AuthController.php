@@ -41,8 +41,8 @@ class AuthController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:28',
-            'email' => 'required|email|max:40|unique:auth__user,email',
+            'username' => 'required|string|max:28',
+            'email' => 'nullable|email|max:40|unique:auth__user,email',
             'password' => ['required', Password::min(8)
                 ->letters()
                 ->mixedCase()
@@ -63,7 +63,7 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'name' => $request->name,
+            'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
@@ -89,7 +89,7 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'email' => 'required',
+            'username' => 'required',
             'password' => 'required',
             'remember_me' => 'nullable'
         ]);
@@ -99,7 +99,7 @@ class AuthController extends Controller
             $remember = true;
         }
 
-        if (Auth::attempt($request->only(['email', 'password']), $remember)) {
+        if (Auth::attempt($request->only(['username', 'password']), $remember)) {
             return redirect()->route("home.show")
                 ->with('message', UserEnum::LOGIN_SUCCESS_MESSAGE);
         } else {

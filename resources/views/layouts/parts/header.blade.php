@@ -37,7 +37,7 @@
                             <img src="{{asset(sprintf('img/profile/%s/pfp.svg', Auth::user()->uuid))}}" alt="pfp" width="32" height="32" class="rounded-circle">
                         @endslot
                         @slot('slot')
-                            <x-lists.dropdown.static-option>{{Auth::user()->name}}</x-lists.dropdown.static-option>
+                            <x-lists.dropdown.static-option>{{Auth::user()->username}}</x-lists.dropdown.static-option>
                             <li><hr class="dropdown-divider"></li>
                             <x-lists.dropdown.option href="{{route('auth.logout')}}">Sign out</x-lists.dropdown.option>
                         @endslot
