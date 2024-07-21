@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Config;
 use App\Enum\Auth\PermissionEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\Permission;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 

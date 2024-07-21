@@ -4,8 +4,8 @@ namespace App\Http\Dataproviders\Datatables\Config;
 
 use App\Http\Dataproviders\Datatables\AbstractDatatable;
 use App\Http\Dataproviders\Traits\Paginatable;
-use App\Models\Config\Project;
-use App\Models\Config\Submenu;
+use App\Models\Config\Module;
+use App\Models\Config\Submodule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
@@ -29,14 +29,14 @@ class SubmenuDatatable extends AbstractDatatable
 
     public function overviewData(Request $request, int $project_id)
     {
-        $project = Project::find($project_id);
+        $project = Module::find($project_id);
         if ($project === null) {
             // todo custom error
             return redirect(route('config.projects.overview'))->with("error", "That project does not exist");
         }
 
         $submenuCollection =
-            $this->applyTableFilters($request, Submenu::select())
+            $this->applyTableFilters($request, Submodule::select())
                 ->orderBy('order', 'asc')
                 ->get();
 

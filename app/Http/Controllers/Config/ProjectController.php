@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Config;
 use App\Enum\ErrorEnum;
 use App\Enum\Config\ProjectEnum;
 use App\Http\Controllers\Controller;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
@@ -24,7 +24,7 @@ class ProjectController extends Controller
 
     public function modify(int $id)
     {
-        $project = Project::find($id);
+        $project = Module::find($id);
         if ($project === null) {
             // todo custom error screen
             return redirect(route('config.projects.overview'))->with("error", ProjectEnum::PROJECT_NOT_FOUND_MESSAGE);
@@ -63,9 +63,9 @@ class ProjectController extends Controller
 
         $project = null;
         if ($request->id !== null) {
-            $project = Project::find($request->id);
+            $project = Module::find($request->id);
         } else {
-            $project = new Project();
+            $project = new Module();
             if ($request->thumbnail === null && $request->in_overview === "on") {
                 return back()
                     ->withInput($request->all())
@@ -111,7 +111,7 @@ class ProjectController extends Controller
 
     public function delete(int $id)
     {
-        $project = Project::find($id);
+        $project = Module::find($id);
         if ($project !== null) {
             $project->delete();
             return redirect(route('config.projects.overview'))->with("message", ProjectEnum::PROJECT_DELETED_MESSAGE);

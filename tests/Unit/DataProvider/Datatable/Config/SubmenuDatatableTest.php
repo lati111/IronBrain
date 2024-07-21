@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\DataProvider\Datatable\Config;
 
-use App\Models\Config\Project;
-use App\Models\Config\Submenu;
+use App\Models\Config\Module;
+use App\Models\Config\Submodule;
 use Database\Seeders\NavSeeder;
 use Database\Seeders\ProjectSeeder;
 use Tests\Unit\DataProvider\Datatable\AbstractDatatableTester;
@@ -19,14 +19,14 @@ class SubmenuDatatableTest extends AbstractDatatableTester
 
     public function testOverviewData(): void
     {
-        $project = $this->getRandomEntity(Project::class);
-        $this->createRandomEntities(Submenu::class, 50, ['project_id' => $project->id]);
+        $project = $this->getRandomEntity(Module::class);
+        $this->createRandomEntities(Submodule::class, 50, ['project_id' => $project->id]);
         $route = route('config.projects.submenu.overview.datatable', [$project->id]);
         $datatable = $this->actingAs($this->getAdminUser())->get($route, array_merge($this->getDefaultFilters(), []));
 
         $datatable->assertStatus(200);
         $this->assertFiltersValid($datatable->json());
-        $this->assertContentValid(Submenu::class, $datatable->json(), [
+        $this->assertContentValid(Submodule::class, $datatable->json(), [
             'name',
             'route',
             'order',

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -27,7 +27,7 @@ class Controller extends BaseController
     }
 
     private function getNavItems(?int $role_id) {
-        return Project::select('nav__project.*')
+        return Module::select('nav__project.*')
             ->leftJoin(
                 'auth__permission',
                 'nav__project.permission_id',

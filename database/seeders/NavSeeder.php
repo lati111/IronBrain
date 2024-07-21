@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Auth\Permission;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -45,7 +45,7 @@ class NavSeeder extends Seeder
             }
             unset($data['permission']);
 
-            $data['project_id'] = Project::where('name', $data['parent_name'])->first()->id;
+            $data['project_id'] = Module::where('name', $data['parent_name'])->first()->id;
             unset($data['parent_name']);
 
             unset($data['description']);

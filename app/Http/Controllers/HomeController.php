@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use App\Service\TimeService;
 use Illuminate\Database\Query\Builder;
 
@@ -41,7 +41,7 @@ class HomeController extends Controller
     }
 
     private function getProjects(?int $role_id) {
-        return Project::select('nav__project.*')
+        return Module::select('nav__project.*')
             ->leftJoin(
                 'auth__permission',
                 'nav__project.permission_id',

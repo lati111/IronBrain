@@ -4,7 +4,7 @@ namespace App\Http\Dataproviders\Cardlists\Config;
 use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\Cardlists\AbstractCardlist;
 use App\Http\Dataproviders\Traits\HasPages;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use App\Service\TimeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +27,7 @@ class ModuleOverviewCardlist extends AbstractCardlist
     {
         $data = $this->getData($request)
             ->get()
-            ->map(function (Project $module) {
+            ->map(function (Module $module) {
                 $module['route'] = route($module['route']);
                 $module['thumbnail'] = asset('img/project/thumbnail/'.$module['thumbnail']);
                 $module['time_ago'] = TimeService::time_elapsed_string($module->updated_at);
@@ -41,7 +41,7 @@ class ModuleOverviewCardlist extends AbstractCardlist
     protected function getContent(Request $request): Builder
     {
         /** @var Builder $modules */
-        $modules = Project::select()
+        $modules = Module::select()
             ->where('in_overview', true)
             ->where('active', true)
             ->orderBy('updated_at', 'desc');

@@ -2,15 +2,15 @@
 
 namespace Database\Factories\Config;
 
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Config\Project>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Config\Module>
  */
 class ProjectFactory extends Factory
 {
-    protected $model = Project::class;
+    protected $model = Module::class;
 
     public function definition(): array
     {

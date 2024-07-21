@@ -5,7 +5,7 @@ namespace Tests\Unit\Controller\Config;
 use App\Enum\Config\ProjectEnum;
 use App\Enum\ErrorEnum;
 use App\Models\Auth\Permission;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Database\Seeders\NavSeeder;
 use Database\Seeders\ProjectSeeder;
 use Tests\Unit\Controller\AbstractControllerUnitTester;
@@ -44,7 +44,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
     {
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('config.projects.modify', [$this->getRandomEntity(Project::class)->id]));
+            ->get(route('config.projects.modify', [$this->getRandomEntity(Module::class)->id]));
         $this->assertView($response, 'config.projects.modify');
     }
 
@@ -52,7 +52,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
     {
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('config.projects.modify', [$this->getFalseId(Project::class)]));
+            ->get(route('config.projects.modify', [$this->getFalseId(Module::class)]));
         $this->assertRedirect($response, 'config.projects.overview', [
             'error' => ProjectEnum::PROJECT_NOT_FOUND_MESSAGE
         ]);
@@ -82,7 +82,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
             'message' => ProjectEnum::PROJECT_SAVED_MESSAGE
         ]);
 
-        $project = Project::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
+        $project = Module::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
         $this->assertNotNull($project);
         $this->assertEquals($name, $project->name);
         $this->assertEquals($routeString, $project->route);
@@ -116,7 +116,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
             'message' => ProjectEnum::PROJECT_SAVED_MESSAGE
         ]);
 
-        $project = Project::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
+        $project = Module::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
         $this->assertNotNull($project);
         $this->assertEquals($name, $project->name);
         $this->assertEquals($routeString, $project->route);
@@ -131,7 +131,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
         $route = route('config.projects.save');
         Storage::fake('avatars');
 
-        $old_project = Project::where('in_overview', true)->first();
+        $old_project = Module::where('in_overview', true)->first();
         $routeString = 'home.show';
         $name = $this->faker->regexify('[A-Za-z0-9]{26}');
         $description = $this->faker->regexify('[A-Za-z0-9]{48}');
@@ -151,7 +151,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
             'message' => ProjectEnum::PROJECT_SAVED_MESSAGE
         ]);
 
-        $project = Project::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
+        $project = Module::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
         $this->assertNotNull($project);
         $this->assertEquals($name, $project->name);
         $this->assertEquals($routeString, $project->route);
@@ -167,7 +167,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
     {
         $route = route('config.projects.save');
 
-        $old_project = Project::where('in_nav', true)->first();
+        $old_project = Module::where('in_nav', true)->first();
         $routeString = 'home.show';
         $name = $this->faker->regexify('[A-Za-z0-9]{26}');
         $description = $this->faker->regexify('[A-Za-z0-9]{48}');
@@ -187,7 +187,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
             'message' => ProjectEnum::PROJECT_SAVED_MESSAGE
         ]);
 
-        $project = Project::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
+        $project = Module::where('name', $name)->where('description', $description)->where('route', $routeString)->first();
         $this->assertNotNull($project);
         $this->assertEquals($name, $project->name);
         $this->assertEquals($routeString, $project->route);
@@ -200,7 +200,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
     public function testSaveProjectIdValidation(): void
     {
         $route = route('config.projects.save');
-        $project = $this->getRandomEntity(Project::class);
+        $project = $this->getRandomEntity(Module::class);
 
         //valid
         $this
@@ -212,7 +212,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
 
         //exists
         $this->post($route, [
-            'id' => $this->getFalseId(Project::class)
+            'id' => $this->getFalseId(Module::class)
         ]);
         $this->assertValidationExists('id');
 
@@ -442,7 +442,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
     //| delete project tests
     public function testDeleteProjectValid(): void
     {
-        $permission = $this->createRandomEntity(Project::class);
+        $permission = $this->createRandomEntity(Module::class);
         $route = route('config.projects.delete', $permission->id);
 
         $response = $this
@@ -456,7 +456,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
 
     public function testDeleteProjectNotFound(): void
     {
-        $route = route('config.projects.delete', $this->getFalseId(Project::class));
+        $route = route('config.projects.delete', $this->getFalseId(Module::class));
 
         $response = $this
             ->actingAs($this->getAdminUser())
@@ -473,7 +473,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
         $order = null;
         while ($order === null) {
             $int = $this->faker->randomNumber();
-            if (Project::where('order', $int)->count() === 0) {
+            if (Module::where('order', $int)->count() === 0) {
                 $order = $int;
             }
         }

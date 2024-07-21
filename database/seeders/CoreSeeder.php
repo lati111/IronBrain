@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Auth\Permission;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Seeder;
 use Carbon\Carbon;
@@ -107,7 +107,7 @@ class CoreSeeder extends Seeder
             'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
         ]);
 
-        $configProject = Project::where('name', 'Config')->first();
+        $configProject = Module::where('name', 'Config')->first();
 
         $submenu_table->insert([
             'project_id' => $configProject->id,

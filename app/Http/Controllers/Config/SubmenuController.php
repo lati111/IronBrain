@@ -6,8 +6,8 @@ use App\Enum\Config\ProjectEnum;
 use App\Enum\Config\SubmenuEnum;
 use App\Enum\ErrorEnum;
 use App\Http\Controllers\Controller;
-use App\Models\Config\Project;
-use App\Models\Config\Submenu;
+use App\Models\Config\Module;
+use App\Models\Config\Submodule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
@@ -23,13 +23,13 @@ class SubmenuController extends Controller
 
     public function modify(int $project_id, int $id)
     {
-        $project = Project::find($project_id);
+        $project = Module::find($project_id);
         if ($project === null) {
             // todo custom error screen
             return redirect(route('config.projects.overview'))->with("error", ProjectEnum::PROJECT_NOT_FOUND_MESSAGE);
         }
 
-        $submenu = Submenu::find($id);
+        $submenu = Submodule::find($id);
         if ($submenu === null) {
             // todo custom error screen
             return redirect(route('config.projects.modify', [$project->id]))->with("error", SubmenuEnum::SUBMENU_NOT_FOUND_MESSAGE);
@@ -65,9 +65,9 @@ class SubmenuController extends Controller
 
         $submenu = null;
         if ($request->id !== null) {
-            $submenu = Submenu::find($request->id);
+            $submenu = Submodule::find($request->id);
         } else {
-            $submenu = new Submenu();
+            $submenu = new Submodule();
             $submenu->project_id = $project_id;
         }
 
@@ -81,7 +81,7 @@ class SubmenuController extends Controller
     }
 
     public function delete(int $project_id, int $id) {
-        $submenu = Submenu::find($id);
+        $submenu = Submodule::find($id);
         if ($submenu !== null) {
             $submenu->delete();
             return redirect(route('config.projects.modify', $project_id))->with("message", SubmenuEnum::SUBMENU_DELETED_MESSAGE);

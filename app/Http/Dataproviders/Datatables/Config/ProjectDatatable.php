@@ -4,7 +4,7 @@ namespace App\Http\Dataproviders\Datatables\Config;
 
 use App\Http\Dataproviders\Datatables\AbstractDatatable;
 use App\Http\Dataproviders\Traits\Paginatable;
-use App\Models\Config\Project;
+use App\Models\Config\Module;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +28,7 @@ class ProjectDatatable extends AbstractDatatable
     public function overviewData(Request $request)
     {
         $projectCollection =
-            $this->applyTableFilters($request, Project::select())
+            $this->applyTableFilters($request, Module::select())
                 ->get();
 
         $tableData = [];
