@@ -16,6 +16,7 @@ return new class extends Migration
 
         Schema::table('nav__submenu', function (Blueprint $table) {
             $table->dropForeign('nav__submenu_project_id_foreign');
+            $table->dropForeign('nav__submenu_permission_id_foreign');
         });
 
         //| Rename tables
@@ -70,6 +71,7 @@ return new class extends Migration
             $table->dropColumn('project_id');
 
             $table->foreign('module_id')->references('id')->on('module__main')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('permission_id')->references('id')->on('auth__permission')->onDelete('set null')->onUpdate('no action');
         });
     }
 

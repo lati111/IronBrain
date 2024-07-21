@@ -1,0 +1,36 @@
+{
+    "user": [
+        {
+            "permission": "config.user.view",
+            "name": "View User Config",
+            "description": "Allows the user to see the user config."
+        },
+        {
+            "permission": "config.user.edit",
+            "name": "Edit User Config",
+            "description": "Allows the user to edit the user config."
+        },
+        {
+            "permission": "config.user.role",
+            "name": "Assign User Roles",
+            "description": "Allows the user to assign a role to users."
+        }
+    ],
+    "role": [
+        {
+            "permission": "config.role.view",
+            "name": "View Role Config",
+            "description": "Allows the user to see the role config."
+        },
+        {
+            "permission": "config.role.edit",
+            "name": "Edit Role Config",
+            "description": "Allows the user to edit the role config."
+        },
+        {
+            "permission": "config.role.permissions",
+            "name": "Assign Role Permissions",
+            "description": "Allows the user to assign permissions to a role."
+        }
+    ]
+}

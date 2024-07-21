@@ -98,7 +98,7 @@ class ImportModules extends Command
             }
 
             $module->save();
-            if ($module->wasChanged()) {
+            if ($permission->wasChanged() || $permission->wasRecentlyCreated) {
                 $changedCount++;
             }
 
@@ -135,7 +135,7 @@ class ImportModules extends Command
                 }
 
                 $submodule->save();
-                if ($submodule->wasChanged()) {
+                if ($permission->wasChanged() || $permission->wasRecentlyCreated) {
                     $changedCount++;
                 }
             }
