@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Config\Module;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
@@ -13,40 +15,31 @@ class Controller extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
 
+    /**
+     * Create and return a page view
+     * @param string $view The string representation of the view
+     * @param array $parameters The parameters to flash to the view
+     * @return View The created view
+     */
+    protected function view(string $view, array $parameters = []) {
+        return view($view, array_merge($this->getBaseVariables(), $parameters));
+    }
+
+    /**
+     * Get the basic parameters for any view
+     * @return array The basic parameters
+     */
     protected function getBaseVariables(): array {
-        $role_id = null;
         $user = Auth::user();
-        if ($user !== null) {
-            $role_id = $user->role_id;
-        }
+
+        $modules = Module::where('in_nav', true)
+            ->orderBy('order')
+            ->with('submodules')
+            ->get();
 
         return [
             'user' => $user,
-            'navCollection' => $this->getNavItems($role_id),
+            'modules' => $modules,
         ];
-    }
-
-    private function getNavItems(?int $role_id) {
-        return Module::select('nav__project.*')
-            ->leftJoin(
-                'auth__permission',
-                'nav__project.permission_id',
-                '=',
-                'auth__permission.permission')
-            ->where(function ($query) use ($role_id) {
-                $query
-                    ->where('nav__project.permission_id', null)
-                    ->orWhere(function ($query) use ($role_id) {
-                        return $query
-                            ->selectRaw('count(auth__role_permission.permission_id)')
-                            ->from('auth__role_permission')
-                            ->whereColumn('auth__role_permission.permission_id', 'nav__project.permission_id')
-                            ->where('auth__role_permission.role_id', $role_id);
-                    }, 1);
-            })
-            ->where('in_nav', true)
-            ->where('active', true)
-            ->orderBy('order', 'asc')
-            ->get();
     }
 }

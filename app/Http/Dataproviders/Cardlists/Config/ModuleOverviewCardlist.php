@@ -29,7 +29,7 @@ class ModuleOverviewCardlist extends AbstractCardlist
             ->get()
             ->map(function (Module $module) {
                 $module['route'] = route($module['route']);
-                $module['thumbnail'] = asset('img/project/thumbnail/'.$module['thumbnail']);
+                $module['thumbnail'] = asset('img/modules/thumbnail/'.$module['thumbnail']);
                 $module['time_ago'] = TimeService::time_elapsed_string($module->updated_at);
                 return $module;
             });
@@ -43,7 +43,6 @@ class ModuleOverviewCardlist extends AbstractCardlist
         /** @var Builder $modules */
         $modules = Module::select()
             ->where('in_overview', true)
-            ->where('active', true)
             ->orderBy('updated_at', 'desc');
 
         return $modules;

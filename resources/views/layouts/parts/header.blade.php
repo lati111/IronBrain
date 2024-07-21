@@ -11,17 +11,17 @@
 
             {{--| nav items |--}}
             <ul class="flex justify-center items-center gap-2" dusk="nav">
-                @isset($navCollection)
-                    @foreach ($navCollection as $nav)
-                        <li dusk="{{$nav->name}}">
-                            @if(count($nav->Submenu) > 0)
-                                <x-lists.dropdown.main id="nav-{{$nav->uuid}}" title="{{$nav->name}}" cls="@if (Route::is($submenu->route))active @endif">
-                                    @foreach ($nav->Submenu as $submenu)
+                @isset($modules)
+                    @foreach ($modules as $module)
+                        <li dusk="{{$module->name}}">
+                            @if(count($module->submodules) > 0)
+                                <x-lists.dropdown.main id="nav-{{$module->uuid}}" title="{{$module->name}}" cls="@if (Route::is($submenu->route))active @endif">
+                                    @foreach ($module->submodules as $submenu)
                                         <x-lists.dropdown.option href="{{route($submenu->route)}}">{{$submenu->name}}</x-lists.dropdown.option>
                                     @endforeach
                                 </x-lists.dropdown.main>
-                            @elseif ($nav->route !== null)
-                                <x-lists.dropdown.false-dropdown href="{{route($nav->route)}}" title="{{$nav->name}}" cls="@if (Route::is($submenu->route))active @endif"/>
+                            @elseif ($module->route !== null)
+                                <x-lists.dropdown.false-dropdown href="{{route($module->route)}}" title="{{$module->name}}" cls="@if (Route::is($submenu->route))active @endif"/>
                             @endif
                         </li>
                     @endforeach
