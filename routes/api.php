@@ -2,6 +2,17 @@
 
 use Illuminate\Support\Facades\Route;
 
+Route::prefix('/config/user')
+    ->middleware([
+        'auth:sanctum',
+        'auth.permission:config.user.view'
+    ])
+    ->group(function() {
+        Route::post('/{user_uuid}/set_role/{permission_id}', [\App\Http\Api\Config\UserConfigApi::class, 'changeRole'])
+            ->middleware('auth.permission:config.user.edit,config.user.role')
+            ->name('api.config.users.change-role');
+    });
+
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
     ->group(function() {

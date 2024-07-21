@@ -1,49 +1,54 @@
 @extends('layouts.datalist.datatable.overview')
-@section('htmlTitle', 'Role Overview')
-@section('table_title', 'Role Overview')
+@section('htmlTitle', 'User Overview')
+@section('table_title', 'Users')
 
-@section('delete_modal_text', 'Are you sure you want to deactivate this user?')
-
-{{--| table |--}}
-@section('table-size', 'middle')
-@section('headers')
-    @component('components.datalist.datatable.header')
-        @slot('columnId')profile_picture @endslot
-        @slot('content')Profile picture @endslot
-    @endcomponent
-    @component('components.datalist.datatable.header')
-        @slot('columnId')name @endslot
-        @slot('content')Name @endslot
-    @endcomponent
-    @component('components.datalist.datatable.header')
-        @slot('columnId')email @endslot
-        @slot('content')Email @endslot
-    @endcomponent
-    @component('components.datalist.datatable.header')
-        @slot('columnId')role @endslot
-        @slot('content')Role @endslot
-    @endcomponent
-    @component('components.datalist.datatable.header')
-        @slot('columnId')actions @endslot
-        @slot('content')Actions @endslot
-    @endcomponent
+@section('header')
+    @vite('resources/ts/config/users/overview.ts')
 @endsection
 
-@section('delete_modal_text', 'Are you sure you want to deactivate this user?')
-@section('datatable_url', route('config.user.overview.datatable'))
+{{--| table |--}}
+@section('table')
+    <x-datalist.datatable.table id="overview-table" data_url="{{route('data.config.users.overview.datatable')}}">
+
+        <x-datalist.datatable.header column="uuid" visible="false">
+            <input type="hidden" name="uuid" value="[value]">
+        </x-datalist.datatable.header>
+
+        <x-datalist.datatable.header column="profile_picture" width="8">
+            <img src="/img/profile/[value]" class="h-12 p-1">
+        </x-datalist.datatable.header>
+
+        <x-datalist.datatable.header column="name" display="Name" sortable="true"/>
+
+        <x-datalist.datatable.header column="email" display="Email Address" sortable="true"/>
+
+        <x-datalist.datatable.header column="role" display="Role" sortable="true"/>
+
+        <x-datalist.datatable.header column="buttons">
+            <div class="flex flex-col justify-center">
+                <x-elements.buttons.button onclick="openChangeRoleModal(this.closest('tr'))">change role</x-elements.buttons.button>
+                <x-elements.buttons.button>deactivate</x-elements.buttons.button>
+            </div>
+        </x-datalist.datatable.header>
+
+    </x-datalist.datatable.table>
+@endsection
 
 {{--| modals |--}}
 @section('modals')
-    @component('components.modal.select_modal')
+    @component('components.modal.modal')
         @slot('id')role_modal @endslot
         @slot('name')role_id @endslot
-        @slot('title')Select a Role @endslot
-        @slot('options')
-            <option value="">Default</option>
-            @foreach ($roles as $role)
-                <option value="{{$role->id}}">{{$role->name}}</option>
-            @endforeach
+        @slot('body')
+            <div class="flex flex-col justify-center">
+                <h4 class="title text-center">Change Role</h4>
+                <x-datalist.dataselect.dataselect id="role-selector" name="role" identifier="id" label="name"
+                    url="{{route('data.config.roles.dataselect')}}"/>
+            </div>
         @endslot
-        @slot('submit_function') submit_stored_form(true) @endslot
+        @slot('buttons')
+            <x-elements.buttons.button cls="cancel_interactive" onclick="closeModal('role_modal')">Cancel</x-elements.buttons.button>
+            <x-elements.buttons.button onclick="changeRole()">Change</x-elements.buttons.button>
+        @endslot
     @endcomponent
 @endsection

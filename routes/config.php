@@ -4,7 +4,7 @@ use App\Http\Controllers\Config\RoleController;
 use App\Http\Controllers\Config\UserController;
 use App\Http\Dataproviders\Datatables\Auth\PermissionDatatable;
 use App\Http\Dataproviders\Datatables\Auth\RoleDatatable;
-use App\Http\Dataproviders\Datatables\Auth\UserDatatable;
+use App\Http\Dataproviders\Datatables\Auth\UserOverviewDatatable;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('/config')
@@ -24,7 +24,7 @@ Route::prefix('/config')
                 ->name("config.user.delete");
 
             // data providers
-            Route::get('/overview/data', [UserDatatable::class, 'overviewData'])
+            Route::get('/overview/data', [UserOverviewDatatable::class, 'overviewData'])
                 ->name("config.user.overview.datatable");
 
             // ajax calls

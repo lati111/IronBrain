@@ -2,13 +2,39 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('/home/data/overview')->group(function() {
+//| Home
+
+Route::prefix('/home/overview')->group(function() {
     Route::get('/', [App\Http\Dataproviders\Cardlists\Config\ModuleOverviewCardlist::class, 'data'])
-        ->name('home.overview.cardlist');
+        ->name('data.home.overview.cardlist');
 
     Route::get('/pages', [App\Http\Dataproviders\Cardlists\Config\ModuleOverviewCardlist::class, 'count'])
-        ->name('home.overview.pages');
+        ->name('data.home.overview.pages');
 });
+
+//| Config
+
+Route::prefix('/config')->group(function() {
+    Route::prefix('/users/overview')->group(function() {
+        Route::get('/', [\App\Http\Dataproviders\Datatables\Auth\UserOverviewDatatable::class, 'data'])
+            ->name('data.config.users.overview.datatable');
+
+        Route::get('/pages', [\App\Http\Dataproviders\Datatables\Auth\UserOverviewDatatable::class, 'count'])
+            ->name('data.config.users.overview.datatable.pages');
+    });
+
+    Route::prefix('/role/dataselect')->group(function() {
+        Route::get('/', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'data'])
+            ->name('data.config.roles.dataselect');
+
+        Route::get('/pages', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'count'])
+            ->name('data.config.roles.dataselect.pages');
+    });
+});
+
+
+
+//| PKSanc
 
 Route::prefix('/pksanc/data')
     ->middleware('auth:sanctum')

@@ -13,8 +13,25 @@
     </head>
 
     <body onload="toastInit(); @yield('onload_functions')" class="relative">
-        {{--| header |--}}
+        {{--| toasts |--}}
         @include('layouts.parts.toasts')
+
+        {{--| modals |--}}
+        @yield('modals')
+        <div id="load-indicator" tabindex="-1"
+             class="modal forced fixed top-0 left-0 right-0 hidden p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full" style="z-index: 75">
+            <div class="relative" style="min-width:28em">
+                <div class="relative bg-white rounded-lg shadow">
+                    <div class="p-6 mx-6 space-y-6 flex flex-col justify-center items-center">
+                        <p>Loading...</p>
+                        <div class="spinner flex justify-center py-6 h-20 w-20">
+                            <img src="{{asset('img/icons/loading.svg')}}" class="animate-spin w-full h-full" alt="busy loading">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         {{--| header |--}}
         @include('layouts.parts.header')

@@ -1,3 +1,5 @@
+import {closeModal, openModal} from "./components/modal";
+
 const toasts:Element = document.querySelector('#toasts')!;
 
 function toastInit() {
@@ -44,6 +46,20 @@ export function toast(message:string) {
 
     toasts.append(toast);
     setTimeout(removeElement.bind(null, toast), 3000)
+}
+
+/**
+ * Shows a popup with a spinner for loading purposes
+ */
+export function freezePage() {
+    openModal('load-indicator');
+}
+
+/**
+ * Removed the popup with a spinner for loading purposes
+ */
+export function unfreezePage() {
+    closeModal('load-indicator');
 }
 
 function removeElement(toast:Element) {
