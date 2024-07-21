@@ -42,7 +42,7 @@ return new class extends Migration
         }
 
         Schema::table('module__main', function (Blueprint $table) {
-            $table->string('code', 64)->unique()->change();
+            $table->string('code', 64)->unique()->nullable(false)->change();
         });
 
         //| Update sub modules
@@ -65,8 +65,8 @@ return new class extends Migration
         }
 
         Schema::table('module__sub', function (Blueprint $table) {
-            $table->foreignId('module_id')->change();
-            $table->string('code', 64)->change();
+            $table->foreignId('module_id')->nullable(false)->change();
+            $table->string('code', 64)->nullable(false)->change();
             $table->dropColumn('project_id');
 
             $table->foreign('module_id')->references('id')->on('module__main')->onDelete('cascade')->onUpdate('no action');
