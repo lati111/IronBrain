@@ -1,17 +1,16 @@
 <?php
 
-use App\Http\Controllers\Config\PermissionController;
 use App\Http\Controllers\Config\RoleController;
 use App\Http\Controllers\Config\UserController;
 use App\Http\Dataproviders\Datatables\Auth\PermissionDatatable;
 use App\Http\Dataproviders\Datatables\Auth\RoleDatatable;
 use App\Http\Dataproviders\Datatables\Auth\UserDatatable;
-use App\Http\Dataproviders\SelectorLists\Auth\PermissionSelectorList;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('/config')
     ->middleware('auth:sanctum')
     ->group(function() {
+
         //| user control
         Route::prefix('/user')
             ->middleware('auth.permission:config.user.view')
@@ -71,37 +70,5 @@ Route::prefix('/config')
             Route::post('/{role_id}/permission/{permission_id}/toggle', [RoleController::class, 'togglePermission'])
                 ->middleware('auth.permission:config.role.edit')
                 ->name("config.role.permission.toggle");
-        });
-
-        //| permission
-        Route::prefix('/permission')
-            ->middleware('auth.permission:config.permission.view')
-            ->group(function() {
-            // pages
-            Route::get('/', [PermissionController::class, 'overview'])
-                ->name("config.permission.overview");
-
-            Route::get('/new', [PermissionController::class, 'new'])
-                ->middleware('auth.permission:config.permission.edit')
-                ->name("config.permission.new");
-
-            Route::get('/modify/{id}', [PermissionController::class, 'modify'])
-                ->middleware('auth.permission:config.permission.edit')
-                ->name("config.permission.modify");
-
-            Route::post('/save', [PermissionController::class, 'save'])
-                ->middleware('auth.permission:config.permission.edit')
-                ->name("config.permission.save");
-
-            Route::post('/delete/{id}', [PermissionController::class, 'delete'])
-                ->middleware('auth.permission:config.permission.edit')
-                ->name("config.permission.delete");
-
-            // data providers
-            Route::get('/overview/data', [PermissionDatatable::class, 'overviewData'])
-                ->name("config.permission.overview.datatable");
-
-            Route::get('/selector/data', [PermissionSelectorList::class, 'PermissionSelectorList'])
-                ->name("config.permission.selector.list");
         });
 });
