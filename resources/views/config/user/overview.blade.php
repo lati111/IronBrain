@@ -44,8 +44,7 @@
             @slot('body')
                 <div class="flex flex-col justify-center">
                     <h4 class="title text-center">Change Role</h4>
-                    <x-datalist.dataselect.dataselect id="role-selector" name="role" identifier="id" label="name"
-                                                      url="{{route('data.config.roles.dataselect')}}"/>
+                    <x-datalist.dataselect.dataselect id="role-selector" name="role" identifier="id" label="name" url="{{route('data.config.roles.dataselect')}}"/>
                 </div>
             @endslot
             @slot('buttons')

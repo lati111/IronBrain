@@ -12,26 +12,51 @@ Route::prefix('/home/overview')->group(function() {
         ->name('data.home.overview.pages');
 });
 
+
 //| Config
 
 Route::prefix('/config')->group(function() {
-    Route::prefix('/users/overview')->group(function() {
-        Route::get('/', [\App\Http\Dataproviders\Datatables\Auth\UserOverviewDatatable::class, 'data'])
-            ->name('data.config.users.overview.datatable');
 
-        Route::get('/pages', [\App\Http\Dataproviders\Datatables\Auth\UserOverviewDatatable::class, 'count'])
-            ->name('data.config.users.overview.datatable.pages');
+    Route::prefix('/users/overview')
+        ->middleware('auth.permission:config.user.view')
+        ->group(function() {
+            Route::get('/', [\App\Http\Dataproviders\Datatables\Config\UserOverviewDatatable::class, 'data'])
+                ->name('data.config.users.overview.datatable');
+
+            Route::get('/pages', [\App\Http\Dataproviders\Datatables\Config\UserOverviewDatatable::class, 'count'])
+                ->name('data.config.users.overview.datatable.pages');
     });
 
-    Route::prefix('/role/dataselect')->group(function() {
-        Route::get('/', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'data'])
-            ->name('data.config.roles.dataselect');
+    Route::prefix('/role')
+        ->middleware('auth.permission:config.role.view')
+        ->group(function() {
+            Route::prefix('/overview')->group(function() {
+                Route::get('/', [\App\Http\Dataproviders\Datatables\Config\RoleOverviewDatatable::class, 'data'])
+                    ->name('data.config.roles.overview.datatable');
 
-        Route::get('/pages', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'count'])
-            ->name('data.config.roles.dataselect.pages');
+                Route::get('/pages', [\App\Http\Dataproviders\Datatables\Config\RoleOverviewDatatable::class, 'count'])
+                    ->name('data.config.roles.overview.datatable.pages');
+            });
+
+            Route::prefix('/dataselect')->group(function() {
+                Route::get('/', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'data'])
+                    ->name('data.config.roles.dataselect');
+
+                Route::get('/pages', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'count'])
+                    ->name('data.config.roles.dataselect.pages');
+            });
+
+            Route::prefix('/{role_id}/permissions')
+                ->middleware('auth.permission:config.role.permissions')
+                ->group(function() {
+                    Route::get('/', [\App\Http\Dataproviders\Datatables\Config\RolePermissionDatatable::class, 'data'])
+                        ->name('data.config.roles.permissions.datatable');
+
+                    Route::get('/pages', [\App\Http\Dataproviders\Datatables\Config\RolePermissionDatatable::class, 'count'])
+                        ->name('data.config.roles.permissions.datatable.pages');
+            });
     });
 });
-
 
 
 //| PKSanc

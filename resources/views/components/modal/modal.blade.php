@@ -6,13 +6,18 @@
                 <img src="{{asset('img/icons/x.svg')}}" alt="close" class="interactive w-5 h-5">
             </button>
             <div class="p-6 space-y-6 flex flex-col justify-center items-center">
-                {{$body}}
+                {{$slot->hasActualContent() ? $slot : $body}}
             </div>
-            @isset($buttons)
+            @if(isset($buttons) || isset($confirm_method))
                 <div class="flex justify-center items-center space-x-2 py-1 border-t">
-                    {{$buttons}}
+                    @if(isset($buttons))
+                        {{$buttons}}
+                    @elseif(isset($confirm_method))
+                        <x-elements.buttons.button cls="cancel_interactive" onclick="closeModal('{{$id}}')">Cancel</x-elements.buttons.button>
+                        <x-elements.buttons.button onclick=`{{$confirm_method}}`>{{$confirm_text ?? 'Confirm'}}</x-elements.buttons.button>
+                    @endif
                 </div>
-            @endisset
+            @endif
         </div>
     </div>
 </div>

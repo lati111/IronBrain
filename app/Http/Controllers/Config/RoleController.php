@@ -96,7 +96,7 @@ class RoleController extends Controller
 
         $permission = Permission::find($permission_id);
         if ($permission === null) {
-            return response()->json(PermissionEnum::NOT_FOUND_MESSAGE, 404);
+            return response()->json(PermissionEnum::NOT_FOUND, 404);
         }
 
         if ($role->hasPermission($permission)) {

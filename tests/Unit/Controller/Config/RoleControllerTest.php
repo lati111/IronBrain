@@ -355,6 +355,6 @@ class RoleControllerTest extends AbstractControllerUnitTester
                 'hasPermission' =>  true,
             ]);
         $response->assertStatus(404);
-        $this->assertEquals(PermissionEnum::NOT_FOUND_MESSAGE, $response->json());
+        $this->assertEquals(PermissionEnum::NOT_FOUND, $response->json());
     }
 }

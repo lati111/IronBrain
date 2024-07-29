@@ -2,9 +2,9 @@
 
 use App\Http\Controllers\Config\RoleController;
 use App\Http\Controllers\Config\UserController;
-use App\Http\Dataproviders\Datatables\Auth\PermissionDatatable;
-use App\Http\Dataproviders\Datatables\Auth\RoleDatatable;
-use App\Http\Dataproviders\Datatables\Auth\UserOverviewDatatable;
+use App\Http\Dataproviders\Datatables\Config\PermissionDatatable;
+use App\Http\Dataproviders\Datatables\Config\RoleDatatable;
+use App\Http\Dataproviders\Datatables\Config\UserOverviewDatatable;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('/config')

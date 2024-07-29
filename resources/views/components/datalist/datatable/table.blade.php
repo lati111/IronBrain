@@ -1,6 +1,8 @@
 @props([
     'id',
     'data_url',
+    'dynamic',
+    'history'
 ])
 
 {{--| Container |--}}

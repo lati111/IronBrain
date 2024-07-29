@@ -2,16 +2,35 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('/config/user')
-    ->middleware([
-        'auth:sanctum',
-        'auth.permission:config.user.view'
-    ])
+Route::prefix('/config')
+    ->middleware(['auth:sanctum'])
     ->group(function() {
-        Route::post('/{user_uuid}/set_role/{permission_id}', [\App\Http\Api\Config\UserConfigApi::class, 'changeRole'])
-            ->middleware('auth.permission:config.user.edit,config.user.role')
-            ->name('api.config.users.change-role');
+
+        Route::prefix('/user')
+            ->middleware(['auth.permission:config.user.view'])
+            ->group(function() {
+                Route::post('/{user_uuid}/set_role/{permission_id}', [\App\Http\Api\Config\UserConfigApi::class, 'changeRole'])
+                    ->middleware('auth.permission:config.user.edit,config.user.role')
+                    ->name('api.config.users.change-role');
+            });
+
+        Route::prefix('/role')
+            ->middleware(['auth.permission:config.role.view'])
+            ->group(function() {
+
+                Route::prefix('/{role_id}/permission')
+                    ->middleware(['auth.permission:config.role.permissions'])
+                    ->group(function() {
+                        Route::post('/{permission_id}/add', [\App\Http\Api\Config\RoleConfigApi::class, 'grantPermission'])
+                            ->name('api.config.role.permissions.grant');
+
+                        Route::post('/{permission_id}/remove', [\App\Http\Api\Config\RoleConfigApi::class, 'revokePermission'])
+                            ->name('api.config.role.permissions.revoke');
+                    });
+            });
     });
+
+
 
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
