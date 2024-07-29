@@ -18,13 +18,13 @@
 
         <x-datalist.datatable.header column="description" display="Description"/>
 
-        <x-datalist.datatable.header column="buttons">
-            <div class="flex flex-col justify-center">
-                @if($user->hasPermission('config.role.permissions'))
+        @if($user->hasPermission('config.role.permissions'))
+            <x-datalist.datatable.header column="buttons">
+                <div class="flex flex-col justify-center">
                     <x-elements.buttons.button onclick="openPermissionModal(this.closest('tr'))">edit permissions</x-elements.buttons.button>
-                @endif
-            </div>
-        </x-datalist.datatable.header>
+                </div>
+            </x-datalist.datatable.header>
+        @endif
 
     </x-datalist.datatable.table>
 @endsection

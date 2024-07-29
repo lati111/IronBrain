@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Dataproviders\Cardlists\Modules\PKSanc;
+namespace App\Http\Dataproviders\Modules\PKSanc;
 
 use App\Exceptions\IronBrainException;
 use App\Models\PKSanc\ImportCsv;

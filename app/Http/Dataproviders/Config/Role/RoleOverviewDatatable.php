@@ -1,11 +1,11 @@
 <?php
-namespace App\Http\Dataproviders\Cardlists\Config;
+
+namespace App\Http\Dataproviders\Config\Role;
 
 use App\Enum\GenericStringEnum;
-use App\Http\Dataproviders\Cardlists\AbstractCardlist;
+use App\Http\Api\AbstractApi;
 use App\Http\Dataproviders\Traits\HasPages;
-use App\Models\Config\Module;
-use App\Service\TimeService;
+use App\Models\Auth\Role;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +14,7 @@ use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
 use Symfony\Component\HttpFoundation\Response;
 
-class ModuleOverviewCardlist extends AbstractCardlist
+class RoleOverviewDatatable extends AbstractApi
 {
     use Dataprovider, Paginatable, HasPages, Searchable;
 
@@ -26,13 +26,7 @@ class ModuleOverviewCardlist extends AbstractCardlist
     public function data(Request $request): JsonResponse
     {
         $data = $this->getData($request)
-            ->get()
-            ->map(function (Module $module) {
-                $module['route'] = route($module['route']);
-                $module['thumbnail'] = asset('img/modules/thumbnail/'.$module['thumbnail']);
-                $module['time_ago'] = TimeService::time_elapsed_string($module->updated_at);
-                return $module;
-            });
+            ->get();
 
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
     }
@@ -40,17 +34,19 @@ class ModuleOverviewCardlist extends AbstractCardlist
     /** { @inheritdoc } */
     protected function getContent(Request $request): Builder
     {
-        /** @var Builder $modules */
-        $modules = Module::select()
-            ->where('in_overview', true)
-            ->orderBy('updated_at', 'desc');
+        /** @var Builder $query */
+        $query = Role::select();
 
-        return $modules;
+        return $query;
     }
 
     /** { @inheritdoc } */
     function getSearchFields(): array
     {
-        return ['name', 'description'];
+        return [
+            'name',
+            'description'
+        ];
     }
 }
+

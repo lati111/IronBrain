@@ -1,24 +1,21 @@
 <?php
 
-namespace App\Http\Dataproviders\Datatables\Config;
+namespace App\Http\Dataproviders\Config\Role;
 
 use App\Enum\Auth\RoleEnum;
 use App\Enum\GenericStringEnum;
 use App\Exceptions\IronBrainDataException;
-use App\Exceptions\IronBrainException;
 use App\Http\Api\AbstractApi;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
 use App\Models\Auth\RolePermission;
-use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Lati111\LaravelDataproviders\Traits\Sortable;
 use Symfony\Component\HttpFoundation\Response;
 
 class RolePermissionDatatable extends AbstractApi

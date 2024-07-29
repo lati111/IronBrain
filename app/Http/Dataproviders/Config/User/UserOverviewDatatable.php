@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Dataproviders\Datatables\Config;
+namespace App\Http\Dataproviders\Config\User;
 
 use App\Enum\GenericStringEnum;
 use App\Http\Api\AbstractApi;

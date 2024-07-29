@@ -1,13 +1,11 @@
 <?php
-
-namespace App\Http\Dataproviders\Dataselect\Auth\Roles;
+namespace App\Http\Dataproviders\Config\Module;
 
 use App\Enum\GenericStringEnum;
-use App\Http\Api\AbstractApi;
-use App\Http\Dataproviders\Datatables\AbstractDatatable;
+use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Traits\HasPages;
-use App\Models\Auth\Role;
-use App\Models\Auth\User;
+use App\Models\Config\Module;
+use App\Service\TimeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +14,7 @@ use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
 use Symfony\Component\HttpFoundation\Response;
 
-class RoleDataselect extends AbstractApi
+class ModuleOverviewCardlist extends AbstractCardlist
 {
     use Dataprovider, Paginatable, HasPages, Searchable;
 
@@ -28,7 +26,13 @@ class RoleDataselect extends AbstractApi
     public function data(Request $request): JsonResponse
     {
         $data = $this->getData($request)
-            ->get();
+            ->get()
+            ->map(function (Module $module) {
+                $module['route'] = route($module['route']);
+                $module['thumbnail'] = asset('img/modules/thumbnail/'.$module['thumbnail']);
+                $module['time_ago'] = TimeService::time_elapsed_string($module->updated_at);
+                return $module;
+            });
 
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
     }
@@ -36,19 +40,17 @@ class RoleDataselect extends AbstractApi
     /** { @inheritdoc } */
     protected function getContent(Request $request): Builder
     {
-        /** @var Builder $query */
-        $query = Role::select([
-            'id',
-            'name'
-        ]);
+        /** @var Builder $modules */
+        $modules = Module::select()
+            ->where('in_overview', true)
+            ->orderBy('updated_at', 'desc');
 
-        return $query;
+        return $modules;
     }
 
     /** { @inheritdoc } */
     function getSearchFields(): array
     {
-        return ['name'];
+        return ['name', 'description'];
     }
 }
-

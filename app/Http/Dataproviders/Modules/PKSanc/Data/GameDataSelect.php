@@ -1,7 +1,7 @@
 <?php
-namespace App\Http\Dataproviders\SelectorLists\Modules\PKSanc;
+namespace App\Http\Dataproviders\Modules\PKSanc\Data;
 
-use App\Http\Dataproviders\Cardlists\AbstractCardlist;
+use App\Http\Dataproviders\AbstractCardlist;
 use App\Models\PKSanc\Game;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;

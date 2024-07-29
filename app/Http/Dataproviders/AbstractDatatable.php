@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Dataproviders\Datatables;
+namespace App\Http\Dataproviders;
 
-use App\Http\Dataproviders\AbstractDatalist;
 use Illuminate\Http\Request;
 
 abstract class AbstractDatatable extends AbstractDatalist

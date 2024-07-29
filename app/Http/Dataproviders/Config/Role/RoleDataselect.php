@@ -1,22 +1,20 @@
 <?php
 
-namespace App\Http\Dataproviders\Datatables\Config;
+namespace App\Http\Dataproviders\Config\Role;
 
 use App\Enum\GenericStringEnum;
 use App\Http\Api\AbstractApi;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Auth\Role;
-use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Lati111\LaravelDataproviders\Traits\Sortable;
 use Symfony\Component\HttpFoundation\Response;
 
-class RoleOverviewDatatable extends AbstractApi
+class RoleDataselect extends AbstractApi
 {
     use Dataprovider, Paginatable, HasPages, Searchable;
 
@@ -37,7 +35,10 @@ class RoleOverviewDatatable extends AbstractApi
     protected function getContent(Request $request): Builder
     {
         /** @var Builder $query */
-        $query = Role::select();
+        $query = Role::select([
+            'id',
+            'name'
+        ]);
 
         return $query;
     }
@@ -45,10 +46,7 @@ class RoleOverviewDatatable extends AbstractApi
     /** { @inheritdoc } */
     function getSearchFields(): array
     {
-        return [
-            'name',
-            'description'
-        ];
+        return ['name'];
     }
 }
 

@@ -26,7 +26,7 @@
 
     {{--| cardlist |--}}
     <div class="flex flex-row justify-center mb-3" dusk="form">
-        <x-datalist.cardlist.list id="pokedex-cardlist" url="{{route('pksanc.pokedex.cardlist')}}" perpage="12" :perpageoptions="$perpageoptions" filtering="true">
+        <x-datalist.cardlist.list id="pokedex-cardlist" url="{{route('data.pksanc.pokedex')}}" perpage="12" :perpageoptions="$perpageoptions" filtering="true">
             {{--| template |--}}
             <x-datalist.cardlist.template id="pokedex-cardlist">
                 <input type="hidden" name="pokedex_id">

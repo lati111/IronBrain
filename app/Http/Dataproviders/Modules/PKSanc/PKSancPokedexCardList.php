@@ -1,10 +1,10 @@
 <?php
-namespace App\Http\Dataproviders\Cardlists\Modules\PKSanc;
+namespace App\Http\Dataproviders\Modules\PKSanc;
 
 use App\Enum\GenericStringEnum;
 use App\Enum\PKSanc\PokedexMarkings;
 use App\Exceptions\IronBrainException;
-use App\Http\Dataproviders\Cardlists\AbstractCardlist;
+use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Filters\PKSanc\PokemonTypeSelectFilter;
 use App\Http\Dataproviders\Interfaces\FilterableDataproviderInterface;
 use App\Http\Dataproviders\Traits\HasFilters;

@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Dataproviders\Cardlists\Modules\PKSanc;
+namespace App\Http\Dataproviders\Modules\PKSanc;
 
 use App\Models\PKSanc\StoredPokemon;
 use Illuminate\Database\Eloquent\Builder;

@@ -5,10 +5,10 @@ use Illuminate\Support\Facades\Route;
 //| Home
 
 Route::prefix('/home/overview')->group(function() {
-    Route::get('/', [App\Http\Dataproviders\Cardlists\Config\ModuleOverviewCardlist::class, 'data'])
+    Route::get('/', [\App\Http\Dataproviders\Config\Module\ModuleOverviewCardlist::class, 'data'])
         ->name('data.home.overview.cardlist');
 
-    Route::get('/pages', [App\Http\Dataproviders\Cardlists\Config\ModuleOverviewCardlist::class, 'count'])
+    Route::get('/pages', [\App\Http\Dataproviders\Config\Module\ModuleOverviewCardlist::class, 'count'])
         ->name('data.home.overview.pages');
 });
 
@@ -17,44 +17,25 @@ Route::prefix('/home/overview')->group(function() {
 
 Route::prefix('/config')->group(function() {
 
-    Route::prefix('/users/overview')
+    Route::prefix('/users')
         ->middleware('auth.permission:config.user.view')
         ->group(function() {
-            Route::get('/', [\App\Http\Dataproviders\Datatables\Config\UserOverviewDatatable::class, 'data'])
-                ->name('data.config.users.overview.datatable');
-
-            Route::get('/pages', [\App\Http\Dataproviders\Datatables\Config\UserOverviewDatatable::class, 'count'])
-                ->name('data.config.users.overview.datatable.pages');
+            Route::dataprovider('/overview', 'data.config.users.overview.datatable',
+                \App\Http\Dataproviders\Config\User\UserOverviewDatatable::class);
     });
 
     Route::prefix('/role')
         ->middleware('auth.permission:config.role.view')
         ->group(function() {
-            Route::prefix('/overview')->group(function() {
-                Route::get('/', [\App\Http\Dataproviders\Datatables\Config\RoleOverviewDatatable::class, 'data'])
-                    ->name('data.config.roles.overview.datatable');
+            Route::dataprovider('/overview', 'data.config.roles.overview.datatable',
+                \App\Http\Dataproviders\Config\Role\RoleOverviewDatatable::class);
 
-                Route::get('/pages', [\App\Http\Dataproviders\Datatables\Config\RoleOverviewDatatable::class, 'count'])
-                    ->name('data.config.roles.overview.datatable.pages');
-            });
+            Route::dataprovider('/dataselect', 'data.config.roles.dataselect',
+                \App\Http\Dataproviders\Config\Role\RoleDataselect::class);
 
-            Route::prefix('/dataselect')->group(function() {
-                Route::get('/', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'data'])
-                    ->name('data.config.roles.dataselect');
-
-                Route::get('/pages', [\App\Http\Dataproviders\Dataselect\Auth\Roles\RoleDataselect::class, 'count'])
-                    ->name('data.config.roles.dataselect.pages');
-            });
-
-            Route::prefix('/{role_id}/permissions')
-                ->middleware('auth.permission:config.role.permissions')
-                ->group(function() {
-                    Route::get('/', [\App\Http\Dataproviders\Datatables\Config\RolePermissionDatatable::class, 'data'])
-                        ->name('data.config.roles.permissions.datatable');
-
-                    Route::get('/pages', [\App\Http\Dataproviders\Datatables\Config\RolePermissionDatatable::class, 'count'])
-                        ->name('data.config.roles.permissions.datatable.pages');
-            });
+            Route::dataprovider('/{role_id}/permissions', 'data.config.roles.permissions.datatable',
+                \App\Http\Dataproviders\Config\Role\RolePermissionDatatable::class)
+                ->middleware('auth.permission:config.role.permissions');
     });
 });
 
@@ -64,52 +45,21 @@ Route::prefix('/config')->group(function() {
 Route::prefix('/pksanc/data')
     ->middleware('auth:sanctum')
     ->group(function() {
-        Route::prefix('/overview')->group(function() {
-            Route::get('/', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList::class, 'data'])
-                ->name('pksanc.overview.cardlist');
 
-            Route::get('/pages', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList::class, 'count'])
-                ->name('pksanc.overview.pages');
+        Route::dataprovider('/overview', 'data.pksanc.overview',
+            \App\Http\Dataproviders\Modules\PKSanc\PKSancOverviewCardList::class);
 
-            Route::get('/filters', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancOverviewCardList::class, 'filters'])
-                ->name('pksanc.overview.filters');
-        });
+        Route::dataprovider('/pokedex', 'data.pksanc.pokedex',
+            \App\Http\Dataproviders\Modules\PKSanc\PKSancPokedexCardList::class);
 
-        Route::prefix('/pokedex')->group(function() {
-            Route::get('/', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancPokedexCardList::class, 'data'])
-                ->name('pksanc.pokedex.cardlist');
+        Route::dataprovider('/staging/{import_uuid}', 'data.pksanc.staging',
+            \App\Http\Dataproviders\Modules\PKSanc\PKSancStagingCardList::class);
 
-            Route::get('/pages', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancPokedexCardList::class, 'count'])
-                ->name('pksanc.pokedex.pages');
+        //| Data
 
-            Route::get('/filters', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancPokedexCardList::class, 'filters'])
-                ->name('pksanc.pokedex.filters');
-        });
+        Route::dataprovider('/games/dataselect', 'data.pksanc.games.dataselect',
+            \App\Http\Dataproviders\Modules\PKSanc\Data\GameDataSelect::class);
 
-        Route::prefix('/staging/{import_uuid}')->group(function() {
-            Route::get('/', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList::class, 'data'])
-                ->name('pksanc.staging.cardlist');
-
-            Route::get('/pages', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList::class, 'count'])
-                ->name('pksanc.staging.pages');
-
-            Route::get('/filters', [App\Http\Dataproviders\Cardlists\Modules\PKSanc\PKSancStagingCardList::class, 'filters'])
-                ->name('pksanc.staging.filters');
-        });
-
-        Route::prefix('/games/dataselect')->group(function() {
-            Route::get('/', [App\Http\Dataproviders\SelectorLists\Modules\PKSanc\GameDataSelect::class, 'data'])
-                ->name('pksanc.games.dataselect');
-
-            Route::get('/pages', [App\Http\Dataproviders\SelectorLists\Modules\PKSanc\GameDataSelect::class, 'count'])
-                ->name('pksanc.games.pages');
-        });
-
-        Route::prefix('/owned-species/dataselect')->group(function() {
-            Route::get('/', [App\Http\Dataproviders\SelectorLists\Modules\PKSanc\FilterSelects\OwnedPokemonSpecies::class, 'data'])
-                ->name('pksanc.owned-species.dataselect');
-
-            Route::get('/pages', [App\Http\Dataproviders\SelectorLists\Modules\PKSanc\FilterSelects\OwnedPokemonSpecies::class, 'count'])
-                ->name('pksanc.owned-species.pages');
-        });
+        Route::dataprovider('/owned-species/dataselect', 'data.pksanc.owned-species.dataselect',
+            \App\Http\Dataproviders\Modules\PKSanc\Data\OwnedPokemonSpeciesSelect::class);
     });

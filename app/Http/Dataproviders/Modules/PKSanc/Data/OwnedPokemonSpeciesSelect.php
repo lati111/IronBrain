@@ -1,7 +1,7 @@
 <?php
-namespace App\Http\Dataproviders\SelectorLists\Modules\PKSanc\FilterSelects;
+namespace App\Http\Dataproviders\Modules\PKSanc\Data;
 
-use App\Http\Dataproviders\Cardlists\AbstractCardlist;
+use App\Http\Dataproviders\AbstractCardlist;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,7 +12,7 @@ use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
 
-class OwnedPokemonSpecies extends AbstractCardlist
+class OwnedPokemonSpeciesSelect extends AbstractCardlist
 {
     use Dataprovider, Paginatable, Searchable;
 

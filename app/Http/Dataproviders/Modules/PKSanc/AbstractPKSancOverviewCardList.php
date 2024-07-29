@@ -1,9 +1,9 @@
 <?php
-namespace App\Http\Dataproviders\Cardlists\Modules\PKSanc;
+namespace App\Http\Dataproviders\Modules\PKSanc;
 
 use App\Enum\GenericStringEnum;
 use App\Exceptions\IronBrainException;
-use App\Http\Dataproviders\Cardlists\AbstractCardlist;
+use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Filters\PKSanc\StoredPokemonTypeSelectFilter;
 use App\Http\Dataproviders\Interfaces\FilterableDataproviderInterface;
 use App\Http\Dataproviders\Traits\HasFilters;
@@ -149,7 +149,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
 
         $pokemonForeignTable = new ForeignTable(StoredPokemon::class, 'pokemon', Pokemon::class, 'pokemon');
 
-        $filter = new DataSelectFilter(new StoredPokemon, 'species_name', route('pksanc.owned-species.dataselect'),
+        $filter = new DataSelectFilter(new StoredPokemon, 'species_name', route('data.pksanc.owned-species.dataselect'),
             'species', 'species_name', $pokemonForeignTable);
         $filters['species'] = $filter;
 

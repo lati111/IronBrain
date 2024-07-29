@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Dataproviders\Cardlists;
+namespace App\Http\Dataproviders;
 
-use App\Http\Dataproviders\AbstractDatalist;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
