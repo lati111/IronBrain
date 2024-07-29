@@ -5,7 +5,7 @@ namespace Tests\Unit\DataProvider\Datatable\Config;
 use App\Models\Config\Module;
 use App\Models\Config\Submodule;
 use Database\Seeders\NavSeeder;
-use Database\Seeders\ProjectSeeder;
+use Database\Seeders\ModuleSeeder;
 use Tests\Unit\DataProvider\Datatable\AbstractDatatableTester;
 
 class SubmenuDatatableTest extends AbstractDatatableTester
@@ -13,7 +13,7 @@ class SubmenuDatatableTest extends AbstractDatatableTester
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(ProjectSeeder::class);
+        $this->seed(ModuleSeeder::class);
         $this->seed(NavSeeder::class);
     }
 

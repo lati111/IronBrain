@@ -7,7 +7,7 @@ use App\Enum\ErrorEnum;
 use App\Models\Auth\Permission;
 use App\Models\Config\Module;
 use Database\Seeders\NavSeeder;
-use Database\Seeders\ProjectSeeder;
+use Database\Seeders\ModuleSeeder;
 use Tests\Unit\Controller\AbstractControllerUnitTester;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +17,7 @@ class ProjectControllerTest extends AbstractControllerUnitTester
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(ProjectSeeder::class);
+        $this->seed(ModuleSeeder::class);
         $this->seed(NavSeeder::class);
     }
 

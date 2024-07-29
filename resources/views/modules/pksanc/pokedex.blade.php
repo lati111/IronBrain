@@ -6,7 +6,7 @@
 @section('header')
     @vite([
         'resources/css/components/datalist/cardlist.css',
-        'resources/css/project/pksanc/box.css',
+        'resources/css/modules/pksanc/box.css',
         'resources/ts/modules/pksanc/pokedex.ts'
     ])
 @stop

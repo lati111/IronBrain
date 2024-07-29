@@ -30,6 +30,29 @@ Route::prefix('/auth')->group(function() {
         ->name("auth.logout");
 });
 
+//| config
+Route::prefix('/config')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+
+        //| user
+        Route::prefix('/user')
+            ->middleware('auth.permission:config.user.view')
+            ->group(function() {
+                Route::get('/', [\App\Http\Controllers\Config\UserController::class, 'overview'])
+                    ->name("config.user.overview");
+            });
+
+        //| role
+        Route::prefix('/role')
+            ->middleware('auth.permission:config.role.view')
+            ->group(function() {
+                Route::get('/', [\App\Http\Controllers\Config\RoleController::class, 'overview'])
+                    ->name("config.role.overview");
+            });
+    });
+
+
 //| pksanc
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')

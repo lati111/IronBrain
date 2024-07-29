@@ -27,7 +27,7 @@
         </div>
     </section>
 
-    {{--| project cards |--}}
+    {{--| module cards |--}}
     <div dusk="projects">
         <div class="flex flex-row justify-center mb-3" dusk="form">
             <x-datalist.cardlist.list id="module-cardlist" url="{{route('data.home.overview.cardlist')}}">
