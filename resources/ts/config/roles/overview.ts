@@ -1,6 +1,6 @@
 import {DataTable} from "../../components/datalists/DataTable";
 import {openModal, init as initModals, closeModal} from "../../components/modal";
-import {postData} from "../../ajax";
+import {postData} from "../../main";
 import {checkboxSetter} from "../../components/datalists/utils";
 
 let overviewTable: DataTable;

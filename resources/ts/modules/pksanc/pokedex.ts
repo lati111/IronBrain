@@ -1,6 +1,6 @@
 import {DataCardlist} from "../../components/datalists/DataCardlist";
 import {closeModal, init as initModals} from "../../components/modal";
-import {postData} from "../../ajax";
+import {postData} from "../../main";
 
 /**
  * Initializes the pksanc box page

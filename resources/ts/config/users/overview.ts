@@ -2,7 +2,7 @@ import {DataTable} from "../../components/datalists/DataTable";
 import {openModal, init as initModals, closeModal} from "../../components/modal";
 import {DataSelect} from "../../components/datalists/DataSelect";
 import {freezePage, toast, unfreezePage} from "../../main";
-import {postData} from "../../ajax";
+import {postData} from "../../main";
 
 let overviewTable: DataTable;
 let roleSelector: DataSelect;

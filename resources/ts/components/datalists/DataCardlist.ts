@@ -1,5 +1,5 @@
 import {DataCardList as LaravelDataCardList} from "@lati111/laravel_datatables/src/Templates/Cardlist/DataCardList";
-import {getData as fetchGet, postData as fetchPost} from "../../ajax";
+import {getData as fetchGet, postData as fetchPost} from "../../main";
 import {IronbrainError} from "../../Exceptions/IronbrainError";
 import {openModal} from "../modal";
 

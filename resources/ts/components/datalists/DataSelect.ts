@@ -1,5 +1,5 @@
 import {DataSelect as LaravelDataselect} from "@lati111/laravel_datatables/src/Templates/Select/Dataselect";
-import {getData as fetchGet, postData as fetchPost} from "../../ajax";
+import {getData as fetchGet, postData as fetchPost} from "../../main";
 
 /** @inheritDoc */
 export class DataSelect extends LaravelDataselect {

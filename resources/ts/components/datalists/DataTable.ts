@@ -1,5 +1,5 @@
 import {Datatable as LaravelDataTable} from "@lati111/laravel_datatables/src/Templates/Datatable/Datatable";
-import {getData as fetchGet, postData as fetchPost} from "../../ajax";
+import {getData as fetchGet, postData as fetchPost} from "../../main";
 
 /** @inheritDoc */
 
