@@ -197,19 +197,19 @@ img.interactive:hover, img.interactive.active, img.interactive:focus {
     color: var(--sub-grey) !important;
 }
 
-.defaultInputHeight {
+.default_input_height, .defaultInputHeight {
     height: 24px;
 }
 
-.smallInput {
+.small_input, .smallInput {
     width: 300px
 }
 
-.mediumInput {
+.medium_input, .mediumInput {
     width: 300px;
 }
 
-.largeInput {
+.large_input, .largeInput {
     width: 425px;
 }
 

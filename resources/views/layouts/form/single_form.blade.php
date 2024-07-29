@@ -1,7 +1,6 @@
-@extends('layouts.master')
+@extends('layouts.main')
 
 @section('content')
-    @yield('modals')
 
     <div class="flex justify-center">
         <div>
@@ -29,11 +28,4 @@
             </div>
         </div>
     </div>
-@stop
-
-@section('script')
-@yield('scripts')
-@vite([
-    'resources/ts/main.ts',
-])
 @stop

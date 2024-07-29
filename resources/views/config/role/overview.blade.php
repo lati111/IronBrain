@@ -8,7 +8,7 @@
 
 {{--| table |--}}
 @section('table')
-    <x-datalist.datatable.table id="overview-table" data_url="{{route('data.config.roles.overview.datatable')}}">
+    <x-datalist.datatable.table id="overview-table" url="{{route('data.config.roles.overview.datatable')}}">
 
         <x-datalist.datatable.header column="id" visible="false">
             <input type="hidden" name="id" value="[value]">
@@ -35,7 +35,7 @@
         <x-modal.modal id="role_permission_modal">
             <div class="flex flex-col justify-center">
                 <h4 class="title text-center">Permissions</h4>
-                <x-datalist.datatable.table id="permission-table" data_url="{{route('data.config.roles.permissions.datatable', ['role_id' => 'role_id'])}}" dynamic="true" history="false">
+                <x-datalist.datatable.table id="permission-table" url="{{route('data.config.roles.permissions.datatable', ['role_id' => 'role_id'])}}" dynamic="true" history="false">
 
                     <x-datalist.datatable.header column="id" visible="false">
                         <input type="hidden" name="id" value="[value]">

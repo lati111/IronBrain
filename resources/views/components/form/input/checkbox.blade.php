@@ -1,3 +1,12 @@
+@props([
+    'id',
+    'name',
+    'onclick',
+    'value',
+    'left_label',
+    'right_label'
+])
+
 <div class="flex items-center justify-center">
     <label id="{{$id ?? $name}}">
 

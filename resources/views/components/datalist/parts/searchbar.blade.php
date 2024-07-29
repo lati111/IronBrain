@@ -4,5 +4,4 @@
                @isset($search)value="{{$search}}"@endisset>
         <button id="{{$id}}-search-confirm-button" class="interactive pl-2">Search</button>
     </div>
-
 </div>

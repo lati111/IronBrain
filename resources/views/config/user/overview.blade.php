@@ -8,7 +8,7 @@
 
 {{--| table |--}}
 @section('table')
-    <x-datalist.datatable.table id="overview-table" data_url="{{route('data.config.users.overview.datatable')}}">
+    <x-datalist.datatable.table id="overview-table" url="{{route('data.config.users.overview.datatable')}}">
 
         <x-datalist.datatable.header column="uuid" visible="false">
             <input type="hidden" name="uuid" value="[value]">
@@ -38,19 +38,11 @@
 {{--| modals |--}}
 @section('modals')
     @if($user->hasPermission('config.user.role'))
-        @component('components.modal.modal')
-            @slot('id')role_modal @endslot
-            @slot('name')role_id @endslot
-            @slot('body')
-                <div class="flex flex-col justify-center">
-                    <h4 class="title text-center">Change Role</h4>
-                    <x-datalist.dataselect.dataselect id="role-selector" name="role" identifier="id" label="name" url="{{route('data.config.roles.dataselect')}}"/>
-                </div>
-            @endslot
-            @slot('buttons')
-                <x-elements.buttons.button cls="cancel_interactive" onclick="closeModal('role_modal')">Cancel</x-elements.buttons.button>
-                <x-elements.buttons.button onclick="changeRole()">Change</x-elements.buttons.button>
-            @endslot
-        @endcomponent
+        <x-modal.modal id="role_modal" confirm_text="Change" confirm_method="changeRole()">
+            <div class="flex flex-col justify-center">
+                <h4 class="title text-center">Change Role</h4>
+                <x-datalist.dataselect.dataselect id="role-selector" name="role" item_identifier="id" item_label="name" url="{{route('data.config.roles.dataselect')}}"/>
+            </div>
+        </x-modal.modal>
     @endif
 @endsection

@@ -35,7 +35,7 @@ export function toast(message:string) {
     }
 
     const toast = document.createElement('div');
-    toast.classList.value = 'flex items-center rounded-lg bg-white shadow p-3';
+    toast.classList.value = 'flex items-center rounded-lg bg-white shadow p-3 z-[100]';
     toast.id = id;
 
     const body = document.createElement('div');
@@ -55,7 +55,9 @@ export function toast(message:string) {
     toast.append(closeBtn)
 
     toasts.append(toast);
-    setTimeout(toast.remove.bind(null, toast), 3000)
+    setTimeout(function (toast: HTMLElement) {
+        toast.remove();
+    }.bind(null, toast), 3000)
 }
 
 //| Data operations

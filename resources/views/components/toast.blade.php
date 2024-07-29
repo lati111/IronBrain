@@ -1,4 +1,4 @@
-<div id="{{$id}}" class="@isset($class){{$class}}@endisset flex items-center w-full max-w-xs p-3 bg-white rounded-lg shadow" role="alert">
+<div id="{{$id}}" class="@isset($class){{$class}}@endisset flex items-center w-full max-w-xs p-3 bg-white rounded-lg shadow z-[100]" role="alert">
     <div class="ml-3 text-sm">{{$text}}</div>
     <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white interactive rounded-lg p-1.5 inline-flex h-8 w-8"
         data-dismiss-target="#{{$id}}" aria-label="Close">
