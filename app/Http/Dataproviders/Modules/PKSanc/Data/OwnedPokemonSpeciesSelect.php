@@ -1,7 +1,9 @@
 <?php
 namespace App\Http\Dataproviders\Modules\PKSanc\Data;
 
+use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
+use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,10 +13,11 @@ use Illuminate\Support\Facades\Auth;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
+use Symfony\Component\HttpFoundation\Response;
 
 class OwnedPokemonSpeciesSelect extends AbstractCardlist
 {
-    use Dataprovider, Paginatable, Searchable;
+    use Dataprovider, Paginatable, Searchable, HasPages;
 
     /**
      * Gets the data after being modified by the query parameters
@@ -26,7 +29,7 @@ class OwnedPokemonSpeciesSelect extends AbstractCardlist
         $data = $this->getData($request)
             ->get();
 
-        return response()->json($data, 200);
+        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
     }
 
     /** { @inheritdoc } */
@@ -44,16 +47,6 @@ class OwnedPokemonSpeciesSelect extends AbstractCardlist
             ->distinct();
 
         return $species;
-    }
-
-    /**
-     * Gets the amount of pages that exists with the given query parameters
-     * @param Request $request The request parameters as given by Laravel
-     * @return JsonResponse The amount of pages in JSON format
-     */
-    public function count(Request $request): JsonResponse
-    {
-        return response()->json($this->getPages($request), 200);
     }
 
     /** { @inheritdoc } */

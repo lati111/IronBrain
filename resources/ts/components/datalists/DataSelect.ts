@@ -6,6 +6,7 @@ export class DataSelect extends LaravelDataselect {
     /** @inheritDoc */
     async fetchData(url: string): Promise<any> {
         const response = await fetchGet(url);
+        console.log(response)
         return response.data;
     }
 

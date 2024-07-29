@@ -34,8 +34,7 @@
             </label>
         </div>
 
-        <div id="{{$id}}-content" class="absolute rounded shadow bg-white overflow-x-hidden overflow-y-scroll w-full max-h-72">
-        </div>
+        <div id="{{$id}}-content" class="absolute rounded shadow bg-white overflow-x-hidden overflow-y-scroll w-full max-h-72"></div>
 
         <div id="{{$id}}-spinner" class="spinner absolute rounded shadow bg-white overflow-hidden w-full">
             <x-datalist.parts.load-spinner dataprovider_id="{{$id}}"/>
