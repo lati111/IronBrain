@@ -50,12 +50,14 @@ class ImportModules extends Command
             'json.*.order' => 'required|integer',
             'json.*.in_overview' => 'required|boolean',
             'json.*.in_nav' => 'required|boolean',
+            'json.*.requires_login' => 'nullable|boolean',
             'json.*.submodules' => 'nullable|array',
             'json.*.submodules.*.code' => 'required|string',
             'json.*.submodules.*.name' => 'required|string',
             'json.*.submodules.*.order' => 'required|integer',
             'json.*.submodules.*.route' => 'nullable|string',
             'json.*.submodules.*.permission' => 'nullable|string',
+            'json.*.submodules.*.requires_login' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -76,6 +78,7 @@ class ImportModules extends Command
             $module->order = $data['order'];
             $module->in_overview = $data['in_overview'];
             $module->in_nav = $data['in_nav'];
+            $module->requires_login = $data['requires_login'] ?? false;
 
             $module->route = $data['route'];
             if ($data['route'] === '' && Route::has($data['route']) === false) {
@@ -98,7 +101,7 @@ class ImportModules extends Command
             }
 
             $module->save();
-            if ($permission->wasChanged() || $permission->wasRecentlyCreated) {
+            if ($module->wasChanged() || $module->wasRecentlyCreated) {
                 $changedCount++;
             }
 
@@ -113,6 +116,7 @@ class ImportModules extends Command
 
                 $submodule->name = $submoduleData['name'];
                 $submodule->order = $submoduleData['order'];
+                $submodule->requires_login = $submoduleData['requires_login'] ?? $data['requires_login'] ?? false;
 
                 $submodule->route = $submoduleData['route'];
                 if ($submoduleData['route'] === '' && Route::has($submoduleData['route']) === false) {
@@ -135,7 +139,7 @@ class ImportModules extends Command
                 }
 
                 $submodule->save();
-                if ($permission->wasChanged() || $permission->wasRecentlyCreated) {
+                if ($submodule->wasChanged() || $submodule->wasRecentlyCreated) {
                     $changedCount++;
                 }
             }

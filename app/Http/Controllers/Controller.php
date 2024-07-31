@@ -32,14 +32,17 @@ class Controller extends BaseController
     protected function getBaseVariables(): array {
         $user = Auth::user();
 
-        $modules = Module::where('in_nav', true)
-            ->orderBy('order')
-            ->with('submodules')
-            ->get();
+        $modules = Module::orderBy('order')
+            ->where('in_nav', true)
+            ->with('submodules');
+
+        if ($user === null) {
+            $modules->where('requires_login', false);
+        }
 
         return [
             'user' => $user,
-            'modules' => $modules,
+            'modules' => $modules->get(),
         ];
     }
 }

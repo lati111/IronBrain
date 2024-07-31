@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int order The sorting order for this module used during displaying
  * @property string|null route The route leading to the main page for this module
  * @property int|null permission_id The id for permission a user needs to have to access the module, if any
+ * @property bool requires_login Whether this route requires the user to be logged in to access
  * @property Carbon|null deleted_at Whether or not the item was deleted or not
  */
 

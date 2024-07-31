@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth;
  * @property int order The sorting order for this module used during displaying
  * @property bool in_overview Whether this module should be visible on the overview
  * @property bool in_nav Whether this module should be visible on the nav
+ * @property bool requires_login Whether this route requires the user to be logged in to access
  * @property Carbon|null deleted_at Whether or not the item was deleted or not
  */
 
@@ -48,7 +49,7 @@ class Module extends AbstractModel
         $user = Auth::user();
         $role_id = $user?->role_id;
 
-        return $this
+        $query = $this
             ->hasMany(Submodule::class, 'module_id')
             ->select(Submodule::getTableName().'.*')
             ->leftJoin(
@@ -73,6 +74,12 @@ class Module extends AbstractModel
                             ->where(sprintf('%s.role_id', RolePermission::getTableName()), $role_id);
                     }, 1);
             })->orderBy('order');
+
+        if ($user === null) {
+            $query->where('requires_login', false);
+        }
+
+        return $query;
     }
 
     /**
