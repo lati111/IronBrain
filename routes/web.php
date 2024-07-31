@@ -9,16 +9,16 @@ use Illuminate\Support\Facades\Route;
 
 //| home
 Route::prefix('/')->group(function() {
-    Route::get('/', [HomeController::class, 'show'])->name("home.show");
+    Route::get('/', [HomeController::class, 'show'])->name("home");
 });
 
 //| authentication
 Route::prefix('/auth')->group(function() {
-    Route::get('/signup', [AuthController::class, 'showSignup'])
-        ->name("auth.signup");
-
-    Route::get('/login', [AuthController::class, 'showLogin'])
+    Route::get('/login', [AuthController::class, 'login'])
         ->name("auth.login");
+
+    Route::get('/signup', [AuthController::class, 'signup'])
+        ->name("auth.signup");
 
     Route::get('/logout', [AuthController::class, 'logout'])
         ->name("auth.logout");

@@ -3,6 +3,10 @@
 @section('htmlTitle', 'Sign Up')
 @section('form_title', 'Create New Account')
 
+@section('header')
+    @vite(['resources/ts/auth/signup.ts'])
+@endsection
+
 @section('form_content')
     {{--| username  field |--}}
     <x-form.input-wrapper label_text="Username">
@@ -28,6 +32,4 @@
 @section('submit_text', 'Create Account')
 @section('submit_method', 'attemptSignup()')
 
-@section('header')
-    @vite(['resources/ts/auth/signup.ts'])
-@endsection
+

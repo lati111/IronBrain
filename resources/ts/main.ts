@@ -9,6 +9,16 @@ const toasts:Element = document.querySelector('#toasts')!;
  * Initializes the toasts on the page
  */
 function toastInit() {
+    const url = new URL(window.location);
+
+    const message = url.searchParams.get('message');
+    if (message !== null) {
+        toast(message);
+        url.searchParams.delete('message');
+        window.history.replaceState('', '', url);
+    }
+
+
     setTimeout(() => {
         const errorToasts = document.querySelectorAll(".error-toast");
         for (let i = 0; i < errorToasts.length; i++) {
@@ -187,6 +197,10 @@ function handleFetchError(fetchResponse:FetchResponse, whitelist:string[] = []) 
     if (fetchResponse.code >= 500) {
         toast('An error occured. Please try again later.')
         throw new Error(fetchResponse.data);
+    }
+
+    if (fetchResponse.data === null) {
+        toast(fetchResponse.message);
     }
 
     if (typeof fetchResponse.data === 'string') {

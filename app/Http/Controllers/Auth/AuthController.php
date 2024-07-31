@@ -4,84 +4,51 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enum\Auth\UserEnum;
 use App\Http\Controllers\Controller;
-use App\Models\Auth\User;
-use App\Service\AvatarGenerator;
-use App\Service\AvatarGeneratorService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    private AvatarGeneratorService $avatarGeneratorService;
 
-    public function __construct(
-        AvatarGeneratorService $avatarGeneratorService
-    ) {
-        $this->avatarGeneratorService = $avatarGeneratorService;
-    }
-
-    public function showSignup(): View | RedirectResponse
+    /**
+     * Show the login page. Auto-redirects to home if logged in
+     * @return View|RedirectResponse The login page
+     */
+    public function login(): View | RedirectResponse
     {
         if (Auth::user() !== null) {
-            return redirect(route('home.show'));
+            return redirect(route('home'));
         }
 
-        return view('authentication.signup', $this->getBaseVariables());
+        return $this->view('authentication.login');
     }
 
-    public function saveSignup(Request $request): RedirectResponse
-    {
-
-    }
-
-    public function showLogin(): View | RedirectResponse
-    {
-        if (Auth::user() !== null) {
-            return redirect(route('home.show'));
-        }
-
-        return view('authentication.login', $this->getBaseVariables());
-    }
-
-    public function attemptLogin(Request $request): RedirectResponse
+    /**
+     * Show the signup page. Auto-redirects to home if logged in
+     * @return View|RedirectResponse The signup page
+     */
+    public function signup(): View | RedirectResponse
     {
         if (Auth::user() !== null) {
-            return redirect(route('home.show'));
+            return redirect(route('home'));
         }
 
-        $request->validate([
-            'username' => 'required',
-            'password' => 'required',
-            'remember_me' => 'nullable'
-        ]);
-
-        $remember = false;
-        if ($request->remember_me === "on") {
-            $remember = true;
-        }
-
-        if (Auth::attempt($request->only(['username', 'password']), $remember)) {
-            return redirect()->route("home.show")
-                ->with('message', UserEnum::LOGIN_SUCCESS_MESSAGE);
-        } else {
-            return back()
-                ->with('error', UserEnum::LOGIN_FAILED_MESSAGE);
-        }
+        return $this->view('authentication.signup');
     }
 
+    /**
+     * Logs the user out and redirects them to the login page
+     * @return View|RedirectResponse The login page
+     */
     public function logout(): View | RedirectResponse
     {
         if (Auth::user() === null) {
-            return redirect(route('home.show'));
+            return redirect(route('home'));
         }
 
         Auth::logout();
-        return redirect()->route("auth.login.show")
+        return redirect()->route("auth.login")
                 ->with('message', UserEnum::LOGOUT_MESSAGE);
     }
 }

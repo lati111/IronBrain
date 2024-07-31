@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('/auth')
     ->group(function() {
+        Route::post('/login', [\App\Http\Api\Auth\UserAuthApi::class, 'attemptLogin'])
+            ->name('api.auth.login');
+
         Route::post('/signup', [\App\Http\Api\Auth\UserAuthApi::class, 'createAccount'])
             ->name('api.auth.signup');
     });

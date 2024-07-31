@@ -13,6 +13,7 @@ use App\Models\Auth\RolePermission;
 use App\Models\Auth\User;
 use App\Service\AvatarGeneratorService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +30,37 @@ class UserAuthApi extends AbstractApi
         AvatarGeneratorService $avatarGeneratorService
     ) {
         $this->avatarGeneratorService = $avatarGeneratorService;
+    }
+
+    /**
+     * Attempt to log in
+     * @param Request $request The request parameters as passed by Laravel
+     * @return JsonResponse True or an error in json format
+     */
+    public function attemptLogin(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'username' => 'required',
+            'password' => 'required',
+            'remember_me' => 'nullable'
+        ]);
+
+        if ($validator->fails()) {
+            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $remember = false;
+        if ($request->remember_me === "on") {
+            $remember = true;
+        }
+
+        if (Auth::attempt($request->only(['username', 'password']), $remember)) {
+            return $this->respond(Response::HTTP_OK, UserEnum::LOGIN_SUCCESS_MESSAGE, true, [
+                'Location' => route('home', ['message' => UserEnum::LOGIN_SUCCESS_MESSAGE]),
+            ]);
+        } else {
+            return $this->respond(Response::HTTP_UNAUTHORIZED, UserEnum::LOGIN_FAILED_MESSAGE);
+        }
     }
 
     /**
@@ -61,7 +93,7 @@ class UserAuthApi extends AbstractApi
         $this->avatarGeneratorService->generateProfilePicture($user);
 
         return $this->respond(Response::HTTP_CREATED, UserEnum::SIGNUP_SUCCESS_MESSAGE, true, [
-            'Location' => route('auth.login'),
+            'Location' => route('auth.login', ['message' => UserEnum::SIGNUP_SUCCESS_MESSAGE]),
         ]);
     }
 }
