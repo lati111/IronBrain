@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 abstract class AbstractApi extends Controller
 {
-    public function respond(int $code, string $message, mixed $data = null): JsonResponse {
+    public function respond(int $code, string $message, mixed $data = null, array $headers = []): JsonResponse {
         $errors = null;
         if ($code < 200 || $code >= 300) {
             $errors = $data;
@@ -20,6 +20,6 @@ abstract class AbstractApi extends Controller
                 'message' => $message,
                 'data' => $data,
                 'errors' => $errors
-            ], $code);
+            ], $code, $headers);
     }
 }

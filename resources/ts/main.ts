@@ -108,7 +108,6 @@ export async function postData(url: string, data: GenericFormData|string = new F
         headers['Content-Type'] = 'application/json';
     }
 
-
     // @ts-ignore
     const response = await fetch(url, {
         method: 'post',
@@ -117,7 +116,7 @@ export async function postData(url: string, data: GenericFormData|string = new F
     });
 
     const responseData = await response.json();
-    const fetchResponse = new FetchResponse(response.ok, response.status, responseData);
+    const fetchResponse = new FetchResponse(response.ok, response.status, responseData, response.headers);
 
     if (!response.ok) {
         handleFetchError(fetchResponse, whitelist)
@@ -157,13 +156,13 @@ export async function getData(url:string, formdata =  new FormData(), whitelist:
     });
 
     const data = await response.json();
-    const fetchResponse = new FetchResponse(response.ok, response.status, data);
+    const fetchResponse = new FetchResponse(response.ok, response.status, data, response.headers);
 
     if (!response.ok) {
         handleFetchError(fetchResponse, whitelist)
     }
 
-    return new FetchResponse(response.ok, response.status, data);
+    return fetchResponse;
 }
 
 /**
@@ -251,14 +250,25 @@ function generateRandomString(length: number): string {
 
 //| Data classes
 export class FetchResponse {
+    /** @type {boolean} Whether the request succeeded */
     ok:boolean
+
+    /** @type {number} The http status code of the request */
     code:number
+
+    /** @type {Headers} The headers from the response */
+    headers: Headers
+
+    /** @type {string} The string message passed along with the request */
     message:string
+
+    /** @type {any} The data passed along with the request */
     data:any
 
-    constructor(ok:boolean, code:number, data:{'message':string, 'data':any, 'errors':any}) {
+    constructor(ok:boolean, code:number, data:{'message':string, 'data':any, 'errors':any}, headers: Headers) {
         this.ok = ok;
         this.code = code;
+        this.headers = headers;
         this.message = data.message;
         if (code >= 200 && code < 300) {
             this.data = data.data;

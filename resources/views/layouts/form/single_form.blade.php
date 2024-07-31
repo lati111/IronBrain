@@ -1,7 +1,6 @@
 @extends('layouts.main')
 
 @section('content')
-
     <div class="flex justify-center">
         <div>
             {{--| title |--}}
@@ -13,7 +12,7 @@
 
             {{--| form |--}}
             <div class="flex flex-row justify-center mb-3" dusk="form">
-                <form id="form" action="@yield('submit_route')" method="POST" enctype="multipart/form-data">
+                <form id="form" enctype="multipart/form-data">
                     @csrf
 
                     <div class="flex flex-col justify-center align-items-center gap-4">
@@ -22,7 +21,7 @@
 
                     {{--| submitter |--}}
                     <div class="flex flex-col mt-3">
-                        <input type="submit" class="interactive" value="@yield('submit_string')" dusk="submitter">
+                        <button type="button" class="interactive" onclick="@yield('submit_method')">@yield('submit_text')</button>
                     </div>
                 </form>
             </div>

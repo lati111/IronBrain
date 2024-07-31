@@ -45,8 +45,8 @@
                 @else
                     {{--| login / sign up |--}}
                     <div class="flex justify-center gap-3">
-                        <a href="{{route('auth.login.show')}}" class="interactive" dusk="login">Log In</a>
-                        <a href="{{route('auth.signup.show')}}" class="interactive" dusk="signup">Sign Up</a>
+                        <a href="{{route('auth.login')}}" class="interactive" dusk="login">Log In</a>
+                        <a href="{{route('auth.signup')}}" class="interactive" dusk="signup">Sign Up</a>
                     </div>
                 @endif
 

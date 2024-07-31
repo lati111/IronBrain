@@ -15,16 +15,10 @@ Route::prefix('/')->group(function() {
 //| authentication
 Route::prefix('/auth')->group(function() {
     Route::get('/signup', [AuthController::class, 'showSignup'])
-        ->name("auth.signup.show");
-
-    Route::post('/signup/save', [AuthController::class, 'saveSignup'])
-        ->name("auth.signup.save");
+        ->name("auth.signup");
 
     Route::get('/login', [AuthController::class, 'showLogin'])
-        ->name("auth.login.show");
-
-    Route::post('/login/save', [AuthController::class, 'attemptLogin'])
-        ->name("auth.login.attempt");
+        ->name("auth.login");
 
     Route::get('/logout', [AuthController::class, 'logout'])
         ->name("auth.logout");

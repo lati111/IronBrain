@@ -36,41 +36,7 @@ class AuthController extends Controller
 
     public function saveSignup(Request $request): RedirectResponse
     {
-        if (Auth::user() !== null) {
-            return redirect(route('home.show'));
-        }
 
-        $validator = Validator::make($request->all(), [
-            'username' => 'required|string|max:28',
-            'email' => 'nullable|email|max:40|unique:auth__user,email',
-            'password' => ['required', Password::min(8)
-                ->letters()
-                ->mixedCase()
-                ->numbers()],
-            'repeat_password' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return back()
-                ->withInput($request->all())
-                ->withErrors($validator);
-        }
-
-        if ($request->password !== $request->repeat_password) {
-            return back()
-                ->withInput($request->all())
-                ->with('error', UserEnum::PASSWORDS_NOT_MATCHING_MESSAGE);
-        }
-
-        $user = User::create([
-            'username' => $request->username,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        $this->avatarGeneratorService->generateProfilePicture($user);
-
-        return redirect(route('auth.login.show'))->with("message", UserEnum::SIGNUP_SUCCESS_MESSAGE);
     }
 
     public function showLogin(): View | RedirectResponse

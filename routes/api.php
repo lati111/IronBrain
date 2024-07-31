@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Facades\Route;
 
+//| Authentication
+
+Route::prefix('/auth')
+    ->group(function() {
+        Route::post('/signup', [\App\Http\Api\Auth\UserAuthApi::class, 'createAccount'])
+            ->name('api.auth.signup');
+    });
+
+//| Config
+
 Route::prefix('/config')
     ->middleware(['auth:sanctum'])
     ->group(function() {
@@ -31,6 +41,7 @@ Route::prefix('/config')
     });
 
 
+//| PKsanc
 
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
