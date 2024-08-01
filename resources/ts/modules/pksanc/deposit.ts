@@ -42,7 +42,7 @@ async function saveRomhack() {
     formdata.append('name', nameInput.value);
     formdata.append('original_game', originalGameSelector.value);
 
-    const response = await postData('/pksanc/romhacks/add', formdata);
+    const response = await postData('/api/pksanc/romhacks/add', formdata);
     response?.announce();
     if (response?.ok) {
         closeModal(romhackModalId);

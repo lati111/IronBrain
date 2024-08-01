@@ -30,9 +30,9 @@ async function markAsRead(card: HTMLElement, addMarking: boolean = true) {
 
     let response;
     if (addMarking) {
-        response = await postData('/pksanc/pokedex/mark', formdata);
+        response = await postData('/api/pksanc/pokedex/mark', formdata);
     } else {
-        response = await postData('/pksanc/pokedex/unmark', formdata);
+        response = await postData('/api/pksanc/pokedex/unmark', formdata);
     }
 
     response?.announce();
