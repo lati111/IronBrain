@@ -6,8 +6,8 @@ use App\Enum\Config\ProjectEnum;
 use App\Enum\Config\SubmenuEnum;
 use App\Enum\ErrorEnum;
 use App\Models\Auth\Permission;
-use App\Models\Config\Project;
-use App\Models\Config\Submenu;
+use App\Models\Config\Module;
+use App\Models\Config\Submodule;
 use Database\Seeders\NavSeeder;
 use Tests\Unit\Controller\AbstractControllerUnitTester;
 
@@ -37,7 +37,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
             ->actingAs($this->getAdminUser())
             ->get(route('config.projects.submenu.modify', [
                 $project->id,
-                $project->Submenu()->first()
+                $project->submodules()->first()
             ]));
         $this->assertView($response, 'config.projects.submenu.modify');
     }
@@ -47,8 +47,8 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
         $response = $this
             ->actingAs($this->getAdminUser())
             ->get(route('config.projects.submenu.modify', [
-                $this->getFalseId(Project::class),
-                $this->getFalseId(Submenu::class)
+                $this->getFalseId(Module::class),
+                $this->getFalseId(Submodule::class)
             ]));
         $this->assertRedirect($response, 'config.projects.overview', [
             'error' => ProjectEnum::PROJECT_NOT_FOUND_MESSAGE
@@ -62,7 +62,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
             ->actingAs($this->getAdminUser())
             ->get(route('config.projects.submenu.modify', [
                 $project->id,
-                $this->getFalseId(Submenu::class)
+                $this->getFalseId(Submodule::class)
             ]));
         $this->assertRedirectWithRouteParams($response, 'config.projects.modify', [$project->id], [
             'error' => SubmenuEnum::SUBMENU_NOT_FOUND_MESSAGE
@@ -92,7 +92,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
             'message' => SubmenuEnum::SUBMENU_SAVED_MESSAGE
         ]);
 
-        $submenu = Submenu::where('order', $order)->first();
+        $submenu = Submodule::where('order', $order)->first();
         $this->assertNotNull($submenu);
         $this->assertEquals($project->id, $submenu->project_id);
         $this->assertEquals($name, $submenu->name);
@@ -104,7 +104,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
     public function testSaveModifiedSubmenuValid(): void
     {
         $project = $this->getRandomProjectWithSubmenu();
-        $submenu = $project->Submenu()->first();
+        $submenu = $project->submodules()->first();
         $route = route('config.projects.submenu.save', [$project->id]);
 
         $routeString = 'home.show';
@@ -125,7 +125,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
             'message' => SubmenuEnum::SUBMENU_SAVED_MESSAGE
         ]);
 
-        $submenu = Submenu::where('id', $submenu->id)->first();
+        $submenu = Submodule::where('id', $submenu->id)->first();
         $this->assertNotNull($submenu);
         $this->assertEquals($project->id, $submenu->project_id);
         $this->assertEquals($name, $submenu->name);
@@ -138,7 +138,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
     {
         $project = $this->getRandomProjectWithSubmenu();
         $route = route('config.projects.submenu.save', [$project->id]);
-        $submenu = $this->getRandomEntity(Submenu::class);
+        $submenu = $this->getRandomEntity(Submodule::class);
 
         //valid
         $this
@@ -150,7 +150,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
 
         //exists
         $this->post($route, [
-            'id' => $this->getFalseId(Submenu::class)
+            'id' => $this->getFalseId(Submodule::class)
         ]);
         $this->assertValidationExists('id');
 
@@ -329,13 +329,13 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
     public function testDeleteSubmenuValid(): void
     {
         $project = $this->getRandomProjectWithSubmenu();
-        $submenu = $project->Submenu()->first();
+        $submenu = $project->submodules()->first();
         $route = route('config.projects.submenu.delete', [$project->id, $submenu->id,]);
 
         $response = $this
             ->actingAs($this->getAdminUser())
             ->post($route);
-        $this->assertNull(Submenu::where('id', $submenu->id)->first());
+        $this->assertNull(Submodule::where('id', $submenu->id)->first());
         $this->assertRedirectWithRouteParams($response, 'config.projects.modify', [$project->id], [
             'message' => SubmenuEnum::SUBMENU_DELETED_MESSAGE
         ]);
@@ -344,7 +344,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
     public function testDeleteSubmenuNotFound(): void
     {
         $project = $this->getRandomProjectWithSubmenu();
-        $route = route('config.projects.submenu.delete', [$project->id, $this->getFalseId(Submenu::class)]);
+        $route = route('config.projects.submenu.delete', [$project->id, $this->getFalseId(Submodule::class)]);
 
         $response = $this
             ->actingAs($this->getAdminUser())
@@ -356,10 +356,10 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
 
 
     //| getters
-    private function getRandomProjectWithSubmenu(): Project
+    private function getRandomProjectWithSubmenu(): Module
     {
-        $submenu = $this->getRandomEntity(Submenu::class);
-        return $submenu->Nav()->first();
+        $submenu = $this->getRandomEntity(Submodule::class);
+        return $submenu->module()->first();
     }
 
     private function getUniqueOrder(): int
@@ -367,7 +367,7 @@ class SubmenuControllerTest extends AbstractControllerUnitTester
         $order = null;
         while ($order === null) {
             $int = $this->faker->randomNumber();
-            if (Submenu::where('order', $int)->count() === 0) {
+            if (Submodule::where('order', $int)->count() === 0) {
                 $order = $int;
             }
         }

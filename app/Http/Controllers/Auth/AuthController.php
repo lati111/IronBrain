@@ -4,118 +4,51 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enum\Auth\UserEnum;
 use App\Http\Controllers\Controller;
-use App\Models\Auth\User;
-use App\Service\AvatarGenerator;
-use App\Service\AvatarGeneratorService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    private AvatarGeneratorService $avatarGeneratorService;
 
-    public function __construct(
-        AvatarGeneratorService $avatarGeneratorService
-    ) {
-        $this->avatarGeneratorService = $avatarGeneratorService;
-    }
-
-    public function showSignup(): View | RedirectResponse
+    /**
+     * Show the login page. Auto-redirects to home if logged in
+     * @return View|RedirectResponse The login page
+     */
+    public function login(): View | RedirectResponse
     {
         if (Auth::user() !== null) {
-            return redirect(route('home.show'));
+            return redirect(route('home'));
         }
 
-        return view('authentication.signup', $this->getBaseVariables());
+        return $this->view('authentication.login');
     }
 
-    public function saveSignup(Request $request): RedirectResponse
+    /**
+     * Show the signup page. Auto-redirects to home if logged in
+     * @return View|RedirectResponse The signup page
+     */
+    public function signup(): View | RedirectResponse
     {
         if (Auth::user() !== null) {
-            return redirect(route('home.show'));
+            return redirect(route('home'));
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:28',
-            'email' => 'required|email|max:40|unique:auth__user,email',
-            'password' => ['required', Password::min(8)
-                ->letters()
-                ->mixedCase()
-                ->numbers()],
-            'repeat_password' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return back()
-                ->withInput($request->all())
-                ->withErrors($validator);
-        }
-
-        if ($request->password !== $request->repeat_password) {
-            return back()
-                ->withInput($request->all())
-                ->with('error', UserEnum::PASSWORDS_NOT_MATCHING_MESSAGE);
-        }
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        $this->avatarGeneratorService->generateProfilePicture($user);
-
-        return redirect(route('auth.login.show'))->with("message", UserEnum::SIGNUP_SUCCESS_MESSAGE);
+        return $this->view('authentication.signup');
     }
 
-    public function showLogin(): View | RedirectResponse
-    {
-        if (Auth::user() !== null) {
-            return redirect(route('home.show'));
-        }
-
-        return view('authentication.login', $this->getBaseVariables());
-    }
-
-    public function attemptLogin(Request $request): RedirectResponse
-    {
-        if (Auth::user() !== null) {
-            return redirect(route('home.show'));
-        }
-
-        $request->validate([
-            'email' => 'required',
-            'password' => 'required',
-            'remember_me' => 'nullable'
-        ]);
-
-        $remember = false;
-        if ($request->remember_me === "on") {
-            $remember = true;
-        }
-
-        if (Auth::attempt($request->only(['email', 'password']), $remember)) {
-            return redirect()->route("home.show")
-                ->with('message', UserEnum::LOGIN_SUCCESS_MESSAGE);
-        } else {
-            return back()
-                ->with('error', UserEnum::LOGIN_FAILED_MESSAGE);
-        }
-    }
-
+    /**
+     * Logs the user out and redirects them to the login page
+     * @return View|RedirectResponse The login page
+     */
     public function logout(): View | RedirectResponse
     {
         if (Auth::user() === null) {
-            return redirect(route('home.show'));
+            return redirect(route('home'));
         }
 
         Auth::logout();
-        return redirect()->route("auth.login.show")
+        return redirect()->route("auth.login")
                 ->with('message', UserEnum::LOGOUT_MESSAGE);
     }
 }

@@ -2,39 +2,25 @@
 
 @section('htmlTitle', 'Log In')
 @section('form_title', 'Log In')
-@section('submit_string', 'Log In')
+
+@section('header')
+    @vite(['resources/ts/auth/login.ts'])
+@endsection
 
 @section('form_content')
-    {{--| email field |--}}
-    @component('components.form.input-wrapper')
-        @slot('label_text')
-            Email
-        @endslot
-        @slot('input_html')
-            <input type="email" name="email" class="largeInput underlined" placeholder="Email Adress"
-                   @if(old('email') !== null) value="{{old('email')}}" @endif
-                   dusk="email_input" required
-            />
-        @endslot
-    @endcomponent
+    {{--| username field |--}}
+    <x-form.input-wrapper label_text="Username">
+        <input type="text" name="username" class="large_input underlined" placeholder="Username" required/>
+    </x-form.input-wrapper>
 
     {{--| password field |--}}
-    @component('components.form.input-wrapper')
-        @slot('label_text')
-            Password
-        @endslot
-        @slot('input_html')
-            <input type="password" name="password" class="largeInput underlined" placeholder="Password"
-                   @if(old('password') !== null) value="{{old('password')}}" @endif
-                   dusk="password_input" required
-            />
-        @endslot
-    @endcomponent
+    <x-form.input-wrapper label_text="Password">
+        <input type="password" name="password" class="largeInput underlined" placeholder="Password" required/>
+    </x-form.input-wrapper>
 
-    @component('components.form.input.checkbox')
-        @slot('name', 'remember_me')
-        @slot('right_label', 'Remember Me')
-    @endcomponent
+    {{--| remember me field |--}}
+    <x-form.input.checkbox name="remember_me" right_label="Remember Me"/>
 @stop
 
-@section('submit_route', route('auth.login.attempt'))
+@section('submit_text', 'Log In')
+@section('submit_method', 'attemptLogin()')

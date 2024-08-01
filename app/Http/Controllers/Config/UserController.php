@@ -13,9 +13,9 @@ class UserController extends Controller
 {
     public function overview()
     {
-        return view('config.user.overview', array_merge($this->getBaseVariables(), [
+        return $this->view('config.user.overview', [
             'roles' => Role::all(),
-        ]));
+        ]);
     }
 
     public function deactivate(string $uuid)
@@ -25,7 +25,7 @@ class UserController extends Controller
             $user->delete();
             return redirect(route('config.user.overview'))->with("message", UserEnum::USER_DEACTIVATED_MESSAGE);
         } else {
-            return redirect(route('config.user.overview'))->with("error", UserEnum::USER_NOT_FOUND_MESSAGE);
+            return redirect(route('config.user.overview'))->with("error", UserEnum::NOT_FOUND);
         }
     }
 
@@ -43,7 +43,7 @@ class UserController extends Controller
         $user = User::find($uuid);
         if ($user === null) {
             return back()
-                ->with('error', UserEnum::USER_NOT_FOUND_MESSAGE);
+                ->with('error', UserEnum::NOT_FOUND);
         }
 
         $user->role_id = $request->role_id;

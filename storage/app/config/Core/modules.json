@@ -1,0 +1,44 @@
+[
+    {
+        "code": "pksanc",
+        "name": "PKSanc",
+        "description": "An Pokemon archival tool to safely store, and explore, your old Pokemon save files for nostalgia purposes.",
+        "thumbnail": "pksanc.png",
+        "route": "pksanc.home.show",
+        "permission": null,
+        "order": 1,
+        "in_overview": true,
+        "in_nav": true,
+        "requires_login": true,
+        "submodules": []
+    },
+    {
+        "code": "config",
+        "name": "Config",
+        "description": "The wrapper for the various configs used to configure the website",
+        "thumbnail": null,
+        "route": null,
+        "permission": null,
+        "order": 999,
+        "in_overview": false,
+        "in_nav": true,
+        "requires_login": true,
+        "submodules": [
+            {
+                "code": "users",
+                "name": "Users",
+                "order": 1,
+                "route": "config.user.overview",
+                "permission": "config.user.view"
+            },
+            {
+                "code": "roles",
+                "name": "Roles",
+                "order": 2,
+                "route": "config.role.overview",
+                "permission": "config.role.view"
+            }
+        ]
+    }
+
+]

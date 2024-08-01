@@ -6,8 +6,8 @@ class UserEnum
 {
     //| Config strings
     public const USER_DEACTIVATED_MESSAGE = "User was deactivated";
-    public const USER_ROLE_CHANGED_MESSAGE = "User role was changed";
-    public const USER_NOT_FOUND_MESSAGE = "Invalid user";
+    public const ROLE_CHANGED = "User role was changed";
+    public const NOT_FOUND = "Invalid user";
 
     //| Login strings
     public const LOGIN_SUCCESS_MESSAGE = "You have been logged in";

@@ -27,12 +27,12 @@
         </div>
     </section>
 
-    {{--| project cards |--}}
+    {{--| module cards |--}}
     <div dusk="projects">
         <div class="flex flex-row justify-center mb-3" dusk="form">
-            <x-datalist.cardlist.list id="module-cardlist" url="{{route('home.overview.cardlist')}}">
+            <x-datalist.cardlist.list id="module-cardlist" url="{{route('data.home.overview.cardlist')}}">
                 {{--| template |--}}
-                <x-datalist.cardlist.template id="module-cardlist" class="max-w-md flex flex-col items-center gap-2">
+                <x-datalist.cardlist.template dataprovider_id="module-cardlist" cls="max-w-md flex flex-col items-center gap-2">
                     <img data-name="thumbnail" data-alt-name="name" class="max-w-sm">
 
                     <div class="card-body">

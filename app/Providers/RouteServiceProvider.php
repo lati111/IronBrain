@@ -34,8 +34,26 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/api.php'));
 
             Route::middleware('web')
-                ->group(base_path('routes/web.php'))
-                ->group(base_path('routes/config.php'));
+                ->prefix('data')
+                ->group(base_path('routes/dataprovider.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/web.php'));
+        });
+
+        //| Macros
+        Route::macro('dataprovider', function(string $uri, string $name, string $dataprovider) {
+            return Route::prefix($uri)->group(function() use ($uri, $name, $dataprovider) {
+                Route::get('/', [$dataprovider, 'data'])->name($name);
+
+                if (method_exists($dataprovider, 'count')) {
+                    Route::get('/pages', [$dataprovider, 'count']);
+                }
+
+                if (method_exists($dataprovider, 'filters')) {
+                    Route::get('/filters', [$dataprovider, 'filters']);
+                }
+            });
         });
     }
 }

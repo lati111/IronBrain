@@ -6,7 +6,7 @@
 @section('header')
     @vite([
         'resources/css/components/datalist/cardlist.css',
-        'resources/css/project/pksanc/box.css',
+        'resources/css/modules/pksanc/box.css',
         'resources/ts/modules/pksanc/box.ts'
     ])
 @stop
@@ -26,7 +26,7 @@
 
     {{--| cardlist |--}}
     <div class="flex flex-row justify-center mb-3" dusk="form">
-        <x-datalist.cardlist.list id="pokemon-cardlist" url="{{route('pksanc.overview.cardlist')}}" filtering="true">
+        <x-datalist.cardlist.list id="pokemon-cardlist" url="{{route('data.pksanc.overview')}}" filtering="true">
             {{--| template |--}}
             @include('modules.pksanc.snippits.pokemon-cardlist-template')
         </x-datalist.cardlist.list>

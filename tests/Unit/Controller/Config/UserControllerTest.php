@@ -42,7 +42,7 @@ class UserControllerTest extends AbstractControllerUnitTester
             ->actingAs($this->getAdminUser())
             ->post($route);
         $this->assertRedirect($response, 'config.user.overview', [
-            "error" => UserEnum::USER_NOT_FOUND_MESSAGE,
+            "error" => UserEnum::NOT_FOUND,
         ]);
     }
 
@@ -113,6 +113,6 @@ class UserControllerTest extends AbstractControllerUnitTester
             ->post($route, [
                 'role_id' =>  $role->id,
             ]);
-        $this->assertEquals(UserEnum::USER_NOT_FOUND_MESSAGE, session('error'));
+        $this->assertEquals(UserEnum::NOT_FOUND, session('error'));
     }
 }

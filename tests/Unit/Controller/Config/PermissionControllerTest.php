@@ -44,7 +44,7 @@ class PermissionControllerTest extends AbstractControllerUnitTester
             ->actingAs($this->getAdminUser())
             ->get(route('config.permission.modify', [$this->getFalseId(Permission::class)]));
         $this->assertRedirect($response, 'config.permission.overview');
-        $this->assertEquals(PermissionEnum::NOT_FOUND_MESSAGE, session('error'));
+        $this->assertEquals(PermissionEnum::NOT_FOUND, session('error'));
     }
 
     //| save permission test
@@ -329,7 +329,7 @@ class PermissionControllerTest extends AbstractControllerUnitTester
             ->actingAs($this->getAdminUser())
             ->post($route);
         $this->assertRedirect($response, 'config.permission.overview', [
-            "error" => PermissionEnum::NOT_FOUND_MESSAGE,
+            "error" => PermissionEnum::NOT_FOUND,
         ]);
     }
 

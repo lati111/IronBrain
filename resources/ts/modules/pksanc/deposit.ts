@@ -1,7 +1,6 @@
 import {closeModal, init as initModals} from "../../components/modal";
 import {IronbrainError} from "../../Exceptions/IronbrainError";
-import {toast} from "../../main";
-import {postData} from "../../ajax";
+import {postData, toast} from "../../main";
 import {DataSelect} from "../../components/datalists/DataSelect";
 
 const romhackModalId: string = 'add_romhack_modal';
@@ -43,8 +42,11 @@ async function saveRomhack() {
     formdata.append('name', nameInput.value);
     formdata.append('original_game', originalGameSelector.value);
 
-    await postData('/pksanc/romhacks/add', formdata);
-    closeModal(romhackModalId);
+    const response = await postData('/pksanc/romhacks/add', formdata);
+    response?.announce();
+    if (response?.ok) {
+        closeModal(romhackModalId);
+    }
 }
 
 (<any>window).init = init;

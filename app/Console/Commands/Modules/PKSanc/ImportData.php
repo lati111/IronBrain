@@ -20,7 +20,7 @@ class ImportData extends Command
     }
 
     /** {@inheritdoc} */
-    protected $signature = 'pksanc:import {--filter=} {--database=}';
+    protected $signature = 'import:pksanc {--filter=} {--database=}';
 
     /** {@inheritdoc} */
     protected $description = 'Imports PKSanc data from PokeApi';
