@@ -45,6 +45,28 @@ trait ValidationTests
         );
     }
 
+    public function assertUniqueValidation(string $column, string $alias = null): void
+    {
+        if ($alias === null) {
+            $alias = $column;
+        }
+
+        $item = $this->getModel()::inRandomOrder()->first() ?? $this->getModel()->factory()->make();
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), [
+                $column => $item[$column]
+            ], $this->getDefaultHeaders());
+
+        $this->assertBadRequest($response, 'unique');
+
+        $this->assertContains(
+            Lang::get('validation.unique', ['attribute' => $alias]),
+            $response->json()['errors'][$column]
+        );
+    }
+
+
     public function assertExistsValidation(string $column, string $fakeValue, string $alias = null): void
     {
         if ($alias === null) {
@@ -56,7 +78,8 @@ trait ValidationTests
                 $column => $fakeValue
             ], $this->getDefaultHeaders());
 
-        $response->assertBadRequest();
+        $this->assertBadRequest($response, 'unique');
+
         $this->assertContains(
             Lang::get('validation.exists', ['attribute' => $alias]),
             $response->json()['errors'][$column]
@@ -216,7 +239,7 @@ trait ValidationTests
         );
     }
 
-    public function assertCheckboxAccepted(string $column, string $alias = null): void
+    public function assertCheckboxValidation(string $column, string $alias = null): void
     {
         if ($alias === null) {
             $alias = $column;
@@ -224,18 +247,80 @@ trait ValidationTests
 
         $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute(), [
-                $column => 'no'
+                $column => 'aaa'
             ], $this->getDefaultHeaders());
 
-        $this->assertBadRequest($response, 'accepted');
+        $this->assertBadRequest($response, 'checkbox');
 
         $this->assertContains(
-            Lang::get('validation.accepted', ['attribute' => $alias]),
+            Lang::get('validation.checkbox', ['attribute' => $alias]),
             $response->json()['errors'][$column],
-            'Failed asserting "accepted" validation'
+            'Failed asserting "checkbox" validation'
         );
     }
 
+    public function assertPasswordValidation(string $column, string $alias = null): void
+    {
+        if ($alias === null) {
+            $alias = $column;
+        }
+
+        // Validate requires lower case
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), [
+                $column => fake()->regexify('[A-Z]{6}[0-9]{3}')
+            ], $this->getDefaultHeaders());
+
+        $this->assertBadRequest($response, 'password_lower_case');
+
+        $this->assertContains(
+            Lang::get('validation.password.mixed', ['attribute' => $alias]),
+            $response->json()['errors'][$column],
+            'Failed asserting "checkbox" validation'
+        );
+
+        // Validate requires upper case
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), [
+                $column => fake()->regexify('[a-z]{6}[0-9]{3}')
+            ], $this->getDefaultHeaders());
+
+        $this->assertBadRequest($response, 'password_upper_case');
+
+        $this->assertContains(
+            Lang::get('validation.password.mixed', ['attribute' => $alias]),
+            $response->json()['errors'][$column],
+            'Failed asserting "checkbox" validation'
+        );
+
+        // Validate requires letters
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), [
+                $column => fake()->regexify('[0-9]{8}')
+            ], $this->getDefaultHeaders());
+
+        $this->assertBadRequest($response, 'password_letters');
+
+        $this->assertContains(
+            Lang::get('validation.password.letters', ['attribute' => $alias]),
+            $response->json()['errors'][$column],
+            'Failed asserting "checkbox" validation'
+        );
+
+        // Validate requires numbers
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), [
+                $column => fake()->regexify('[A-Z][a-z]{6}')
+            ], $this->getDefaultHeaders());
+
+        $this->assertBadRequest($response, 'password_numbers');
+
+        $this->assertContains(
+            Lang::get('validation.password.numbers', ['attribute' => $alias]),
+            $response->json()['errors'][$column],
+            'Failed asserting "checkbox" validation'
+        );
+    }
 
     //| Assert length
     public function assertMaxValidation(string $type, string $column, int $max, string $alias = null): void
@@ -322,7 +407,7 @@ trait ValidationTests
         );
     }
 
-    //| Formatting options
+    //| Misc options
     public function assertDateFormatValidation(string $column, string $format, string $alias = null): void
     {
         if ($alias === null) {
@@ -338,6 +423,26 @@ trait ValidationTests
 
         $this->assertContains(
             Lang::get('validation.date_format', ['attribute' => $alias, 'format' => $format]),
+            $response->json()['errors'][$column]
+        );
+    }
+
+    public function assertConfirmedValidation(string $column, string $alias = null): void
+    {
+        if ($alias === null) {
+            $alias = $column;
+        }
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), [
+                $column => $this->getPostParameters()[$column],
+                $column.'_confirmation' => $this->getPostParameters()[$column].'aaaaa'
+            ], $this->getDefaultHeaders());
+
+        $this->assertBadRequest($response, 'confirmed');
+
+        $this->assertContains(
+            Lang::get('validation.confirmed', ['attribute' => $alias]),
             $response->json()['errors'][$column]
         );
     }

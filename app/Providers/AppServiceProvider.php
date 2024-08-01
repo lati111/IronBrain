@@ -26,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Validator::extend('checkbox', function ($attribute, $value, $parameters, $validator) {
+            return in_array($value, [true, false, null, 'True', 'False', 'on', 'off'], true);
+        });
+
         Validator::extend('csv_boolean', function ($attribute, $value, $parameters, $validator) {
             return in_array($value, ['True', 'False']);
         });

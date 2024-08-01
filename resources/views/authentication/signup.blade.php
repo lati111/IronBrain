@@ -25,7 +25,7 @@
 
     {{--| repeat password field |--}}
     <x-form.input-wrapper label_text="Repeat Password">
-        <input type="password" name="repeat_password" class="largeInput underlined" placeholder="Repeat Password" required/>
+        <input type="password" name="password_confirmation" class="largeInput underlined" placeholder="Repeat Password" required/>
     </x-form.input-wrapper>
 @stop
 

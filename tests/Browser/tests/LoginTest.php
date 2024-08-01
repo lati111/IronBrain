@@ -54,7 +54,7 @@ class LoginTest extends DuskTestCase
             $browser
                 ->assertRouteIs('home.show')
                 ->with('@toasts', function (Browser $browser) {
-                    $browser->assertSee(UserEnum::LOGIN_SUCCESS_MESSAGE);
+                    $browser->assertSee(UserEnum::LOGGED_IN);
                 });
         });
     }

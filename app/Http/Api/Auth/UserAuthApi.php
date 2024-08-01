@@ -40,13 +40,13 @@ class UserAuthApi extends AbstractApi
     public function attemptLogin(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'username' => 'required',
-            'password' => 'required',
-            'remember_me' => 'nullable'
+            'username' => 'required|string',
+            'password' => 'required|string',
+            'remember_me' => 'checkbox'
         ]);
 
         if ($validator->fails()) {
-            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
         $remember = false;
@@ -55,11 +55,11 @@ class UserAuthApi extends AbstractApi
         }
 
         if (Auth::attempt($request->only(['username', 'password']), $remember)) {
-            return $this->respond(Response::HTTP_OK, UserEnum::LOGIN_SUCCESS_MESSAGE, true, [
-                'Location' => route('home', ['message' => UserEnum::LOGIN_SUCCESS_MESSAGE]),
+            return $this->respond(Response::HTTP_OK, UserEnum::LOGGED_IN, true, [
+                'Location' => route('home', ['message' => UserEnum::LOGGED_IN]),
             ]);
         } else {
-            return $this->respond(Response::HTTP_UNAUTHORIZED, UserEnum::LOGIN_FAILED_MESSAGE);
+            return $this->respond(Response::HTTP_UNAUTHORIZED, UserEnum::INVALID_LOGIN);
         }
     }
 
@@ -71,7 +71,7 @@ class UserAuthApi extends AbstractApi
     public function createAccount(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'username' => 'required|string|max:28',
+            'username' => 'required|string|max:28|unique:auth__user,username',
             'email' => 'nullable|email|max:40|unique:auth__user,email',
             'password' => ['required', 'confirmed', Password::min(8)
                 ->letters()
@@ -81,13 +81,13 @@ class UserAuthApi extends AbstractApi
         ]);
 
         if ($validator->fails()) {
-            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
         $user = User::create([
-            'username' => $request->username,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'username' => $request->get('username'),
+            'email' => $request->get('email'),
+            'password' => Hash::make($request->get('password')),
         ]);
 
         $this->avatarGeneratorService->generateProfilePicture($user);
