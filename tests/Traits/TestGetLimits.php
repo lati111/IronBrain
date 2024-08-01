@@ -14,8 +14,7 @@ trait TestGetLimits
 
         $url = sprintf('%s?offset=1', $this->getRoute());
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->get($url, $this->getDefaultHeaders());
 
         $response->assertOk();
@@ -32,8 +31,7 @@ trait TestGetLimits
 
         $url = sprintf('%s?amount=2', $this->getRoute());
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->get($url, $this->getDefaultHeaders());
 
         $response->assertOk();
@@ -50,8 +48,7 @@ trait TestGetLimits
 
         $url = sprintf('%s?offset=1&amount=3', $this->getRoute());
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->get($url, $this->getDefaultHeaders());
 
         $response->assertOk();

@@ -19,16 +19,13 @@ trait PostOperation
      * Test that a post operation is performed correctly
      * @return void
      */
-//    public function test_post_operation(): void
-//    {
-//        $params = $this->getPostParameters();
-//
-//        $response = $this
-//            ->actingAs($this->getAdminUser())
-//            ->post($this->getRoute(), $params, $this->getDefaultHeaders());
-//
-//        $response->assertOk();
-//        $this->assertEquals($this->item['uuid'], $response->json()['data']['uuid']);
-//        $this->assertArrayEquals($params, $response->json()['data']);
-//    }
+    public function test_operation(): void
+    {
+        $params = $this->getPostParameters();
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $params);
+
+        $response->assertOk();
+    }
 }

@@ -21,8 +21,7 @@ trait PostRestoreOperation
     {
         $item = $this->createRandomEntities($this->getModel()::class, 1)->first();
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute($item), [], $this->getDefaultHeaders());
 
         $response->assertOk();
@@ -35,8 +34,7 @@ trait PostRestoreOperation
      */
     public function test_restore_operation(): void
     {
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute(), [], $this->getDefaultHeaders());
 
         $response->assertOk();

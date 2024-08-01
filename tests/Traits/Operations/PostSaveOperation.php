@@ -20,8 +20,7 @@ trait PostSaveOperation
     {
         $params = $this->getPostParameters();
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute(), $params, $this->getDefaultHeaders());
 
         $response->assertCreated();

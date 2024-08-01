@@ -25,9 +25,8 @@ trait GetOperation
         /** @var AbstractModel $item */
         $item = $items->last();
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
-            ->get($this->getRoute($item), $this->getDefaultHeaders());
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->get($this->getRoute());
 
         $response->assertOk();
         $this->assertArrayEquals($item->toArray(), $response->json()['data']);

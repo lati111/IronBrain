@@ -2,8 +2,6 @@
 
 namespace Tests\Traits\Operations;
 
-use Database\Factories\Administration\Hours\HourFactory;
-
 trait GetAllOperation
 {
     /** @inheritDoc */
@@ -20,9 +18,8 @@ trait GetAllOperation
     {
         $this->createRandomEntities($this->getModel()::factory(), 5);
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
-            ->get($this->getRoute(), $this->getDefaultHeaders());
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->get($this->getRoute());
 
         $response->assertOk();
         $this->assertCount(5, $response->json()['data']);

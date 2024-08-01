@@ -17,8 +17,7 @@ trait HasMissableModels
         $item = $this->createRandomEntities($this->getModel()::factory(), 1)->first();
         $item[$routeParameterName] = $this->getFalseUuid($model);
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute($item), $this->getPostParameters(), $this->getDefaultHeaders());
 
         $response->assertNotFound();

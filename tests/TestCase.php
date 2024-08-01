@@ -8,6 +8,7 @@ use App\Models\Auth\Role;
 use App\Models\Auth\RolePermission;
 use App\Models\Auth\User;
 use Database\Seeders\CoreSeeder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -26,7 +27,7 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         $this->setUpFaker();
         $this->seed(CoreSeeder::class);
-        $this->artisan('permission:import');
+        $this->artisan('import:permissions');
     }
 
     /**
@@ -34,7 +35,7 @@ abstract class TestCase extends BaseTestCase
      * @return User The administrative user
      */
     protected function getAdminUser(): User {
-        return User::where('email', 'admin@test.nl')->first();
+        return User::where('username', '=', 'test_admin')->first();
     }
 
     /**
@@ -43,7 +44,7 @@ abstract class TestCase extends BaseTestCase
      * @return User The permissions for this user
      */
     protected function getRandomUser(array $permissions = []): User {
-        $user = User::where('email', '!=', 'admin@test.nl')->first();
+        $user = User::where('username', '!=', 'test_admin')->first();
 
         if (empty($permissions) === false) {
             $role = new Role();
@@ -100,7 +101,7 @@ abstract class TestCase extends BaseTestCase
         // Exceptions for certain models
         switch($model) {
             case User::class:
-                $query->where('email', '!=', 'admin@test.nl');
+                $query->where('username', '!=', 'test_admin');
                 break;
         }
 
@@ -112,9 +113,11 @@ abstract class TestCase extends BaseTestCase
      * @param string $model The model to create an entity for
      * @return AbstractModel The newly created entity
      */
-    protected function createRandomEntity(string $model): AbstractModel {
+    protected function createRandomEntity(string $model, array $params = []): AbstractModel {
         /** @noinspection PhpUndefinedMethodInspection */
-        $entity = $model::factory()->makeOne();
+        /** @var Factory $factory */
+        $factory = $model::factory();
+        $entity = $factory->make($params);
         $entity->save();
         return $entity;
     }

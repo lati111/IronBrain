@@ -55,8 +55,7 @@ trait TestInactiveLimit
         $this->createRandomEntities($this->getModel()::class, 3, ['deleted_at' => Carbon::now()]);
         $this->createRandomEntities($this->getModel()::class, 2);
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->get($this->getRoute(), $this->getDefaultHeaders());
 
         $response->assertOk();
@@ -70,8 +69,7 @@ trait TestInactiveLimit
 
         $url = sprintf('%s?include_inactive=1', $this->getRoute());
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->get($url, $this->getDefaultHeaders());
 
         $response->assertOk();
@@ -84,8 +82,7 @@ trait TestInactiveLimit
         /** @var AbstractModel $item */
         $item = $this->createRandomEntities($this->getModel()::class, 1, ['deleted_at' => Carbon::now()])->first();
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->get($this->getRoute($item), $this->getDefaultHeaders());
 
         $this->assertInvalid($response);
@@ -98,8 +95,7 @@ trait TestInactiveLimit
 
         $url = sprintf('%s?include_inactive=1', $this->getRoute($item));
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->get($url, $this->getDefaultHeaders());
 
         if ($this->canIncludeInactive === false) {
@@ -117,8 +113,7 @@ trait TestInactiveLimit
         /** @var AbstractModel $item */
         $item = $this->createRandomEntities($this->getModel()::class, 1, ['deleted_at' => Carbon::now()])->first();
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute($item), $this->getPostParameters(), $this->getDefaultHeaders());
 
         $this->assertInvalid($response);
@@ -131,8 +126,7 @@ trait TestInactiveLimit
 
         $url = sprintf('%s?include_inactive=1', $this->getRoute($item));
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($url, $this->getPostParameters(), $this->getDefaultHeaders());
 
         if ($this->canIncludeInactive === false) {

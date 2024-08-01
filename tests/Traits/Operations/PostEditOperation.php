@@ -21,8 +21,7 @@ trait PostEditOperation
      */
     public function test_null_parameters_post_operation(): void
     {
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute(), [], $this->getDefaultHeaders());
 
         $response->assertOk();

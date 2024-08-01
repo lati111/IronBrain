@@ -21,8 +21,7 @@ trait PostArchiveOperation
     {
         $item = $this->createRandomEntities($this->getModel()::class, 1, ['deleted_at' => Carbon::now()])->first();
 
-        $response = $this
-            ->actingAs($this->getAdminUser())
+        $response = $this->getHttpClient($this->getOperationUser())
             ->post($this->getRoute($item), [], $this->getDefaultHeaders());
 
         $response->assertNotFound();
@@ -36,7 +35,7 @@ trait PostArchiveOperation
     public function test_archive_operation(): void
     {
         $response = $this
-            ->actingAs($this->getAdminUser())
+            ->actingAs($this->getOperationUser())
             ->post($this->getRoute(), [], $this->getDefaultHeaders());
 
         $response->assertOk();
