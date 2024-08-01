@@ -9,6 +9,7 @@ use App\Models\PKSanc\StagedPokemon;
 use App\Models\PKSanc\StoredPokemon;
 use App\Service\PKSanc\CsvHydrator\AbstractCsvHydrator;
 use App\Service\PKSanc\CsvHydrator\CsvHydratorV1;
+use App\Service\PKSanc\CsvHydrator\CsvHydratorV2;
 use Carbon\Carbon;
 
 class DepositService
@@ -136,6 +137,8 @@ class DepositService
         switch (true) {
             case ($version >= 1 && $version < 2 && $headers === CsvVersions::V1):
                 return new CsvHydratorV1($csv);
+            case ($version >= 2 && $version < 3 && $headers === CsvVersions::V1):
+                return new CsvHydratorV2($csv);
             default:
                 throw ImportException::unknownCsvVersion();
         }

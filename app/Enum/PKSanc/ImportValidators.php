@@ -17,6 +17,7 @@ class ImportValidators
     public const SIZE = 'required|integer';
     public const BOOL = 'required|string|csv_boolean';
     public const TYPE = 'required|string|exists:pksanc__type,type';
+    public const TERA_TYPE = 'nullable|string|exists:pksanc__type,type';
     public const CONTEST_STAT = 'required|integer|min:0|max:255';
     public const IV = 'required|integer|min:0|max:31';
     public const EV = 'required|integer|min:0|max:255';
