@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @inheritDoc
@@ -23,5 +25,16 @@ abstract class AbstractModel extends Model
     public static function getTableName(): string
     {
         return with(new static)->getTable();
+    }
+
+    public function unconstrainedHasOne(string $instanceString, string $foreignTable, string $foreignKey, string $localkey): HasOne {
+        $instance = $this->newRelatedInstance($instanceString);
+
+        return $this->newHasOne(
+            $instance->newQuery(),
+            $this,
+            $foreignTable.'.'.$foreignKey,
+            $localkey
+        );
     }
 }

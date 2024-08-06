@@ -85,7 +85,7 @@ class CsvHydratorV2 extends AbstractCsvHydrator
         return true;
     }
 
-    protected function import(array $data, int $line): StoredPokemon
+    protected function import(array $data, int $line): StoredPokemon|null
     {
         $pokemon = new StoredPokemon;
         $trainer = $this->importTrainer($data);
@@ -96,9 +96,8 @@ class CsvHydratorV2 extends AbstractCsvHydrator
         $this->importContestStats($data, $pokemon);
         $this->importMoves($data, $pokemon);
 
-        $this->stagePokemon($pokemon);
-
-        return $pokemon;
+        $stagedPokemon = $this->stagePokemon($pokemon);
+        return ($stagedPokemon !== null) ? $pokemon : null;
     }
 
     private function importPokemon(StoredPokemon $pokemon, array $data, int $line): StoredPokemon

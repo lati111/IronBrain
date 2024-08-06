@@ -8,7 +8,9 @@ use Database\Factories\Modules\PKSanc\StoredPokemonFactory;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string PID The pokemon's identifier as provided by PKHeX
@@ -64,7 +66,7 @@ class StoredPokemon extends AbstractModel
      */
     public function getSprite(): string
     {
-        $pokemon = $this->Pokemon();
+        $pokemon = $this->getPokemon();
 
         //if pokemon has no sprites, attempt to use species sprites instead
         if ($pokemon->sprite === null) {
@@ -110,77 +112,133 @@ class StoredPokemon extends AbstractModel
      * Gets the pokemon model of this pokemon
      * @return Pokemon Returns the owner of the pokemon
      */
-    public function Pokemon(): Pokemon
+    public function getPokemon(): Pokemon
     {
         /** @var Pokemon $pokemon */
-        $pokemon = $this->belongsTo(Pokemon::class, 'pokemon', 'pokemon')->first();
+        $pokemon = $this->pokemon()->first();
         return $pokemon;
+    }
+
+    /**
+     * The relationship for the pokemon this is
+     * @return BelongsTo The relationship
+     */
+    public function pokemon(): BelongsTo {
+        return $this->belongsTo(Pokemon::class, 'pokemon', 'pokemon');
     }
 
     /**
      * Gets the nature of this pokemon
      * @return Nature Returns the nature of the pokemon
      */
-    public function Nature(): Nature
+    public function getNature(): Nature
     {
         /** @var Nature $nature */
-        $nature = $this->belongsTo(Nature::class, 'nature', 'nature')->first();
+        $nature = $this->nature()->first();
         return $nature;
+    }
+
+    /**
+     * The relationship for nature this pokemon has
+     * @return BelongsTo The relationship
+     */
+    public function nature(): BelongsTo {
+        return $this->belongsTo(Nature::class, 'nature', 'nature');
     }
 
     /**
      * Gets the ability of this pokemon
      * @return Ability Returns the ability of the pokemon
      */
-    public function Ability(): Ability
+    public function getAbility(): Ability
     {
         /** @var Ability $ability */
-        $ability = $this->belongsTo(Ability::class, 'ability', 'ability')->first();
+        $ability = $this->ability()->first();
         return $ability;
+    }
+
+    /**
+     * The relationship for ability this pokemon has
+     * @return BelongsTo The relationship
+     */
+    public function ability(): BelongsTo {
+        return $this->belongsTo(Ability::class, 'ability', 'ability');
     }
 
     /**
      * Gets the pokeball of this pokemon
      * @return Pokeball Returns the pokeball of the pokemon
      */
-    public function Pokeball(): Pokeball
+    public function getPokeball(): Pokeball
     {
         /** @var Pokeball $pokeball */
-        $pokeball = $this->belongsTo(Pokeball::class, 'pokeball', 'pokeball')->first();
+        $pokeball = $this->pokeball()->first();
         return $pokeball;
+    }
+
+    /**
+     * The relationship for the pokeball this pokemon is in
+     * @return BelongsTo The relationship
+     */
+    public function pokeball(): BelongsTo {
+        return $this->belongsTo(Pokeball::class, 'pokeball', 'pokeball');
     }
 
     /**
      * Gets the hidden power type of this pokemon
      * @return Type Returns the type of hidden power the pokemon has
      */
-    public function HiddenPower(): Type
+    public function getHiddenPowerType(): Type
     {
         /** @var Type $hiddenPower */
-        $hiddenPower = $this->belongsTo(Type::class, 'hidden_power_type', 'type')->first();
+        $hiddenPower = $this->hidden_power_type()->first();
         return $hiddenPower;
+    }
+
+    /**
+     * The relationship for the hidden power type of this pokemon
+     * @return BelongsTo The relationship
+     */
+    public function hidden_power_type(): BelongsTo {
+        return $this->belongsTo(Type::class, 'hidden_power_type', 'type');
     }
 
     /**
      * Gets a pokemon's tera typing
      * @return Type Returns the tera typing
      */
-    public function TeraType(): Type
+    public function getTeraType(): Type
     {
         /** @var Type $teraType */
-        $teraType = $this->belongsTo(Type::class, 'tera_type', 'type')->first();
+        $teraType = $this->tera_type()->first();
         return $teraType;
+    }
+
+    /**
+     * The relationship for the tera type of this pokemon
+     * @return BelongsTo The relationship
+     */
+    public function tera_type(): BelongsTo {
+        return $this->belongsTo(Type::class, 'tera_type', 'type');
     }
 
     /**
      * Gets the csv this pokemon was imported from
      * @return ImportCsv Returns the csv this pokemon was imported from
      */
-    public function Csv(): ImportCsv
+    public function getCsv(): ImportCsv
     {
         /** @var ImportCsv $csv */
-        $csv = $this->belongsTo(ImportCsv::class, 'csv_uuid', 'uuid')->first();
+        $csv = $this->csv()->first();
         return $csv;
+    }
+
+    /**
+     * The relationship for this pokemon's import csv
+     * @return BelongsTo The relationship
+     */
+    public function csv(): BelongsTo {
+        return $this->belongsTo(ImportCsv::class, 'csv_uuid', 'uuid');
     }
 
     /**
@@ -190,8 +248,16 @@ class StoredPokemon extends AbstractModel
     public function getOrigin(): Origin
     {
         /** @var Origin $origin */
-        $origin = $this->hasOne(Origin::class, 'pokemon_uuid', 'uuid')->first();
+        $origin = $this->origin()->first();
         return $origin;
+    }
+
+    /**
+     * The relationship for this pokemon's origin
+     * @return HasOne The relationship
+     */
+    public function origin(): HasOne {
+        return $this->hasOne(Origin::class, 'pokemon_uuid', 'uuid');
     }
 
     /**
@@ -245,6 +311,14 @@ class StoredPokemon extends AbstractModel
         /** @var ?StagedPokemon $stagedPokemon */
         $stagedPokemon = $this->hasOne(StagedPokemon::class, 'new_pokemon_uuid', 'uuid')->first();
         return $stagedPokemon;
+    }
+
+    /**
+     * The relationship to the previous version of this pokemon
+     * @return HasOne The relationship
+     */
+    public function previous_version(): HasOne {
+        return $this->hasOne(StagedPokemon::class, 'new_pokemon_uuid');
     }
 
     /**

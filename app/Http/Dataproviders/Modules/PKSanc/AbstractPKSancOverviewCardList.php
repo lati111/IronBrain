@@ -19,6 +19,7 @@ use App\Models\PKSanc\StoredPokemon;
 use App\Models\PKSanc\Trainer;
 use App\Models\PKSanc\Type;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,39 +52,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             $data = $this->getData($request)
                 ->get()
                 ->map(function (StoredPokemon $pkmn) {
-                    $pkmn['sprite'] = asset('img/modules/pksanc/pokemon/'.$pkmn->getSprite());
-                    $pkmn['pokeball_sprite'] = asset('img/modules/pksanc/pokeball/'.$pkmn['pokeball_sprite']);
-                    $pkmn['tera_sprite'] = asset('img/modules/pksanc/icon/tera/'.$pkmn['tera_type'].'.png');
-                    $pkmn['hidden_power_sprite'] = asset('img/modules/pksanc/icon/type/'.$pkmn['hidden_power_type'].'_full.png');
-                    $pkmn['hidden_power_type'] = 'Hidden power ' . $pkmn['hidden_power_type'];
-
-                    switch ($pkmn['gender']) {
-                        case '-':
-                            $pkmn['gender'] = 'None';
-                            $pkmn['gender_sprite'] = asset('img/modules/pksanc/icon/gender/none.png');
-                            break;
-                        case 'F':
-                            $pkmn['gender'] = 'Female';
-                            $pkmn['gender_sprite'] = asset('img/modules/pksanc/icon/gender/female.png');
-                            break;
-                        case 'M':
-                            $pkmn['gender'] = 'Male';
-                            $pkmn['gender_sprite'] = asset('img/modules/pksanc/icon/gender/male.png');
-                            break;
-                    }
-
-                    switch ($pkmn['trainer_gender']) {
-                        case 'F':
-                            $pkmn['trainer_gender'] = 'Female';
-                            $pkmn['trainer_gender_sprite'] = asset('img/modules/pksanc/icon/gender/female.png');
-                            break;
-                        case 'M':
-                            $pkmn['trainer_gender'] = 'Male';
-                            $pkmn['trainer_gender_sprite'] = asset('img/modules/pksanc/icon/gender/male.png');
-                            break;
-                    }
-
-                    return $pkmn;
+                    return $this->formatPokemon($pkmn);
                 });
         } catch (IronBrainException $e) {
             return $this->respond($e->getCode(), $e->publicMessage);
@@ -93,11 +62,52 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
     }
 
     /**
+     * Properly format a pokemon model into the proper format
+     * @param StoredPokemon $pkmn The pokemon model to format
+     * @return StoredPokemon The formatted model
+     */
+    protected function formatPokemon(StoredPokemon $pkmn): StoredPokemon {
+        $pkmn['sprite'] = asset('img/modules/pksanc/pokemon/'.$pkmn->getSprite());
+        $pkmn['pokeball_sprite'] = asset('img/modules/pksanc/pokeball/'.$pkmn['pokeball_sprite']);
+        $pkmn['tera_sprite'] = asset('img/modules/pksanc/icon/tera/'.$pkmn['tera_type'].'.png');
+        $pkmn['hidden_power_sprite'] = asset('img/modules/pksanc/icon/type/'.$pkmn['hidden_power_type'].'_full.png');
+        $pkmn['hidden_power_type'] = 'Hidden power ' . $pkmn['hidden_power_type'];
+
+        switch ($pkmn['gender']) {
+            case '-':
+                $pkmn['gender'] = 'None';
+                $pkmn['gender_sprite'] = asset('img/modules/pksanc/icon/gender/none.png');
+                break;
+            case 'F':
+                $pkmn['gender'] = 'Female';
+                $pkmn['gender_sprite'] = asset('img/modules/pksanc/icon/gender/female.png');
+                break;
+            case 'M':
+                $pkmn['gender'] = 'Male';
+                $pkmn['gender_sprite'] = asset('img/modules/pksanc/icon/gender/male.png');
+                break;
+        }
+
+        switch ($pkmn['trainer_gender']) {
+            case 'F':
+                $pkmn['trainer_gender'] = 'Female';
+                $pkmn['trainer_gender_sprite'] = asset('img/modules/pksanc/icon/gender/female.png');
+                break;
+            case 'M':
+                $pkmn['trainer_gender'] = 'Male';
+                $pkmn['trainer_gender_sprite'] = asset('img/modules/pksanc/icon/gender/male.png');
+                break;
+        }
+
+        return $pkmn;
+    }
+
+    /**
      * Apply a series of select, join and order by statements to get the correct data
-     * @param Builder $query The query to modify
+     * @param Builder|Relation $query The query to modify
      * @return Builder The modified query
      */
-    protected function applySelects(Builder $query): Builder
+    protected function applySelects(Builder|Relation $query): Builder
     {
         return $query
             ->jointable(Pokemon::getTableName(), StoredPokemon::getTableName(), 'pokemon', '=', 'pokemon')

@@ -2,8 +2,8 @@
 
 namespace App\Service\PKSanc\CsvHydrator;
 
+use App\Models\AbstractModel;
 use App\Models\PKSanc\ImportCsv;
-use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StagedPokemon;
 use App\Models\PKSanc\StoredPokemon;
 use App\Models\PKSanc\Trainer;
@@ -20,7 +20,7 @@ abstract class AbstractCsvHydrator
         $this->importCsv = $csv;
     }
 
-    public function hydrate(array $data, int $line): StoredPokemon
+    public function hydrate(array $data, int $line): StoredPokemon|null
     {
         $this->loadData($data);
         if ($this->validate($data) === false) {
@@ -31,9 +31,8 @@ abstract class AbstractCsvHydrator
 
             dd($this->data);
         }
-        $pokemon = $this->import($data, $line);
 
-        return $pokemon;
+        return $this->import($data, $line);
     }
 
     private function loadData(array $data): void
@@ -46,9 +45,9 @@ abstract class AbstractCsvHydrator
 
     abstract protected function validate(array $data): bool;
 
-    abstract protected function import(array $data, int $line): StoredPokemon;
+    abstract protected function import(array $data, int $line): StoredPokemon|null;
 
-    protected function stagePokemon(StoredPokemon $pokemon): StagedPokemon
+    protected function stagePokemon(StoredPokemon $pokemon): StagedPokemon|null
     {
         $origin = $pokemon->getOrigin();
         $existingPokemon = StoredPokemon::select('pksanc__stored_pokemon.*')
@@ -57,7 +56,6 @@ abstract class AbstractCsvHydrator
             ->where('trainer_uuid', $origin->getTrainer()->uuid)
             ->where('validated_at', '!=', null)
             ->where('met_date', $origin->met_date)
-            ->where('game', $origin->game)
             ->where('PID', $pokemon->PID)
             ->first();
 
@@ -65,10 +63,56 @@ abstract class AbstractCsvHydrator
         $stagedPokemon->new_pokemon_uuid = $pokemon->uuid;
         if ($existingPokemon !== null) {
             $stagedPokemon->old_pokemon_uuid = $existingPokemon->uuid;
+
+            if ($this->wasPokemonUpdated($pokemon, $existingPokemon) === false) {
+                $pokemon->delete();
+                return null;
+            }
         }
 
         $stagedPokemon->save();
         return $stagedPokemon;
+    }
+
+    protected function wasPokemonUpdated(StoredPokemon $pokemon, StoredPokemon $existingPokemon) {
+        $wasChanged = ($this->modelHasChanges($pokemon, $existingPokemon, [
+            'uuid',
+            'csv_uuid',
+            'csv_line',
+            'validated_at',
+            'created_at',
+            'updated_at'
+        ]));
+
+        $wasChanged = ($this->modelHasChanges($pokemon->getOrigin(), $existingPokemon->getOrigin(), [
+            'uuid',
+            'pokemon_uuid',
+            'created_at',
+            'updated_at'
+        ])) ? true : $wasChanged;
+
+        $wasChanged = ($this->modelHasChanges($pokemon->getStats(), $existingPokemon->getStats(), [
+            'uuid',
+            'pokemon_uuid',
+            'created_at',
+            'updated_at'
+        ])) ? true : $wasChanged;
+
+        $wasChanged = ($this->modelHasChanges($pokemon->getContestStats(), $existingPokemon->getContestStats(), [
+            'uuid',
+            'pokemon_uuid',
+            'created_at',
+            'updated_at'
+        ])) ? true : $wasChanged;
+
+        $wasChanged = ($this->modelHasChanges($pokemon->getMoveset(), $existingPokemon->getMoveset(), [
+            'uuid',
+            'pokemon_uuid',
+            'created_at',
+            'updated_at'
+        ])) ? true : $wasChanged;
+
+        return $wasChanged;
     }
 
     protected function getTrainer(int $tid, int $sid, string $name): Trainer
@@ -93,5 +137,20 @@ abstract class AbstractCsvHydrator
         }
 
         return false;
+    }
+
+    protected function modelHasChanges(AbstractModel $model1, AbstractModel $model2, array $blacklist = []): bool
+    {
+        $wasChanged = false;
+        $arr1 = $model1->makeHidden($blacklist)->attributesToArray();
+        $arr2 = $model2->makeHidden($blacklist)->attributesToArray();
+
+        foreach ($arr1 as $key => $value) {
+            if ($arr2[$key] != $value) {
+                $wasChanged = true;
+            }
+        }
+
+        return $wasChanged;
     }
 }

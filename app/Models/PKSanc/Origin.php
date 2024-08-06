@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string uuid
@@ -47,15 +49,32 @@ class Origin extends AbstractModel
     public function getTrainer(): Trainer
     {
         /** @var Trainer $trainer */
-        $trainer = $this->belongsTo(Trainer::class, 'trainer_uuid', 'uuid')->first();
+        $trainer = $this->trainer()->first();
         return $trainer;
+    }
+
+    /**
+     * The relationship the trainer this save belongs to
+     * @return HasOne The relationship
+     */
+    public function trainer(): HasOne {
+        return $this->hasOne(Trainer::class, 'uuid', 'trainer_uuid');
     }
 
     public function getGame(): Game
     {
         /** @var Game $game */
-        $game = $this->belongsTo(Game::class, 'game', 'game')->first();
+        $game = $this->original_game()->first();
         return $game;
+    }
+
+    /**
+     * The relationship for origin is from
+     * @return BelongsTo The relationship
+     */
+    public function original_game(): BelongsTo
+    {
+        return $this->belongsTo(Game::class, 'game', 'game');
     }
 
     /**

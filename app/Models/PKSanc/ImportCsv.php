@@ -79,11 +79,20 @@ class ImportCsv extends AbstractModel
      * Gets the game this csv belongs to
      * @return Game Returns the game
      */
-    public function Game(): Game
+    public function getGame(): Game
     {
         /** @var Game $game */
-        $game = $this->belongsTo(Game::class, 'game', 'game')->first();
+        $game = $this->game()->first();
         return $game;
+    }
+
+    /**
+     * The relationship for the game this csv belongs to
+     * @return BelongsTo The relationship
+     */
+    public function game(): BelongsTo
+    {
+        return $this->belongsTo(Game::class, 'game', 'game');
     }
 
     /**
