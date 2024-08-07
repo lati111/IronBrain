@@ -52,6 +52,7 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
 
     /** { @inheritdoc } */
     protected function formatPokemon(StoredPokemon $pkmn): StoredPokemon {
+        $pkmn['has_prev'] = false;
         if ($pkmn['previous_version'] === null) {
             return parent::formatPokemon($pkmn);
         }
@@ -82,6 +83,7 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
             $pkmn['prev-'.$key] = $value;
         }
 
+        $pkmn['has_prev'] = true;
         return parent::formatPokemon($pkmn);
     }
 }
