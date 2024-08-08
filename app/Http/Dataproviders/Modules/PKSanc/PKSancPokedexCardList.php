@@ -9,6 +9,7 @@ use App\Http\Dataproviders\Filters\PKSanc\PokemonTypeSelectFilter;
 use App\Http\Dataproviders\Interfaces\FilterableDataproviderInterface;
 use App\Http\Dataproviders\Traits\HasFilters;
 use App\Http\Dataproviders\Traits\HasPages;
+use App\Models\PKSanc\ImportCsv;
 use App\Models\PKSanc\PokedexMarking;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\StoredPokemon;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Lati111\LaravelDataproviders\Filters\CustomColumn;
+use Lati111\LaravelDataproviders\Filters\IsFilter;
 use Lati111\LaravelDataproviders\Filters\NumberFilter;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Filterable;
@@ -85,10 +88,19 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
             ->whereRaw(sprintf("`%s`.`user_uuid` = '%s'", PokedexMarking::getTableName(), $user->uuid))
             ->toSql();
 
+
+        // marked as hidden
+        $markedAsHidden = PokedexMarking::selectRaw('count(*)')
+            ->whereRaw(sprintf("`%s`.`pokedex_id` = `%s`.`pokedex_id`", PokedexMarking::getTableName(), Pokemon::getTableName()))
+            ->whereRaw(sprintf("`%s`.`form_index` = `%s`.`form_index`", PokedexMarking::getTableName(), Pokemon::getTableName()))
+            ->whereRaw(sprintf("`%s`.`marking` = '%s'", PokedexMarking::getTableName(), PokedexMarkings::HIDDEN))
+            ->whereRaw(sprintf("`%s`.`user_uuid` = '%s'", PokedexMarking::getTableName(), $user->uuid))
+            ->toSql();
+
         /** @var Builder $pokemonCollection */
         $pokemonCollection = Pokemon::selectRaw(sprintf(
-                '(%s) as `amount_owned`, (%s) as `shinies_owned`, ((%s) > 0) as `owned`, ((%s) = 0) as `unowned`, ((%s) > 0) as `marked-as-read`',
-                $amountOwned, $shiniesOwned, $owned, $owned, $markedAsRead
+                '(%s) as `amount_owned`, (%s) as `shinies_owned`, ((%s) > 0) as `owned`, ((%s) = 0) as `unowned`, ((%s) > 0) as `marked-as-read`, ((%s) > 0) as `marked-as-hidden`',
+                $amountOwned, $shiniesOwned, $owned, $owned, $markedAsRead, $markedAsHidden
             ))
             ->orderBy('internal_pokedex_id')
             ->orderBy('form_index')
@@ -104,6 +116,17 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
         return $pokemonCollection;
     }
 
+    public function filters(Request $request): JsonResponse
+    {
+        // Gets either a list of available filters, or a list of available options for a filter if one is specified
+        $data = $this->getFilterData($request);
+
+        unset($data['hidden']);
+
+        // Return the data as a JsonResponse
+        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+    }
+
     /** { @inheritdoc } */
     function getSearchFields(): array
     {
@@ -112,6 +135,16 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
 
     public function getFilterList(): array {
         $filters = [];
+
+        $user = Auth::user();
+        $markedAsHidden = PokedexMarking::selectRaw('count(*)')
+            ->whereRaw(sprintf("`%s`.`pokedex_id` = `%s`.`pokedex_id`", PokedexMarking::getTableName(), Pokemon::getTableName()))
+            ->whereRaw(sprintf("`%s`.`form_index` = `%s`.`form_index`", PokedexMarking::getTableName(), Pokemon::getTableName()))
+            ->whereRaw(sprintf("`%s`.`marking` = '%s'", PokedexMarking::getTableName(), PokedexMarkings::HIDDEN))
+            ->whereRaw(sprintf("`%s`.`user_uuid` = '%s'", PokedexMarking::getTableName(), $user->uuid))
+            ->toSql();
+        $selector = new CustomColumn(sprintf('(%s)', $markedAsHidden), 'hidden');
+        $filters['hidden'] = new IsFilter(new Pokemon(), $selector, 0);
 
         $filter = new NumberFilter(new Pokemon(), 'generation');
         $filters['generation'] = $filter;

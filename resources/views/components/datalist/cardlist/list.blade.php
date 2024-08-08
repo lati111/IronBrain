@@ -56,7 +56,7 @@
         <x-datalist.parts.load-spinner dataprovider_id="{{$id}}"/>
 
         {{--| Datalist body |--}}
-        <div id="{{$id}}-content" class="hidden flex justify-center flex-wrap gap-6"></div>
+        <div id="{{$id}}-content" class="hidden flex justify-center flex-wrap gap-6">aaa</div>
     </div>
 
     {{--| Pagination |--}}

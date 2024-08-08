@@ -22,7 +22,13 @@
         </div>
     </div>
 
-    <div class="mt-6 pb-4"></div>
+    <div class="pb-4"></div>
+
+    <div class="flex justify-end w-[93%] max-w-screen-2xl">
+        <x-datalist.elements.filter-checkbox dataprovider_id="pokedex-cardlist" name="hidden" data-unchecked-operator="=" data-unchecked-value="0">
+            Show hidden
+        </x-datalist.elements.filter-checkbox>
+    </div>
 
     {{--| cardlist |--}}
     <div class="flex flex-row justify-center mb-3" dusk="form">
@@ -63,18 +69,25 @@
                     </div>
 
                     <div class="flex flex-col justify-center items-center h-full mr-1 w-8 gap-2">
-                        <div class="flex justify-center items-center gap-1 h-6">
-                            <x-form.input.checkbox name="" data-hide-if-true-name="unowned" checked disabled>
-                                Read
-                            </x-form.input.checkbox>
-                            <x-form.input.checkbox name="marked-as-read" onchange="markAsRead(this.closest('.card'), this.checked)" data-hide-if-true-name="owned">
-                                Read
-                            </x-form.input.checkbox>
+                        <div class="flex justify-center items-center w-6 h-6">
+                            <div data-hide-if-true-name="owned">
+                                <x-form.input.checkbox name="marked-as-read" onchange="markAsRead(this.closest('.card'), this.checked)"/>
+                            </div>
+
+                            <div data-hide-if-true-name="unowned">
+                                <x-form.input.checkbox name="" checked disabled/>
+                            </div>
                         </div>
-{{--                        <div class="flex justify-center items-center gap-1 h-6 w-6">--}}
-{{--                            <button><img src="{{asset('img/icons/visible.svg')}}" class="interactive"></button>--}}
-{{--                            <button class="hidden"><img src="{{asset('img/icons/invisible.svg')}}" class="interactive"></button>--}}
-{{--                        </div>--}}
+
+                        <div class="flex justify-center items-center gap-1 h-6 w-6 mt-1s">
+                            <button id="visible_button" onclick="markAsHidden(this.closest('.card'), true)" data-hide-if-true-name="marked-as-hidden">
+                                <img src="{{asset('img/icons/visible.svg')}}" class="interactive">
+                            </button>
+
+                            <button id="hidden_button" class="hidden" onclick="markAsHidden(this.closest('.card'), false)" data-show-if-true-name="marked-as-hidden">
+                                <img src="{{asset('img/icons/invisible.svg')}}" class="interactive">
+                            </button>
+                        </div>
                     </div>
                 </div>
             </x-datalist.cardlist.template>

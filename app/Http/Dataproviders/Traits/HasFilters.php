@@ -9,7 +9,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 trait HasFilters
 {
-    // Method to be called from a route to get filter options
+    /**
+     * Method to be called from a route to get filter options
+     * @param Request $request The request parameters as passed by Laravel
+     * @returns JsonResponse The filter array in json format
+     */
     public function filters(Request $request): JsonResponse
     {
         // Gets either a list of available filters, or a list of available options for a filter if one is specified

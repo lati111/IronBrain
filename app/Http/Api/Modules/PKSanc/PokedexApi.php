@@ -2,6 +2,8 @@
 
 namespace App\Http\Api\Modules\PKSanc;
 
+use App\Enum\ErrorEnum;
+use App\Enum\PKSanc\PKSancStrings;
 use App\Enum\PKSanc\PokedexMarkings;
 use App\Http\Api\AbstractApi;
 use App\Models\PKSanc\PokedexMarking;
@@ -28,7 +30,7 @@ class PokedexApi extends AbstractApi
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), Response::HTTP_BAD_REQUEST);
+            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
         $user = Auth::user();
@@ -40,7 +42,7 @@ class PokedexApi extends AbstractApi
             ->exists();
 
         if ($markingExists) {
-            return response()->json(true, Response::HTTP_ALREADY_REPORTED);
+            return $this->respond(Response::HTTP_ALREADY_REPORTED, PKSancStrings::POKEDEX_POKEMON_MARKED, true);
         }
 
         $marking = new PokedexMarking();
@@ -50,7 +52,7 @@ class PokedexApi extends AbstractApi
         $marking->user_uuid = $user->uuid;
         $marking->save();
 
-        return response()->json(true, Response::HTTP_CREATED);
+        return $this->respond(Response::HTTP_CREATED, PKSancStrings::POKEDEX_POKEMON_MARKED, true);
     }
 
     /**
@@ -67,7 +69,7 @@ class PokedexApi extends AbstractApi
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), Response::HTTP_BAD_REQUEST);
+            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
         $user = Auth::user();
@@ -79,11 +81,11 @@ class PokedexApi extends AbstractApi
             ->first();
 
         if ($marking === null) {
-            return response()->json(true, Response::HTTP_ALREADY_REPORTED);
+            return $this->respond(Response::HTTP_ALREADY_REPORTED, PKSancStrings::POKEDEX_POKEMON_UNMARKED, true);
         }
 
         $marking->delete();
 
-        return response()->json(true, Response::HTTP_OK);
+        return $this->respond(Response::HTTP_CREATED, PKSancStrings::POKEDEX_POKEMON_UNMARKED, true);
     }
 }

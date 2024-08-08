@@ -22,7 +22,7 @@ class StoredPokemonTypeSelectFilter extends AbstractFilter
     }
 
     /** { @inheritdoc } */
-    public function handle(Builder $builder, string $operator, string $value): Builder {
+    public function handle(Builder $builder, string $operator, mixed $value): Builder {
         if ($this->validateOperator($operator) === false) {
             throw new DataproviderException(sprintf('Operator %s does not exist on filter %s', $operator, self::class));
         }
