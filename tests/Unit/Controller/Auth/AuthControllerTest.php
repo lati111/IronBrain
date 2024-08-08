@@ -230,7 +230,7 @@ class AuthControllerTest extends AbstractControllerUnitTester
         ]);
 
         $this->assertRedirect($response, 'home.show', [
-            "message" => UserEnum::LOGIN_SUCCESS_MESSAGE,
+            "message" => UserEnum::LOGGED_IN,
         ]);
 
         $user = User::where('email', $email)->first();

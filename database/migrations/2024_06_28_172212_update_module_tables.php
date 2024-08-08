@@ -17,7 +17,6 @@ return new class extends Migration
         Schema::table('nav__submenu', function (Blueprint $table) {
             $table->dropForeign('nav__submenu_project_id_foreign');
             $table->dropForeign('nav__submenu_permission_id_foreign');
-            $table->boolean('requires_login')->default(0)->after('permission_id');
         });
 
         //| Rename tables
@@ -29,6 +28,7 @@ return new class extends Migration
 
         Schema::table('module__main', function (Blueprint $table) {
             $table->string('code', 64)->nullable()->after('id');
+            $table->boolean('requires_login')->default(0)->after('in_nav');
             $table->timestamp('deleted_at')->nullable();
             $table->dropColumn('active');
         });
@@ -52,7 +52,7 @@ return new class extends Migration
         Schema::table('module__sub', function (Blueprint $table) {
             $table->integer('module_id')->nullable()->after('id');
             $table->string('code', 64)->nullable()->after('module_id');
-            $table->boolean('requires_login')->default(0)->after('in_nav');
+            $table->boolean('requires_login')->default(0)->after('permission_id');
             $table->timestamp('deleted_at')->nullable();
         });
 

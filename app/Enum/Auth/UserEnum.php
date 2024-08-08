@@ -10,8 +10,8 @@ class UserEnum
     public const NOT_FOUND = "Invalid user";
 
     //| Login strings
-    public const LOGIN_SUCCESS_MESSAGE = "You have been logged in";
-    public const LOGIN_FAILED_MESSAGE = "Username or password is incorrect";
+    public const LOGGED_IN = "You have been logged in";
+    public const INVALID_LOGIN = "Username or password is incorrect";
     public const LOGOUT_MESSAGE = "Logged out succesfully";
     public const SIGNUP_SUCCESS_MESSAGE = "Account Created";
     public const PASSWORDS_NOT_MATCHING_MESSAGE = "Passwords must match";

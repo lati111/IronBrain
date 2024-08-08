@@ -4,6 +4,6 @@ namespace App\Enum;
 
 class ErrorEnum
 {
-    public const VALIDATION_FAIL = "The request failed during validation..";
-    public const INVALID_ROUTE_MESSAGE = "Route not found";
+    public const string VALIDATION_FAIL = "The request failed during validation.";
+    public const string INVALID_ROUTE_MESSAGE = "Route not found";
 }

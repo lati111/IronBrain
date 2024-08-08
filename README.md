@@ -26,7 +26,7 @@ IronBrain is fully capable of running locally for both development and personal 
 3. Configure the generated .env to your liking. (make sure to configure the `APP_URL` and database logins properly).
 4. Make a copy of the .env called `.env.testing`. This should have a seperate database.
 5. Run the `npm install` command in a terminal. (ensure [NPM](https://www.npmjs.com) is properly installed)
-6. Run `php artisan migrate` in a terminal. (make sure that your database is running properly).
+6. Run `php artisan migrate` and `php artisan migrate --env=testing` in a terminal. (make sure that your database is running properly).
 7. Run `php artisan db:seed --class=CoreSeeder` in a terminal to create default values.
 8. Run `php artisan import:all` in a terminal to populate the database.
 9. Open a terminal and run `php artisan serve`. (keep this terminal open).
