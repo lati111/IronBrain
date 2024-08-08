@@ -191,10 +191,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
         $filter = new NumberFilter(new StoredPokemon, 'friendship');
         $filters['friendship'] = $filter;
 
-        $selector = new CustomColumn(sprintf("concat(%s.name, ' - ', %s.name)", 'ic_game', ImportCsv::getTableName()), 'save_file');
-        $filter = new SelectFilter(new StoredPokemon, $selector,
-            new ForeignTable(ImportCsv::class, 'game', Game::class, 'game', 'ic_game'));
-        $filter->addLinkedTable(new ForeignTable(StoredPokemon::class, 'csv_uuid', ImportCsv::class, 'uuid'));
+        $filter = new DataSelectFilter(new ImportCsv, 'csv_uuid', route('data.pksanc.saves.dataselect'), 'uuid', 'display_name');
         $filters['save_file'] = $filter;
 
         $filter = new SelectFilter(new StoredPokemon, 'name',

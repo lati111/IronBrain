@@ -2,6 +2,8 @@ import {DataCardList as LaravelDataCardList} from "@lati111/laravel_datatables/s
 import {getData as fetchGet, postData as fetchPost} from "../../main";
 import {IronbrainError} from "../../Exceptions/IronbrainError";
 import {openModal} from "../modal";
+import {DataSelect} from "./DataSelect";
+import {DatalistConstructionError} from "@lati111/laravel_datatables/src/Exceptions/DatalistConstructionError";
 
 /** @inheritDoc */
 
@@ -53,5 +55,28 @@ export class DataCardlist extends LaravelDataCardList {
         }
 
         openModal(modalId);
+    }
+
+    protected filterSetup(): void {
+        super.filterSetup();
+
+        //setup filter form dataselect
+        if (this.filterForm !== null) {
+            const valueSelect = this.filterForm.querySelector('.dataselect-container [name="dataselect"]');
+            if (valueSelect !== null) {
+                if (valueSelect.id === null) {
+                    valueSelect.id = this.dataproviderID + '-value-dataselect';
+                }
+
+                this.valueDataSelect = new DataSelect(valueSelect.id)
+                this.valueDataSelectContainer = this.filterForm.querySelector('.dataselect-container');
+            }
+        }
+
+        //setup datafilterselects
+        const datafilterselects = document.querySelectorAll(`.${this.dataproviderID}-data-filter-select[data-filter-operator]`);
+        for (const datafilterselect of datafilterselects) {
+            this.filterDataSelects[datafilterselect.id] = new DataSelect(datafilterselect.id);
+        }
     }
 }

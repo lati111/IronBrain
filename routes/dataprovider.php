@@ -60,6 +60,9 @@ Route::prefix('/pksanc/data')
         Route::dataprovider('/games/dataselect', 'data.pksanc.games.dataselect',
             \App\Http\Dataproviders\Modules\PKSanc\Data\GameDataSelect::class);
 
+        Route::dataprovider('/saves/dataselect', 'data.pksanc.saves.dataselect',
+            \App\Http\Dataproviders\Modules\PKSanc\Data\SaveFileSelect::class);
+
         Route::dataprovider('/owned-species/dataselect', 'data.pksanc.owned-species.dataselect',
             \App\Http\Dataproviders\Modules\PKSanc\Data\OwnedPokemonSpeciesSelect::class);
     });
