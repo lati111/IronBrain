@@ -1,5 +1,8 @@
 <div id="pokemon-cardlist-template" class="flex justify-center gap-4">
+    <input type="hidden" name="uuid">
     @if(($staging ?? false) === true)
+        <input type="hidden" name="prev-uuid">
+
         <div class="card flex justify-center rounded shadow border gray-border p-3 w-[28rem]">
             {{--| icon list |--}}
             <div class="card-body flex justify-center items-center hidden" data-show-if-true-name="has_prev">
@@ -74,7 +77,10 @@
             <div class="flex justify-center items-center w-full max-w-xl" data-hide-if-true-name="has_prev">New</div>
         </div>
 
-        <img src="{{asset('img/icons/chevron-right-double.svg')}}" alt="Transforms into" class="w-8">
+        <div class="flex justify-center">
+            <img src="{{asset('img/icons/chevron-right-double.svg')}}" alt="Transforms into" class="import-icon w-8" onclick="toggleImport(this.closest('#pokemon-cardlist-template'), false)">
+            <img src="{{asset('img/icons/x.svg')}}" alt="Does not transform" class="no-import-icon w-8 hidden" onclick="toggleImport(this.closest('#pokemon-cardlist-template'), true)">
+        </div>
     @endif
 
     <div class="card flex justify-center rounded shadow border gray-border p-3">

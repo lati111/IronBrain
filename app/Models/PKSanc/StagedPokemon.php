@@ -19,16 +19,16 @@ class StagedPokemon extends AbstractModel
     protected $primaryKey = 'uuid';
 
     public function getNewPokemon(): StoredPokemon {
-        return $this->new_pokemon->first();
+        return $this->new_pokemon()->first();
     }
 
     public function new_pokemon(): BelongsTo
     {
-        return $this->belongsTo(StoredPokemon::class, 'new_pokemon_uuid', 'uuid')->first();
+        return $this->belongsTo(StoredPokemon::class, 'new_pokemon_uuid', 'uuid');
     }
 
-    public function getOldPokemon(): StoredPokemon {
-        return $this->old_pokemon_uuid->first();
+    public function getOldPokemon(): StoredPokemon|null {
+        return $this->old_pokemon()->first();
     }
 
     public function old_pokemon(): BelongsTo
