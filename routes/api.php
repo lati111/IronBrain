@@ -50,9 +50,14 @@ Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
     ->group(function() {
         Route::prefix('/deposit')->group(function() {
-            Route::prefix('/stage')->group(function() {
+            Route::prefix('/staging')->group(function() {
                 Route::post('/', [\App\Http\Api\Modules\PKSanc\DepositApi::class, 'stageDepositAttempt'])
                     ->name('pksanc.deposit.stage.attempt');
+
+                Route::prefix('/{staging_uuid}')->group(function() {
+                    Route::post('/confirm', [\App\Http\Api\Modules\PKSanc\DepositApi::class, 'confirmDeposit'])
+                        ->name('pksanc.deposit.stage.confirm');
+                });
             });
         });
 

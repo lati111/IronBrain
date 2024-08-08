@@ -14,6 +14,6 @@ class IronBrainException extends Exception
         $this->privateMessage = $privateMessage;
         $this->publicMessage = $publicMessage;
 
-        parent::__construct($privateMessage, $code, null);
+        parent::__construct($privateMessage, $code);
     }
 }

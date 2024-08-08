@@ -66,13 +66,10 @@ Route::prefix('/pksanc')
             Route::post('/', [PKSancDepositController::class, 'stageDepositAttempt'])
                 ->name('pksanc.deposit.stage.attempt');
 
-            Route::get('/{importUuid}', [PKSancDepositController::class, 'showDepositAttempt'])
+            Route::get('/{import_uuid}', [PKSancDepositController::class, 'showDepositAttempt'])
                 ->name('pksanc.deposit.stage.show');
 
-            Route::get('/{importUuid}/confirm', [PKSancDepositController::class, 'depositConfirm'])
-                ->name('pksanc.deposit.stage.confirm');
-
-            Route::get('/{importUuid}/cancel', [PKSancDepositController::class, 'depositCancel'])
+            Route::get('/{import_uuid}/cancel', [PKSancDepositController::class, 'depositCancel'])
                 ->name('pksanc.deposit.stage.cancel');
         });
     });

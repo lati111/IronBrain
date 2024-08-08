@@ -1,4 +1,4 @@
-@extends('layouts.form.single_form')
+@extends('layouts.form.single_form_legacy')
 
 @section('htmlTitle', 'Deposit Pokemon')
 @section('form_title', 'Deposit Pokemon')

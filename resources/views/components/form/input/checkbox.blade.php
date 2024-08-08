@@ -14,13 +14,13 @@
             <span class="mr-2 text-sm" >{{$left_label}}</span>
         @endisset
 
-        <input id="{{$id ?? $name}}" type="checkbox" name="{{$name}}" class="w-4 h-4 text-red-600 focus:ring-red-500" {{ $attributes ?? '' }}
+        <input id="{{$id ?? $name}}" type="checkbox" name="{{$name}}" class="w-4 h-4 text-red-600 focus:ring-red-500 {{$cls ?? ''}}" {{ $attributes ?? '' }}
             @isset($value)value="{{$value}}" @endisset
             @isset($onclick)onclick="{{$onclick}}" @endisset
         />
 
-        @isset($right_label)
-            <span class="ml-2 text-sm">{{$right_label}}</span>
-        @endisset
+        @if($slot->hasActualContent() || ($right_label ?? null) !== null)
+            <span class="ml-2 text-sm">{{$slot->hasActualContent() ? $slot : $right_label}}</span>
+        @endif
     </label>
 </div>

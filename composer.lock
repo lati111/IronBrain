@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3d9adb3a5f90791d0bfd79df4b87ad0b",
+    "content-hash": "43e996f9049caa3a795cbb0a4fcc3e08",
     "packages": [
         {
             "name": "brick/math",
@@ -1509,16 +1509,16 @@
         },
         {
             "name": "lati111/laravel_dataproviders",
-            "version": "dev-main",
+            "version": "2.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/lati111/laravel_dataproviders.git",
-                "reference": "4aca3f30059e9c4e6c62e6a6928ec55c7033340f"
+                "reference": "44c6e56ee433745110f532d213dcf56d94426971"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/lati111/laravel_dataproviders/zipball/4aca3f30059e9c4e6c62e6a6928ec55c7033340f",
-                "reference": "4aca3f30059e9c4e6c62e6a6928ec55c7033340f",
+                "url": "https://api.github.com/repos/lati111/laravel_dataproviders/zipball/44c6e56ee433745110f532d213dcf56d94426971",
+                "reference": "44c6e56ee433745110f532d213dcf56d94426971",
                 "shasum": ""
             },
             "require": {
@@ -1526,7 +1526,6 @@
                 "illuminate/http": ">=10.0 <12.0",
                 "php": "^8.2"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -1546,9 +1545,9 @@
             "description": "A composer package for laravel to create interactable and customizable datatables through api calls",
             "support": {
                 "issues": "https://github.com/lati111/laravel_dataproviders/issues",
-                "source": "https://github.com/lati111/laravel_dataproviders/tree/main"
+                "source": "https://github.com/lati111/laravel_dataproviders/tree/2.1.1"
             },
-            "time": "2024-06-15T10:52:23+00:00"
+            "time": "2024-07-24T08:01:31+00:00"
         },
         {
             "name": "league/commonmark",
@@ -8816,9 +8815,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "lati111/laravel_dataproviders": 20
-    },
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

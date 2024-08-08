@@ -26,7 +26,7 @@
                 data-option-content-cls="block p-2 border-transparent border-l-4 group-hover:border-red-600 group-hover:bg-gray-100 h-9"
             />
 
-            <input id="{{$id}}-searchbar" class="searchbar px-4 outline-none w-full border-none h-8" placeholder="..." autocomplete="off">
+            <input id="{{$id}}-searchbar" class="searchbar px-4 outline-none w-full border-none h-8 underlined" placeholder="..." autocomplete="off">
 
             <label class="cursor-pointer outline-none focus:outline-none border-l border-gray-200 transition-all px-1">
                 <button type="button" id="{{$id}}-expand-button"><img src="{{asset('img/icons/show-more.svg')}}" alt="show more" class="interactive"></button>

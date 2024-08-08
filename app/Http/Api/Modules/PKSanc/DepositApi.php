@@ -2,18 +2,23 @@
 
 namespace App\Http\Api\Modules\PKSanc;
 
+use App\Enum\ErrorEnum;
+use App\Enum\PKSanc\PKSancStrings;
 use App\Enum\PKSanc\StoragePaths;
 use App\Http\Api\AbstractApi;
 use App\Models\PKSanc\Game;
 use App\Models\PKSanc\ImportCsv;
 use App\Service\PKSanc\DepositService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class DepositApi extends AbstractApi
@@ -68,5 +73,47 @@ class DepositApi extends AbstractApi
         $this->depositService->stageImport($csv);
 
         return redirect(route('pksanc.deposit.stage.show', $csv->uuid));
+    }
+
+    /**
+     * Attempt to confirm a deposit
+     * @return JsonResponse True or an error is json format
+     * @throws Throwable
+     */
+    public function confirmDeposit(Request $request, string $staging_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'excluded_uuids' => 'nullable|array',
+            'excluded_uuids.*' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $csv = ImportCsv::where('uuid', $staging_uuid)->first();
+        if ($csv === null) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, PKSancStrings::CSV_NOT_FOUND);
+        }
+
+        foreach($csv->Pokemon()->get() as $pokemon) {
+            if (in_array($pokemon->uuid, $request->get('excluded_uuids', []))) {
+                continue;
+            }
+
+            $stagedPokemon = $pokemon->getStaging();
+            if ($stagedPokemon === null) {
+                continue;
+            }
+
+            $this->depositService->confirmStaging($stagedPokemon);
+        }
+
+        $csv->validated = true;
+        $csv->save();
+
+        return $this->respond(Response::HTTP_OK, 'confirmed', true, [
+            'Location' => route('pksanc.home.show', ['message' => PKSancStrings::DEPOSIT_SUCCESS]),
+        ]);
     }
 }

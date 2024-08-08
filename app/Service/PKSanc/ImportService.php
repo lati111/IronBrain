@@ -305,6 +305,7 @@ class ImportService
      * @return bool Returns whether the pokemon changed/saved or not
      */
     public function importGame(string $name, string $code): bool {
+        $code = strtolower($code);
         $game = Game::where('game', $code)->first();
         if ($game !== null) {
             return false;
