@@ -2,6 +2,8 @@
 
 namespace App\Service\PKSanc\CsvHydrator;
 
+use App\Exceptions\Modules\PKSanc\ImportException;
+use App\Exceptions\Modules\PKSanc\ImportValidationException;
 use App\Models\AbstractModel;
 use App\Models\PKSanc\ImportCsv;
 use App\Models\PKSanc\StagedPokemon;
@@ -20,16 +22,32 @@ abstract class AbstractCsvHydrator
         $this->importCsv = $csv;
     }
 
+    /**
+     * Attampt to hydrate a pokemon from the given csv line
+     * @param array $data The complete csv in array format
+     * @param int $line The line of the csv the pokemon is locaed on
+     * @returns StoredPokemon|null Returns the hydrated pokemon, or null if it was already hydrated
+     * @throws ImportValidationException Thrown when the validation fails during hydration
+     */
     public function hydrate(array $data, int $line): StoredPokemon|null
     {
         $this->loadData($data);
         if ($this->validate($data) === false) {
-            //TODO formal error screen
+            $errors = [];
+            foreach ($this->data as $column => $errorData) {
+                if (count($errorData) > 1) {
+                    foreach ($errorData['errors'] as $error) {
+                        $errors[] = sprintf('%s: %s. %s', $column, $errorData['value'], $error);
+                    }
+                }
+            }
+
+            $this->importCsv->delete();
             foreach($this->importCsv->Pokemon()->get() as $pokemon) {
                 $pokemon->delete();
             }
 
-            dd($this->data);
+            throw new ImportValidationException($errors);
         }
 
         return $this->import($data, $line);

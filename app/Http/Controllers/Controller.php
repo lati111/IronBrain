@@ -22,14 +22,14 @@ class Controller extends BaseController
      * @return View The created view
      */
     protected function view(string $view, array $parameters = []) {
-        return view($view, array_merge($this->getBaseVariables(), $parameters));
+        return view($view, array_merge(self::getBaseVariables(), $parameters));
     }
 
     /**
      * Get the basic parameters for any view
      * @return array The basic parameters
      */
-    protected function getBaseVariables(): array {
+    public static function getBaseVariables(): array {
         $user = Auth::user();
 
         $modules = Module::orderBy('order')
