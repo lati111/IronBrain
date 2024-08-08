@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property string PID The pokemon's identifier as provided by PKHeX
@@ -35,16 +36,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string csv_uuid The uuid of the csv this pokemon was imported from
  * @property int csv_line On which line of the csv this pokemon's data exists
  * @property string owner_uuid Uuid of the user that owns this pokemon
+ * @property string|null prev_uuid The uuid of the previous iteration of this pokemon
+ * @property integer version The version number of this pokemon. Starts at 1
  * @property string validated_at The date this pokemon was validated at
  * @property string created_at The creation date of the model as a string
  * @property string updated_at The date this model was last updated
+ * @property string|null deleted_at The date this model was soft deleted
  */
 
 class StoredPokemon extends AbstractModel
 {
-    use HasFactory;
-    use HasTimestamps;
-    use HasUuids;
+    use HasFactory, HasUuids, HasTimestamps, SoftDeletes;
 
     /** { @inheritdoc } */
     protected $table = 'pksanc__stored_pokemon';
