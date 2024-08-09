@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('game', 255)->primary();
             $table->string('name', 255);
             $table->string('original_game', 255)->nullable();
+            $table->boolean('is_romhack')->default(false);
             $table->timestamps();
         });
 

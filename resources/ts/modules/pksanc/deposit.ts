@@ -40,7 +40,9 @@ async function saveRomhack() {
 
     const formdata = new FormData();
     formdata.append('name', nameInput.value);
-    formdata.append('original_game', originalGameSelector.value);
+    if (originalGameSelector.value !== '') {
+        formdata.append('original_game', originalGameSelector.value);
+    }
 
     const response = await postData('/api/pksanc/romhacks/add', formdata);
     response?.announce();

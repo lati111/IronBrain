@@ -1,8 +1,6 @@
 @extends('layouts.main')
 
 @section('content')
-    @yield('modals')
-
     <div class="flex justify-center">
         <div>
             {{--| title |--}}

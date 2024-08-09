@@ -60,7 +60,7 @@
 
         <x-form.input-wrapper label_text="Original game">
             <select name="romhack_original_game" class="mediumInput underlined py-0">
-                <option>Original game</option>
+                <option value="">Original game</option>
                 @foreach ($gamesCollection as $game)
                     @if ($game->original_game === null)
                         <option value="{{$game->game}}">{{$game->name}}</option>

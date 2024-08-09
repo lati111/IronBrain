@@ -21,7 +21,7 @@ class ContributionApi extends AbstractApi
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'original_game' => sprintf('required|string|exists:%s,game', Game::getTableName()),
+            'original_game' => sprintf('nullable|string|exists:%s,game', Game::getTableName()),
         ]);
 
         if ($validator->fails()) {
