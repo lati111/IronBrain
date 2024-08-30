@@ -1,4 +1,4 @@
-import {getData} from "../../ajax";
+import {getData} from "../../main";
 import {Statblock} from "./data/Statblock";
 
 async function test() {
