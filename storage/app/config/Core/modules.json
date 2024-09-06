@@ -13,6 +13,19 @@
         "submodules": []
     },
     {
+        "code": "compendium",
+        "name": "Compendium",
+        "description": "A custom, interactive D&D character sheet / statblock tool. It also contains a lorebible tool to document your campaign.",
+        "thumbnail": "compendium.png",
+        "route": "compendium.campaigns",
+        "permission": null,
+        "order": 2,
+        "in_overview": true,
+        "in_nav": true,
+        "requires_login": true,
+        "submodules": []
+    },
+    {
         "code": "config",
         "name": "Config",
         "description": "The wrapper for the various configs used to configure the website",
