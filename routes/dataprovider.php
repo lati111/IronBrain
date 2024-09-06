@@ -66,3 +66,13 @@ Route::prefix('/pksanc/data')
         Route::dataprovider('/owned-species/dataselect', 'data.pksanc.owned-species.dataselect',
             \App\Http\Dataproviders\Modules\PKSanc\Data\OwnedPokemonSpeciesSelect::class);
     });
+
+//| Compendium
+
+Route::prefix('/compendium')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+
+        Route::dataprovider('/campaigns', 'data.compendium.campaigns',
+            \App\Http\Dataproviders\Modules\Compendium\CompendiumCampaignOverview::class);
+    });

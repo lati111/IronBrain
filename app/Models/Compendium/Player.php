@@ -24,7 +24,7 @@ class Player extends AbstractModel
     use HasUuids, HasTimestamps;
 
     /** { @inheritdoc } */
-    protected $table = 'compendium__character';
+    protected $table = 'compendium__player';
 
     /** { @inheritdoc } */
     protected $primaryKey = 'uuid';

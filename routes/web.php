@@ -74,3 +74,11 @@ Route::prefix('/pksanc')
         });
     });
 });
+
+//| compendium
+Route::prefix('/compendium')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::get('/campaigns', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'campaigns'])
+            ->name('compendium.campaigns');
+    });
