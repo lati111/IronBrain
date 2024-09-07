@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('compendium__campaign', function (Blueprint $table) {
             $table->uuid()->primary();
             $table->string('title', 128);
-            $table->text('description');
+            $table->text('description')->nullable();
             $table->string('cover_src')->nullable();
             $table->timestamps();
         });
@@ -88,11 +88,13 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::disableForeignKeyConstraints();
         Schema::dropIfExists('compendium__article_segment');
         Schema::dropIfExists('compendium__location');
         Schema::dropIfExists('compendium__character');
         Schema::dropIfExists('compendium__player');
         Schema::dropIfExists('compendium__campaign');
         Schema::dropIfExists('compendium__article');
+        Schema::disableForeignKeyConstraints();
     }
 };

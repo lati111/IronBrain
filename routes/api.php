@@ -74,3 +74,14 @@ Route::prefix('/pksanc')
                     ->name('pksanc.pokedex.unmark');
             });
     });
+
+//| Compendium
+
+Route::prefix('/compendium')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::prefix('/campaigns')->group(function() {
+            Route::post('/add', [\App\Http\Api\Modules\Compendium\CampaignApi::class, 'addCampaign'])
+                ->name('api.compendium.campaigns.add');
+        });
+    });
