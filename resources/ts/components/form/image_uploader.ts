@@ -1,99 +1,93 @@
-var filePreview: Element;
-var fileUploader: Element;
-var fileInput: HTMLInputElement;
-var imageFrame: HTMLImageElement;
-var disabledCheckbox: HTMLInputElement | null;
+import {IronbrainError} from "../../Exceptions/IronbrainError";
 
-function imageUploaderInit
-    (
-        filePreviewId: string,
-        fileUploaderId: string,
-        imageFrameId: string,
-        disabledCheckboxId: string | null = null
-    ) {
+export class ImageUploader {
+    public id;
 
-    const preview = document.querySelector("#" + filePreviewId);
-    const uploader = document.querySelector<HTMLInputElement>("#" + fileUploaderId);
-    const frame = document.querySelector<HTMLImageElement>("#" + imageFrameId);
+    /** @type {HTMLElement} The file input container */
+    protected fileInputContainer: HTMLElement;
 
-    if (preview === null) {
-        console.error('Image uploader preview `' + filePreviewId + '` does not exist');
-        return uploader;
-    } else if (uploader === null) {
-        console.error('Image uploader input `' + fileUploaderId + '` does not exist');
-        return false;
-    } else if (frame === null) {
-        console.error('Image uploader frame `' + imageFrameId + '` does not exist');
-        return false;
+    /** @type {HTMLInputElement} The actual file input */
+    protected fileInput: HTMLInputElement;
+
+    /** @type {HTMLElement} The file preview container */
+    protected filePreviewContainer: HTMLElement;
+
+    /** @type {HTMLImageElement} The frame displaying the preview image */
+    public imageFrame: HTMLImageElement;
+
+    public constructor(id: string) {
+        this.id = id;
+
+        const element = document.querySelector('#'+this.id) as HTMLElement|undefined;
+        if (element === undefined) {
+            throw new IronbrainError(`An image uploader with the id '${this.id}' was not found.`)
+        }
+
+        const fileInputContainer = element.querySelector('.image-upload-container') as HTMLElement|undefined;
+        if (fileInputContainer === undefined) {
+            throw new IronbrainError(`The image upload container was not found in the image uploader`)
+        }
+
+        const fileInput = element.querySelector('.file-input') as HTMLInputElement|undefined;
+        if (fileInput === undefined) {
+            throw new IronbrainError(`The file input was not found in the image uploader`)
+        }
+
+        const filePreviewContainer = element.querySelector('.file-preview') as HTMLElement|undefined;
+        if (filePreviewContainer === undefined) {
+            throw new IronbrainError(`The image preview container was not found in the image uploader`)
+        }
+
+        const imageFrame = element.querySelector('.img-frame') as HTMLImageElement|undefined;
+        if (imageFrame === undefined) {
+            throw new IronbrainError(`The image frame was not found in the image uploader`)
+        }
+
+        const imageClearButton = element.querySelector('.image-clear-button') as HTMLButtonElement|undefined;
+        if (imageClearButton === undefined) {
+            throw new IronbrainError(`The image clear button was not found in the image uploader`)
+        }
+
+        this.fileInputContainer = fileInputContainer;
+
+        this.fileInput = fileInput;
+        this.fileInput.addEventListener('change', this.preview.bind(this));
+
+        this.filePreviewContainer = filePreviewContainer;
+        this.imageFrame = imageFrame;
+
+        imageClearButton.addEventListener('click', this.clearPreview.bind(this))
     }
 
-    const input = uploader.querySelector('input');
-    if (input === null) {
-        console.error('Image uploader input inside of `' + filePreviewId + '` does not exist');
-        return uploader;
+    /**
+     * Display the uploaded image as a preview image
+     * Triggered after an image is uploaded.
+     * @protected
+     */
+    protected preview() {
+        const files = this.fileInput.files;
+
+        let file;
+        if (files && files[0]) {
+            file = files[0]
+        } else {
+            return false;
+        }
+
+        this.imageFrame.src = URL.createObjectURL(file);
+        this.fileInputContainer.classList.add('hidden')
+        this.filePreviewContainer.classList.replace('hidden', 'flex')
     }
 
-    filePreview = preview;
-    fileUploader = uploader;
-    fileInput = input;
-    imageFrame = frame;
-    disabledCheckbox = document.querySelector("#" + disabledCheckboxId);
+    /**
+     * Clears the preview image and show the uploader
+     * Triggered after pressing the clear button
+     * @protected
+     */
+    protected clearPreview() {
+        this.filePreviewContainer.classList.replace('flex', 'hidden');
+        this.fileInput.value = "";
+        this.fileInputContainer.classList.remove('hidden')
+        this.imageFrame.src = "";
+    }
 }
-
-function toggleThumbnailField() {
-    if (disabledCheckbox === null) {
-        console.error('Disabled checkbox for image uploader does not exist');
-        return false;
-    }
-
-    const disabledBlurb: Element | null = filePreview.querySelector(".disabledBlurb");
-    if (disabledBlurb === null) {
-        console.error('Image uploader does not contain a disabled blurb');
-        return false;
-    }
-
-    const removeButton: Element | null = filePreview.querySelector(".removeButton");
-    if (removeButton === null) {
-        console.error('Image uploader does not contain a remove button');
-        return false;
-    }
-
-    if (disabledCheckbox.checked) {
-        filePreview.classList.replace('flex', 'hidden');
-        filePreview.classList.add('disabled');
-        disabledBlurb.classList.add('hidden')
-        removeButton.classList.remove('hidden')
-        fileUploader.classList.remove('hidden')
-    } else {
-        fileUploader.classList.add('hidden')
-        filePreview.classList.add('remove');
-        disabledBlurb.classList.remove('hidden')
-        removeButton.classList.add('hidden')
-        filePreview.classList.replace('hidden', 'flex')
-    }
-}
-
-function preview(e: { target: { files: (Blob | MediaSource)[]; }; }) {
-    let file;
-    if (e.target.files && e.target.files[0]) {
-      file = e.target.files[0]
-    } else {
-        return false;
-    }
-
-    imageFrame.src = URL.createObjectURL(file);
-    fileUploader.classList.add('hidden')
-    filePreview.classList.replace('hidden', 'flex')
-}
-
-function clearImage() {
-    fileInput.value = "";
-    filePreview.classList.replace('flex', 'hidden');
-    fileUploader.classList.remove('hidden')
-    imageFrame.src = "";
-}
-
-(<any>window).imageUploaderInit = imageUploaderInit;
-(<any>window).toggleThumbnailField = toggleThumbnailField;
-(<any>window).preview = preview;
-(<any>window).clearImage = clearImage;

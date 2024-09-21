@@ -81,4 +81,7 @@ Route::prefix('/compendium')
     ->group(function() {
         Route::get('/campaigns', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'campaigns'])
             ->name('compendium.campaigns');
+
+        Route::get('/campaigns/{compendium_uuid}', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'campaign'])
+            ->name('compendium.campaign');
     });

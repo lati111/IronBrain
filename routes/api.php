@@ -83,5 +83,8 @@ Route::prefix('/compendium')
         Route::prefix('/campaigns')->group(function() {
             Route::post('/add', [\App\Http\Api\Modules\Compendium\CampaignApi::class, 'addCampaign'])
                 ->name('api.compendium.campaigns.add');
+
+            Route::post('/{campaign_uuid}/edit', [\App\Http\Api\Modules\Compendium\CampaignApi::class, 'editCampaign'])
+                ->name('api.compendium.campaigns.edit');
         });
     });

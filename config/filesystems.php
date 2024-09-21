@@ -74,6 +74,7 @@ return [
         public_path('img/modules/thumbnail') => storage_path('app/modules/thumbnail'),
         public_path('img/modules/pksanc/pokeball') => storage_path('app/modules/pksanc/pokeball'),
         public_path('img/modules/pksanc/pokemon') => storage_path('app/modules/pksanc/pokemon'),
+        public_path('img/modules/compendium/campaign_cover') => storage_path('app/modules/compendium/campaign/cover'),
     ],
 
 ];

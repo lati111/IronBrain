@@ -52,7 +52,14 @@ class CompendiumCampaignOverview extends AbstractCardlist implements FilterableD
     {
         try {
             $data = $this->getData($request)
-                ->get();
+                ->get()
+                ->map(function (Campaign $campaign) {
+                    $campaign['cover_src'] = $campaign->cover_src !== null ? asset('img/modules/compendium/campaign_cover/'.$campaign->cover_src) : null;
+                    $campaign['campaign_url'] = route('compendium.campaign', ['compendium_uuid' => $campaign->uuid]);
+
+                    return $campaign;
+                });
+
         } catch (IronBrainException $e) {
             return $this->respond($e->getCode(), $e->publicMessage);
         }

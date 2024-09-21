@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 /**
+ * @inheritdoc
  * @property string uuid
  * @property string title The campaign title
  * @property string description A short description of the campaign
