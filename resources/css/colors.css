@@ -1,3 +1,18 @@
 :root:root {
+    --main-red: #FF0000;
+    --sub-red: #7f0000;
+    --main-grey: #B3B3B3;
+    --sub-grey: #4f4f4f;
+    --tertiary-grey: #E5E7EB;
+    --main-black: #000000;
+    --sub-white: #f8f8f8;
     --background: white;
+}
+
+.border-tertiary-gray {
+    border-color: var(--tertiary-grey);
+}
+
+.bg-body-tertiary {
+    background-color: rgba(248, 249, 250, 1);
 }

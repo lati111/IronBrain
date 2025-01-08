@@ -5,6 +5,7 @@ namespace App\Models\Compendium;
 use App\Models\AbstractModel;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @inheritdoc
@@ -25,4 +26,32 @@ class Campaign extends AbstractModel
 
     /** { @inheritdoc } */
     protected $primaryKey = 'uuid';
+
+    //| Relationships
+
+    /**
+     * The relationship to it's character information, if the article is about a character.
+     * @return BelongsTo
+     */
+    public function character(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Compendium\Docs\Character::class, 'location_uuid', 'uuid');
+    }
+
+    //| Public methods
+
+    /**
+     * Find a player in this campaign by their user uuid.
+     *
+     * @param string $userUuid The uuid of the user to find the player for
+     * @return Player|null The player
+     */
+    public function findPlayerByUser(string $userUuid): Player|null {
+        /** @var Player|null $player */
+        $player = $this->hasMany(Player::class, 'campaign_uuid', 'uuid')
+            ->where('user_uuid', $userUuid)
+            ->first();
+
+        return $player;
+    }
 }

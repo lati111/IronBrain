@@ -4,6 +4,7 @@ import { IronbrainError } from "../../Exceptions/IronbrainError";
 import {FetchResponse, freezePage, postData, unfreezePage} from "../../main";
 import {ImageUploader} from "../../components/form/image_uploader";
 import {GenericFormData} from "axios";
+import { cardlistDescriptionSetter, initShortenedDescriptions } from "../../components/displays/shortenedDescription";
 
 let coverUploader: ImageUploader;
 
@@ -12,16 +13,34 @@ let coverUploader: ImageUploader;
  */
 async function init() {
     initModals();
+    initShortenedDescriptions();
+
+    const overview = new DataCardlist('article-cardlist');
+    overview.setColumnSetter('description', cardlistDescriptionSetter);
+    overview.setColumnSetter('tags', tagSetter);
+    await overview.init();
 
     coverUploader = new ImageUploader('cover-uploader');
 }
 
+function tagSetter(card: HTMLDivElement, description: string) {
+    const container = card.querySelector('#tags')!;
+    const tags = description.split(',');
+
+    for (const tag of tags) {
+        const tagSpan = document.createElement('span');
+        tagSpan.classList.value = 'px-2 py-0.5 border rounded border-tertiary-gray bg-body-tertiary interactive'
+        tagSpan.textContent = tag;
+        container.append(tagSpan);
+    }
+}
+
 function revealEditButton(container:HTMLElement) {
-    container.querySelector('.edit-btn').classList.replace('opacity-0', 'opacity-100')
+    container.querySelector('.edit-btn')?.classList.replace('opacity-0', 'opacity-100')
 }
 
 function hideEditButton(container:HTMLElement) {
-    container.querySelector('.edit-btn').classList.replace('opacity-100', 'opacity-0')
+    container.querySelector('.edit-btn')?.classList.replace('opacity-100', 'opacity-0')
 }
 
 /**
@@ -30,8 +49,8 @@ function hideEditButton(container:HTMLElement) {
  * @param {boolean} editMode Whether to switch it over to edit mode, or back to display mode
  */
 function toggleEditMode(container:HTMLElement, editMode:boolean) {
-    const editContainer = container.querySelector('.input-format')
-    const displayContainer = container.querySelector('.display-format')
+    const editContainer = container.querySelector('.input-format')!
+    const displayContainer = container.querySelector('.display-format')!
 
     if (editMode) {
         editContainer.classList.remove('hidden');
@@ -51,15 +70,15 @@ function toggleEditMode(container:HTMLElement, editMode:boolean) {
 }
 
 async function saveTextEdit(container:HTMLElement, callback:Function) {
-    const editContainer = container.querySelector('.input-format');
-    const displayContainer = container.querySelector('.display-format');
+    const editContainer = container.querySelector('.input-format')!;
+    const displayContainer = container.querySelector('.display-format')!;
 
-    const display = editContainer.querySelector('.display') as HTMLElement|undefined;
+    const display = editContainer?.querySelector('.display') as HTMLElement|undefined;
     if (display === undefined) {
         throw new IronbrainError('Could not find display element on edit toggle')
     }
 
-    const input = editContainer.querySelector('input') as HTMLInputElement|undefined;
+    const input = editContainer?.querySelector('input') as HTMLInputElement|undefined;
     if (input === undefined) {
         throw new IronbrainError('Could not find input element on edit toggle')
     }
@@ -76,15 +95,15 @@ async function saveTextEdit(container:HTMLElement, callback:Function) {
 }
 
 async function saveTextAreaEdit(container:HTMLElement, callback:Function) {
-    const editContainer = container.querySelector('.input-format');
-    const displayContainer = container.querySelector('.display-format');
+    const editContainer = container.querySelector('.input-format')!;
+    const displayContainer = container.querySelector('.display-format')!;
 
-    const display = editContainer.querySelector('.display') as HTMLElement|undefined;
+    const display = editContainer?.querySelector('.display') as HTMLElement|undefined;
     if (display === undefined) {
         throw new IronbrainError('Could not find display element on edit toggle')
     }
 
-    const textarea = editContainer.querySelector('textarea') as HTMLTextAreaElement|undefined;
+    const textarea = editContainer?.querySelector('textarea') as HTMLTextAreaElement|undefined;
     if (textarea === undefined) {
         throw new IronbrainError('Could not find textarea element on edit toggle')
     }
@@ -104,12 +123,12 @@ async function saveImgEdit(container:HTMLElement, callback:Function) {
     const editContainer = container.querySelector('.input-format');
     const displayContainer = container.querySelector('.display-format');
 
-    const display = displayContainer.querySelector('.display') as HTMLImageElement|undefined;
+    const display = displayContainer?.querySelector('.display') as HTMLImageElement|undefined;
     if (display === undefined) {
         throw new IronbrainError('Could not find display element on edit toggle')
     }
 
-    const input = editContainer.querySelector('input') as HTMLInputElement|undefined;
+    const input = editContainer?.querySelector('input') as HTMLInputElement|undefined;
     if (input === undefined) {
         throw new IronbrainError('Could not find input element on edit toggle')
     }

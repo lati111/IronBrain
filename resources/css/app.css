@@ -1,6 +1,7 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+@import "colors.css";
 
 @font-face {
     font-family: 'Platform';
@@ -122,20 +123,13 @@
     font-style: italic;
 }
 
-
 :root:root {
     --bs-body-font-family: 'Platform';
-    --main-red: #FF0000;
-    --sub-red: #7f0000;
-    --main-grey: #B3B3B3;
-    --sub-grey: #4f4f4f;
-    --tertiary-grey: #E5E7EB;
-    --main-black: #000000;
-    --sub-white: #f8f8f8;
 }
 
+
 body {
-    font-family: var(--bs-body-font-family);
+    font-family: var(--bs-body-font-family), serif;
 }
 
 #logo {

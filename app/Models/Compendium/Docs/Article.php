@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 /**
  * @property string uuid
  * @property string player_uuid The uuid of the player that created this article
+ * @property string name The name given to this article
+ * @property string|null description A short description of the article topic
+ * @property string|null tags A list of tags given to this character, seperated by ,s
  * @property boolean dm_only Whether this article should only be shown to DMs
  * @property boolean private Whether this article should only be shown to the DM and the player
  * @property string created_at The creation date of the model as a string

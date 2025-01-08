@@ -24,16 +24,16 @@ function openNewCampaignModal() {
 }
 
 async function submitNewCampaignModal() {
-    const form = document.querySelector('#new-campaign-form');
+    const form = document.querySelector('#new-campaign-form')!;
     const formdata = new FormData(form);
 
     freezePage();
     try {
         const response = await postData(`/api/compendium/campaigns/add`, formdata);
         if (response?.ok === true) {
-            //todo redirect to DM screen
+            window.location.href = `${window.location.origin}${window.location.pathname}/${response.data.uuid}`;
         } else {
-            response.announce();
+            response?.announce();
         }
 
     } finally {

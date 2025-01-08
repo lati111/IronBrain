@@ -43,5 +43,26 @@
                 <x-form.input.text_area name="description" value="{{$campaign->description}}" width="96" />
             </x-form.editable-inputs.toggleable-edit-text-area>
         </div>
+
+        {{--| Articles |--}}
+        <h3 class="title text-center mt-12">Articles</h3>
+        <x-datalist.cardlist.list id="article-cardlist" url="{{route('data.compendium.campaigns.articles', ['campaign_uuid' => $campaign->uuid])}}">
+            <x-datalist.cardlist.template dataprovider_id="article-cardlist" cls="max-w-xs flex flex-col items-center gap-2">
+                <div class="card-body">
+                    <h4 class="title text-center">
+                        <a data-attribute-name="article_url" data-settable-attribute="href" class="interactive">
+                            <span class="text-xl" data-name="name"></span>
+                        </a>
+                    </h4>
+
+                    <p id="description-container" class="card-text text-center">
+                        <x-elements.display.shortened-description/>
+                    </p>
+
+                    <div id="tags" class="flex justify-center gap-2 mt-1"></div>
+
+                </div>
+            </x-datalist.cardlist.template>
+        </x-datalist.cardlist.list>
     </form>
 @endsection
