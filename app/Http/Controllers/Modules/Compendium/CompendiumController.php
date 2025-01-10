@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Modules\Compendium;
 
+use App\Enum\Modules\Compendium\ResponseStrings;
 use App\Http\Controllers\Controller;
 use App\Models\Compendium\Campaign;
 use Illuminate\Http\RedirectResponse;
@@ -26,9 +27,17 @@ class CompendiumController extends Controller
     {
         $campain = Campaign::find($campaign_uuid);
         if ($campain === null) {
-            return redirect(route('compendium.campaigns'))->with(['error' => 'Invalid campaign.']);
+            return redirect(route('compendium.campaigns'))->with(['error' => ResponseStrings::CAMPAIGN_NOT_FOUND]);
         }
 
-        return $this->view('modules.compendium.campaign', ['campaign' => $campain]);
+        $player = $campain->findPlayerByUser(\Auth::user()->uuid);
+        if ($player === null) {
+            return redirect(route('compendium.campaigns'))->with(['error' => ResponseStrings::CAMPAIGN_NO_ACCESS]);
+        }
+
+        return $this->view('modules.compendium.campaign', [
+            'campaign' => $campain,
+            'player' => $player
+        ]);
     }
 }

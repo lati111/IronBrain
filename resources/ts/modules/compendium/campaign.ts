@@ -5,6 +5,7 @@ import {FetchResponse, freezePage, postData, unfreezePage} from "../../main";
 import {ImageUploader} from "../../components/form/image_uploader";
 import {GenericFormData} from "axios";
 import { cardlistDescriptionSetter, initShortenedDescriptions } from "../../components/displays/shortenedDescription";
+import {initEditableFields} from "../../components/displays/editableField";
 
 let coverUploader: ImageUploader;
 
@@ -14,6 +15,7 @@ let coverUploader: ImageUploader;
 async function init() {
     initModals();
     initShortenedDescriptions();
+    initEditableFields()
 
     const overview = new DataCardlist('article-cardlist');
     overview.setColumnSetter('description', cardlistDescriptionSetter);
@@ -23,9 +25,18 @@ async function init() {
     coverUploader = new ImageUploader('cover-uploader');
 }
 
-function tagSetter(card: HTMLDivElement, description: string) {
+/**
+ * Set the tags on a card
+ * @param card The card to set the tags on
+ * @param tagstring The tag string
+ */
+function tagSetter(card: HTMLDivElement, tagstring: string) {
+    if (tagstring === null) {
+        return;
+    }
+
     const container = card.querySelector('#tags')!;
-    const tags = description.split(',');
+    const tags = tagstring.split(',');
 
     for (const tag of tags) {
         const tagSpan = document.createElement('span');
@@ -35,115 +46,10 @@ function tagSetter(card: HTMLDivElement, description: string) {
     }
 }
 
-function revealEditButton(container:HTMLElement) {
-    container.querySelector('.edit-btn')?.classList.replace('opacity-0', 'opacity-100')
-}
-
-function hideEditButton(container:HTMLElement) {
-    container.querySelector('.edit-btn')?.classList.replace('opacity-100', 'opacity-0')
-}
-
 /**
- * Toggle an element from display mode to edit mode, or the opposite
- * @param {HTMLElement} container The container for the display and edit modes
- * @param {boolean} editMode Whether to switch it over to edit mode, or back to display mode
+ * Save the edits for the opened campaign
+ * @param formdata The form data to save
  */
-function toggleEditMode(container:HTMLElement, editMode:boolean) {
-    const editContainer = container.querySelector('.input-format')!
-    const displayContainer = container.querySelector('.display-format')!
-
-    if (editMode) {
-        editContainer.classList.remove('hidden');
-        displayContainer.classList.add('hidden');
-
-        const input = editContainer.querySelector('input:not([type="file"]), textarea') as HTMLInputElement|HTMLTextAreaElement|undefined ?? null;
-        if (input !== null) {
-            input.selectionStart = input.value.length;
-            input.selectionEnd = input.value.length;
-            input.focus();
-        }
-
-    } else {
-        editContainer.classList.add('hidden');
-        displayContainer.classList.remove('hidden');
-    }
-}
-
-async function saveTextEdit(container:HTMLElement, callback:Function) {
-    const editContainer = container.querySelector('.input-format')!;
-    const displayContainer = container.querySelector('.display-format')!;
-
-    const display = editContainer?.querySelector('.display') as HTMLElement|undefined;
-    if (display === undefined) {
-        throw new IronbrainError('Could not find display element on edit toggle')
-    }
-
-    const input = editContainer?.querySelector('input') as HTMLInputElement|undefined;
-    if (input === undefined) {
-        throw new IronbrainError('Could not find input element on edit toggle')
-    }
-
-    const formdata = new FormData();
-    formdata.append(input.name, input.value);
-
-    const response = await callback(formdata);
-    response.announce();
-    if (response.ok) {
-        toggleEditMode(container, false);
-        displayContainer.querySelector('.display')!.textContent = input.value;
-    }
-}
-
-async function saveTextAreaEdit(container:HTMLElement, callback:Function) {
-    const editContainer = container.querySelector('.input-format')!;
-    const displayContainer = container.querySelector('.display-format')!;
-
-    const display = editContainer?.querySelector('.display') as HTMLElement|undefined;
-    if (display === undefined) {
-        throw new IronbrainError('Could not find display element on edit toggle')
-    }
-
-    const textarea = editContainer?.querySelector('textarea') as HTMLTextAreaElement|undefined;
-    if (textarea === undefined) {
-        throw new IronbrainError('Could not find textarea element on edit toggle')
-    }
-
-    const formdata = new FormData();
-    formdata.append(textarea.name, textarea.value);
-
-    const response = await callback(formdata);
-    response.announce();
-    if (response.ok) {
-        toggleEditMode(container, false);
-        displayContainer.querySelector('.display')!.textContent = textarea.value;
-    }
-}
-
-async function saveImgEdit(container:HTMLElement, callback:Function) {
-    const editContainer = container.querySelector('.input-format');
-    const displayContainer = container.querySelector('.display-format');
-
-    const display = displayContainer?.querySelector('.display') as HTMLImageElement|undefined;
-    if (display === undefined) {
-        throw new IronbrainError('Could not find display element on edit toggle')
-    }
-
-    const input = editContainer?.querySelector('input') as HTMLInputElement|undefined;
-    if (input === undefined) {
-        throw new IronbrainError('Could not find input element on edit toggle')
-    }
-
-    const formdata = new FormData();
-    formdata.append(input.name, input.files![0]);
-
-    const response = await callback(formdata);
-    response.announce();
-    if (response.ok) {
-        toggleEditMode(container, false);
-        display.src = coverUploader.imageFrame.src;
-    }
-}
-
 async function saveCampaignEdits(formdata: GenericFormData): Promise<FetchResponse | undefined> {
     const uuid = (document.querySelector('input[name="campaign_uuid"]') as HTMLInputElement)?.value;
 
@@ -158,11 +64,71 @@ async function saveCampaignEdits(formdata: GenericFormData): Promise<FetchRespon
     return response;
 }
 
+/**
+ * Open the modal used to create a new article
+ */
+function openNewArticleModal() {
+    const nameInput = document.querySelector('#new-article-modal input[name="name"]') as HTMLInputElement|undefined;
+    if (nameInput === undefined) {
+        throw new IronbrainError('name input not found on new article modal');
+    }
+
+    const typeSelector = document.querySelector('#new-article-modal select[name="type"]') as HTMLSelectElement|undefined;
+    if (typeSelector === undefined) {
+        throw new IronbrainError('type select not found on new article modal');
+    }
+
+    const privateCheckbox = document.querySelector('#new-article-modal input[name="private"]') as HTMLInputElement|undefined;
+    if (privateCheckbox === undefined) {
+        throw new IronbrainError('private checkbox not found on new article modal');
+    }
+
+    const dmAccessCheckbox = document.querySelector('#new-article-modal input[name="dm_access"]') as HTMLInputElement|undefined;
+    if (dmAccessCheckbox === undefined) {
+        throw new IronbrainError('dm access checkbox not found on new article modal');
+    }
+
+    nameInput.value = '';
+    typeSelector.value = '';
+    privateCheckbox.checked = true;
+    dmAccessCheckbox.checked = true;
+
+    openModal('new-article-modal');
+}
+
+/**
+ * Submit the new article modal to create a new article
+ */
+async function submitNewArticleModal() {
+    const campaignUuid = (document.querySelector('input[name="campaign_uuid"]') as HTMLInputElement|null)?.value;
+    if (campaignUuid === undefined) {
+        throw new IronbrainError('Could not retrieve campaign uuid');
+    }
+
+    const form = document.querySelector('#new-article-form') as HTMLFormElement|null;
+    if (form === null) {
+        throw new IronbrainError('Form not found on new article modal');
+    }
+
+    const formdata = new FormData(form);
+    formdata.set('private', formdata.get('private') === 'on' ? '1' : '0');
+    formdata.set('dm_access', formdata.get('dm_access') === 'on' ? '1' : '0');
+
+    freezePage();
+    try {
+        const response = await postData(`/api/compendium/campaigns/${campaignUuid}/articles/add`, formdata);
+        if (response?.ok === true) {
+            window.location.href = `${window.location.origin}${window.location.pathname}/articles/${response.data.uuid}`;
+        } else {
+            response?.announce();
+        }
+
+    } finally {
+        unfreezePage();
+    }
+}
+
 (<any>window).init = init;
-(<any>window).toggleEditMode = toggleEditMode;
-(<any>window).revealEditButton = revealEditButton;
-(<any>window).hideEditButton = hideEditButton;
-(<any>window).saveTextEdit = saveTextEdit;
-(<any>window).saveTextAreaEdit = saveTextAreaEdit;
-(<any>window).saveImgEdit = saveImgEdit;
 (<any>window).saveCampaignEdits = saveCampaignEdits;
+(<any>window).openNewArticleModal = openNewArticleModal;
+(<any>window).submitNewArticleModal = submitNewArticleModal;

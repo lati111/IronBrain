@@ -6,9 +6,15 @@ export function initShortenedDescriptions() {
 export function cardlistDescriptionSetter(card: HTMLDivElement, description: string) {
     const maxChars = 80;
 
+    if (description === null) {
+        description = '';
+    }
+
     if (description.length <= maxChars) {
         card.querySelector('#shortened-description-container')?.classList.add('hidden')
         card.querySelector('#full-description')?.classList.remove('hidden')
+    } else {
+        card.querySelector('#expand-btn')?.classList.add('hidden');
     }
 
     const lastSpacePos = maxChars + description.substring(maxChars, description.length - maxChars).indexOf(' ');

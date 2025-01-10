@@ -2,7 +2,7 @@
     <span id="shortened-description-container">
         <span id="shortened-description"></span>
 
-        <x-elements.buttons.button cls="text-4xl leading-3 h-4 ml-1" onclick="expandShortenedDescription(this.closest(`#description-container`))">...</x-elements.buttons.button>
+        <x-elements.buttons.button id="expand-btn" cls="text-4xl leading-3 h-4 ml-1" onclick="expandShortenedDescription(this.closest(`#description-container`))">...</x-elements.buttons.button>
     </span>
 
     <span id="full-description-container" class="hidden">

@@ -32,39 +32,37 @@ return new class extends Migration
 
         Schema::create('compendium__article', function (Blueprint $table) {
             $table->uuid()->primary();
+            $table->foreignUuid('campaign_uuid');
             $table->foreignUuid('player_uuid')->nullable();
             $table->string('name', 128);
             $table->text('description')->nullable();
             $table->text('tags')->nullable();
-            $table->boolean('dm_only')->default(false);
+            $table->boolean('dm_access')->default(true);
             $table->boolean('private')->default(true);
             $table->timestamps();
 
+            $table->foreign('campaign_uuid')->references('uuid')->on('compendium__campaign')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('player_uuid')->references('uuid')->on('compendium__player')->onDelete('set null')->onUpdate('no action');
         });
 
         Schema::create('compendium__character', function (Blueprint $table) {
             $table->uuid()->primary();
-            $table->foreignUuid('campaign_uuid');
             $table->foreignUuid('article_uuid');
             $table->text('titles')->nullable();
             $table->string('image_src')->nullable();
             $table->timestamps();
 
-            $table->foreign('campaign_uuid')->references('uuid')->on('compendium__campaign')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('article_uuid')->references('uuid')->on('compendium__article')->onDelete('cascade')->onUpdate('no action');
         });
 
         Schema::create('compendium__location', function (Blueprint $table) {
             $table->uuid()->primary();
             $table->foreignUuid('parent_location_uuid')->nullable();
-            $table->foreignUuid('campaign_uuid');
             $table->foreignUuid('article_uuid');
             $table->string('map_src')->nullable();
             $table->timestamps();
 
             $table->foreign('parent_location_uuid')->references('uuid')->on('compendium__location')->onDelete('cascade')->onUpdate('no action');
-            $table->foreign('campaign_uuid')->references('uuid')->on('compendium__campaign')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('article_uuid')->references('uuid')->on('compendium__article')->onDelete('cascade')->onUpdate('no action');
         });
 

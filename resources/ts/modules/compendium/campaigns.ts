@@ -24,7 +24,7 @@ function openNewCampaignModal() {
 }
 
 async function submitNewCampaignModal() {
-    const form = document.querySelector('#new-campaign-form')!;
+    const form = document.querySelector('#new-campaign-form') as HTMLFormElement;
     const formdata = new FormData(form);
 
     freezePage();

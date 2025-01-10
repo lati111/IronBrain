@@ -74,15 +74,16 @@ class CompendiumArticleOverview extends AbstractCardlist implements FilterableDa
         /** @var Builder $query */
         $query = Article::select();
 
-        // Limit DM only articles
-        if ($player->is_dm === false) {
-            $query->where('dm_only', false);
-        }
-
         // Limit access to private articles
         $query->where(column: function($q) use ($player) {
             // Allow public articles
                 $q->where('private', false);
+
+            // Allow DM access
+            if ($player->is_dm === true) {
+                $q->orWhere('dm_access', true);
+            }
+
             // Limit private articles
                 $q->orWhere(function($q) use ($player) {
                     $q->where('private', true)->where('player_uuid', $player->uuid);

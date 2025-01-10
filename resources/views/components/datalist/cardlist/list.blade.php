@@ -7,6 +7,8 @@
     'per_page',
     'per_page_options',
     'pages_in_pagination',
+    'searchbar_left',
+    'searchbar_right',
 ])
 
 {{--| Container |--}}
@@ -26,8 +28,12 @@
     </div>
 
     {{--| Searchbar |--}}
-    <div class="flex justify-center">
+    <div class="flex justify-between items-center gap-6">
+        <div class="w-48 h-8">{{$searchbar_left ?? ''}}</div>
+
         <x-datalist.parts.searchbar id="{{$id}}"></x-datalist.parts.searchbar>
+
+        <div class="w-48 h-8">{{$searchbar_right ?? ''}}</div>
     </div>
 
     {{--| Filter list display |--}}
@@ -36,7 +42,7 @@
     @endif
 
     {{--| Template |--}}
-    <div class="template hidden">{{$slot}}</div>
+    <div class="template hidden">{{$slot->hasActualContent() ? $slot : $template}}</div>
 
     {{--| Main datalist |--}}
     <div
@@ -56,7 +62,7 @@
         <x-datalist.parts.load-spinner dataprovider_id="{{$id}}"/>
 
         {{--| Datalist body |--}}
-        <div id="{{$id}}-content" class="hidden flex justify-center flex-wrap gap-6">aaa</div>
+        <div id="{{$id}}-content" class="hidden flex justify-center flex-wrap gap-6"></div>
     </div>
 
     {{--| Pagination |--}}
