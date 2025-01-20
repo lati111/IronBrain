@@ -5,7 +5,7 @@ namespace App\Models\Compendium;
 use App\Models\AbstractModel;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @inheritdoc
@@ -30,12 +30,12 @@ class Campaign extends AbstractModel
     //| Relationships
 
     /**
-     * The relationship to it's character information, if the article is about a character.
-     * @return BelongsTo
+     * The relationship to all articles on this campaign.
+     * @return HasMany
      */
-    public function character(): BelongsTo
+    public function articles(): HasMany
     {
-        return $this->belongsTo(\App\Models\Compendium\Docs\Character::class, 'location_uuid', 'uuid');
+        return $this->hasMany(\App\Models\Compendium\Docs\Article::class, 'campaign_uuid', 'uuid');
     }
 
     //| Public methods

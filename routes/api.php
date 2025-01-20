@@ -84,16 +84,19 @@ Route::prefix('/compendium')
             Route::post('/add', [\App\Http\Api\Modules\Compendium\CampaignApi::class, 'addCampaign'])
                 ->name('api.compendium.campaigns.add');
 
-            Route::prefix('/{campaign_uuid}')
-                ->group(function() {
-                    Route::post('/edit', [\App\Http\Api\Modules\Compendium\CampaignApi::class, 'editCampaign'])
-                        ->name('api.compendium.campaigns.edit');
+            Route::prefix('/{campaign_uuid}')->group(function() {
+                Route::post('/edit', [\App\Http\Api\Modules\Compendium\CampaignApi::class, 'editCampaign'])
+                    ->name('api.compendium.campaigns.edit');
 
-                    Route::prefix('/articles')
-                        ->group(function() {
-                            Route::post('/add', [\App\Http\Api\Modules\Compendium\ArticleApi::class, 'addArticle'])
-                                ->name('api.compendium.campaigns.articles.add');
-                        });
+                Route::prefix('/articles')->group(function() {
+                    Route::post('/add', [\App\Http\Api\Modules\Compendium\ArticleApi::class, 'addArticle'])
+                        ->name('api.compendium.campaigns.articles.add');
+
+                    Route::prefix('/{article_uuid}')->group(function() {
+                        Route::post('/edit', [\App\Http\Api\Modules\Compendium\ArticleApi::class, 'editArticle'])
+                            ->name('api.compendium.campaigns.articles.edit');
+                    });
                 });
+            });
         });
     });

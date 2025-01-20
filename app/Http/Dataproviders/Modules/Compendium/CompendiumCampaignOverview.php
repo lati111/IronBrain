@@ -55,7 +55,7 @@ class CompendiumCampaignOverview extends AbstractCardlist implements FilterableD
                 ->get()
                 ->map(function (Campaign $campaign) {
                     $campaign['cover_src'] = $campaign->cover_src !== null ? asset('img/modules/compendium/campaign_cover/'.$campaign->cover_src) : null;
-                    $campaign['campaign_url'] = route('compendium.campaign', ['compendium_uuid' => $campaign->uuid]);
+                    $campaign['campaign_url'] = route('compendium.campaign', ['campaign_uuid' => $campaign->uuid]);
 
                     return $campaign;
                 });

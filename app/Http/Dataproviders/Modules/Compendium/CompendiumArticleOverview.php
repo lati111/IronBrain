@@ -53,7 +53,12 @@ class CompendiumArticleOverview extends AbstractCardlist implements FilterableDa
      */
     public function data(Request $request): JsonResponse
     {
-        $data = $this->getData($request)->get();
+        $data = $this->getData($request)->get()
+            ->map(function (Article $article) {
+                $article['article_url'] = route('compendium.campaign.article', ['campaign_uuid' => $article->campaign_uuid, 'article_uuid' => $article->uuid]);
+
+                return $article;
+            });
 
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
     }

@@ -79,9 +79,17 @@ Route::prefix('/pksanc')
 Route::prefix('/compendium')
     ->middleware('auth:sanctum')
     ->group(function() {
-        Route::get('/campaigns', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'campaigns'])
-            ->name('compendium.campaigns');
 
-        Route::get('/campaigns/{compendium_uuid}', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'campaign'])
-            ->name('compendium.campaign');
+        Route::prefix('/campaigns')->group(function() {
+            Route::get('/', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'campaigns'])
+                ->name('compendium.campaigns');
+
+            Route::prefix('/{campaign_uuid}')->group(function() {
+                Route::get('/', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'campaign'])
+                    ->name('compendium.campaign');
+
+                Route::get('/articles/{article_uuid}', [\App\Http\Controllers\Modules\Compendium\CompendiumController::class, 'article'])
+                    ->name('compendium.campaign.article');
+            });
+        });
     });

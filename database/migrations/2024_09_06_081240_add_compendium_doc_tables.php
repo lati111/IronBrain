@@ -37,6 +37,7 @@ return new class extends Migration
             $table->string('name', 128);
             $table->text('description')->nullable();
             $table->text('tags')->nullable();
+            $table->string('type', 32);
             $table->boolean('dm_access')->default(true);
             $table->boolean('private')->default(true);
             $table->timestamps();

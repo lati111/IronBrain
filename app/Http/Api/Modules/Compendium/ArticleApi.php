@@ -28,7 +28,7 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
-class ArticleApi extends AbstractApi
+class ArticleApi extends AbstractCompendiumDocsApi
 {
     /**
      * Create a new article and it's extension
@@ -79,4 +79,39 @@ class ArticleApi extends AbstractApi
 
         return $this->respond(Response::HTTP_CREATED, ResponseStrings::ARTICLE_STARTED, $article);
     }
+
+    /**
+     * Edit the specified article
+     * @param Request $request The request parameters as passed by laravel
+     * @return JsonResponse The newly created campaign or an error in json format
+     */
+    public function editArticle(Request $request, string $campaign_uuid, string $article_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'nullable|string|min:1|max:128',
+            'description' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), Response::HTTP_BAD_REQUEST);
+        }
+
+        $campaign = $this->getCampaign($campaign_uuid);
+        $player = $this->getPlayer($campaign);
+        $article = $this->getArticle($campaign, $player, $article_uuid);
+
+        if ($request->has('name')) {
+            $article->name = $request->get('name');
+        }
+
+        if ($request->has('description')) {
+            $article->description = $request->get('description');
+        }
+
+        $article->save();
+
+        return $this->respond(Response::HTTP_OK, GenericStringEnum::CHANGES_SAVED, true);
+    }
+
+
 }

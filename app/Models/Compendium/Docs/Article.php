@@ -3,8 +3,10 @@
 namespace App\Models\Compendium\Docs;
 
 use App\Models\AbstractModel;
+use App\Models\Compendium\Player;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property string uuid
@@ -13,6 +15,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
  * @property string name The name given to this article
  * @property string|null description A short description of the article topic
  * @property string|null tags A list of tags given to this character, seperated by ,s
+ * @property string type The type of article this is, such as a character or location.
  * @property boolean dm_access Whether this article should be shown to DMs
  * @property boolean private Whether this article should only be shown to the DM and the player
  * @property string created_at The creation date of the model as a string
@@ -38,4 +41,34 @@ class Article extends AbstractModel
     public const array TYPE = [
         'character' => Character::class,
     ];
+
+    //| Relationships
+
+    /**
+     * The relationship to it's character information, if the article is about a character.
+     * @return BelongsTo
+     */
+    public function character(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Compendium\Docs\Character::class, 'article_uuid', 'uuid');
+    }
+
+    //| Public method
+
+    /**
+     * Check if the given player has access to the article.
+     * @param Player $player The player to check access to.
+     * @return bool Whether or not the player has access
+     */
+    public function playerHasAccess(Player $player): bool {
+        if ($this->private === false) {
+            return true;
+        } else if ($this->player_uuid === $player->uuid) {
+            return true;
+        } else if ($this->dm_access && $player->is_dm) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
