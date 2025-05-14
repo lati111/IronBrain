@@ -52,7 +52,7 @@
                     </div>
 
                     <div class="flex items-center px-3 h-full">
-                        <div class="divider"></div>
+                        <div class="vertical-divider"></div>
                     </div>
 
                     <div class="flex flex-col justify-center gap-0 w-24">
@@ -65,7 +65,7 @@
                     </div>
 
                     <div class="flex items-center px-3 h-full">
-                        <div class="divider"></div>
+                        <div class="vertical-divider"></div>
                     </div>
 
                     <div class="flex flex-col justify-center items-center h-full mr-1 w-8 gap-2">

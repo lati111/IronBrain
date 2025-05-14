@@ -78,4 +78,7 @@ Route::prefix('/compendium')
 
         Route::dataprovider('/campaigns/{campaign_uuid}/articles', 'data.compendium.campaigns.articles',
             \App\Http\Dataproviders\Modules\Compendium\CompendiumArticleOverview::class);
+
+        Route::dataprovider('/campaigns/{campaign_uuid}/articles/{article_uuid}/segments', 'data.compendium.campaigns.articles.segments',
+            \App\Http\Dataproviders\Modules\Compendium\CompendiumArticleDatalist::class);
     });

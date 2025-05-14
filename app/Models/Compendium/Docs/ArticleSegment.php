@@ -23,7 +23,9 @@ class ArticleSegment extends AbstractModel
     use HasUuids, HasTimestamps;
 
     /** { @inheritdoc } */
-    protected $table = 'compendium__article_segment';
+    protected $table = self::TABLE_NAME;
+
+    public const string TABLE_NAME = 'compendium__article_segment';
 
     /** { @inheritdoc } */
     protected $primaryKey = 'uuid';

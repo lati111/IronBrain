@@ -24,7 +24,7 @@
                 </div>
 
                 <div class="flex items-center px-3 h-full">
-                    <div class="divider"></div>
+                    <div class="vertical-divider"></div>
                 </div>
 
                 {{--| pokemon info list |--}}
@@ -38,7 +38,7 @@
                 </div>
 
                 <div class="flex items-center px-3 h-full">
-                    <div class="divider"></div>
+                    <div class="vertical-divider"></div>
                 </div>
 
                 {{--| stat list |--}}
@@ -55,7 +55,7 @@
                 </div>
 
                 <div class="flex items-center px-3 h-full">
-                    <div class="divider"></div>
+                    <div class="vertical-divider"></div>
                 </div>
 
                 {{--| origin list |--}}
@@ -104,7 +104,7 @@
             </div>
 
             <div class="flex items-center px-3 h-full">
-                <div class="divider"></div>
+                <div class="vertical-divider"></div>
             </div>
 
             {{--| pokemon info list |--}}
@@ -118,7 +118,7 @@
             </div>
 
             <div class="flex items-center px-3 h-full">
-                <div class="divider"></div>
+                <div class="vertical-divider"></div>
             </div>
 
             {{--| stat list |--}}
@@ -135,7 +135,7 @@
             </div>
 
             <div class="flex items-center px-3 h-full">
-                <div class="divider"></div>
+                <div class="vertical-divider"></div>
             </div>
 
             {{--| origin list |--}}

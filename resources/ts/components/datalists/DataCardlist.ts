@@ -93,10 +93,10 @@ export class DataCardlist extends LaravelDataCardList {
         this.columnSetters[column] = callback;
     }
 
-        protected createItem(data: { [key: string]: any }): HTMLElement {
+    protected createItem(data: { [key: string]: any }): HTMLElement {
             const template = this.cardTemplate as HTMLElement;
             const item = template.cloneNode(true) as HTMLElement;
-    
+
             for (const key in data) {
                 const value = data[key];
 
@@ -106,7 +106,7 @@ export class DataCardlist extends LaravelDataCardList {
 
                     continue;
                 }
-    
+
                 //set inputs
                 const inputs = item.querySelectorAll(`input[name="${key}"]:not([type="checkbox"]), input[data-name="${key}"]:not([type="checkbox"])`) as NodeListOf<HTMLInputElement>;
                 for (let i = 0; i < inputs.length; i++) {
@@ -115,7 +115,7 @@ export class DataCardlist extends LaravelDataCardList {
                         input.value = value;
                     }
                 }
-    
+
                 //set checkboxes
                 const checkboxes = item.querySelectorAll(`input[name="${key}"][type="checkbox"], input[data-name="${key}"][type="checkbox"]`) as NodeListOf<HTMLInputElement>;
                 for (let i = 0; i < checkboxes.length; i++) {
@@ -124,8 +124,8 @@ export class DataCardlist extends LaravelDataCardList {
                         checkbox.checked = true;
                     }
                 }
-    
-    
+
+
                 //set textarea
                 const textareas = item.querySelectorAll(`textarea[name="${key}"], textarea[data-name="${key}"]`) as NodeListOf<HTMLTextAreaElement>;
                 for (let i = 0; i < textareas.length; i++) {
@@ -134,7 +134,7 @@ export class DataCardlist extends LaravelDataCardList {
                         textarea.textContent = value;
                     }
                 }
-    
+
                 //set select
                 const selects = item.querySelectorAll(`select[name="${key}"], select[data-name="${key}"]`) as NodeListOf<HTMLSelectElement>;
                 for (let i = 0; i < selects.length; i++) {
@@ -144,12 +144,12 @@ export class DataCardlist extends LaravelDataCardList {
                         if (option === null) {
                             throw new DatalistLoadingError(`Option with value "${value}" does not exist on select "${value}"`, this.errorCallback)
                         }
-    
+
                         select.querySelector(`option`)?.removeAttribute('selected');
                         option.setAttribute('selected', 'selected');
                     }
                 }
-    
+
                 //set spans
                 const spans = item.querySelectorAll(`span[name="${key}"], span[data-name="${key}"]`) as NodeListOf<HTMLSpanElement>;
                 for (let i = 0; i < spans.length; i++) {
@@ -158,7 +158,7 @@ export class DataCardlist extends LaravelDataCardList {
                         span.textContent = value;
                     }
                 }
-    
+
                 //set img
                 const imgs = item.querySelectorAll(`img[name="${key}"], img[data-name="${key}"]`) as NodeListOf<HTMLImageElement>;
                 for (let i = 0; i < imgs.length; i++) {
@@ -167,7 +167,7 @@ export class DataCardlist extends LaravelDataCardList {
                         img.src = value;
                     }
                 }
-    
+
                 //set img alt
                 const imgAlts = item.querySelectorAll(`img[data-alt-name="${key}"]`) as NodeListOf<HTMLImageElement>;
                 for (let i = 0; i < imgAlts.length; i++) {
@@ -176,7 +176,7 @@ export class DataCardlist extends LaravelDataCardList {
                         img.alt = value;
                     }
                 }
-    
+
                 //show hidden elements
                 const hiddenElements = item.querySelectorAll(`[data-show-if-true-name="${key}"]`) as NodeListOf<Element>;
                 for (let i = 0; i < hiddenElements.length; i++) {
@@ -185,7 +185,7 @@ export class DataCardlist extends LaravelDataCardList {
                         hidden.classList.remove('hidden');
                     }
                 }
-    
+
                 //hide elements
                 const unhiddenElements = item.querySelectorAll(`[data-hide-if-true-name="${key}"]`) as NodeListOf<Element>;
                 for (let i = 0; i < unhiddenElements.length; i++) {
@@ -194,7 +194,7 @@ export class DataCardlist extends LaravelDataCardList {
                         unhidden.classList.add('hidden');
                     }
                 }
-    
+
                 //misc data
                 const miscAttributes = item.querySelectorAll(`[data-attribute-name="${key}"]`) as NodeListOf<Element>;
                 for (let i = 0; i < miscAttributes.length; i++) {
@@ -204,7 +204,7 @@ export class DataCardlist extends LaravelDataCardList {
                         miscAttribute.setAttribute(attribute, value);
                     }
                 }
-    
+
                 const miscClasses = item.querySelectorAll(`[data-add-class-if-true-name="${key}"]`) as NodeListOf<Element>;
                 for (let i = 0; i < miscClasses.length; i++) {
                     const miscClass = miscClasses[i];
@@ -216,7 +216,7 @@ export class DataCardlist extends LaravelDataCardList {
                     }
                 }
             }
-    
+
             return item;
         }
 }
