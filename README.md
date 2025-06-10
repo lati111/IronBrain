@@ -3,6 +3,7 @@ The publically available repository for the website ironbrain.io, hosting a vari
 
 ## Current modules
 - PKSanc
+- Compendium (docs only)
 
 ## Running local installation
 IronBrain is fully capable of running locally for both development and personal use. Below follows the instruction on how to run it.
