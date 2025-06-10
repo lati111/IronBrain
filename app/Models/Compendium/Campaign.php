@@ -54,4 +54,13 @@ class Campaign extends AbstractModel
 
         return $player;
     }
+
+    /**
+     * Get the path leading to the cover. If no cover is set, the placeholder image is used instead.
+     *
+     * @return string The path to the cover
+     */
+    public function getCoverPath(): string {
+        return $this->cover_src !== null ? 'img/modules/compendium/campaign_cover/'.$this->cover_src : 'img/placeholder.png';
+    }
 }

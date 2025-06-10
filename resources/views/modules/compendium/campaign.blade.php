@@ -21,10 +21,10 @@
                 @slot('wrapper_text', 'Cover')
                 @slot('name', 'cover_src')
                 @slot('display')
-                    <img src="{{asset('img/modules/compendium/campaign_cover/'.$campaign->cover_src)}}" class="display w-[30rem] h-[18rem]">
+                    <img src="{{asset($campaign->getCoverPath())}}" class="display w-[30rem] h-[18rem]">
                 @endslot
                 @slot('input')
-                    <x-form.image_uploader id="cover-uploader" name="cover_src" cls="w-[30rem] h-[18rem]" src="{{asset('img/modules/compendium/campaign_cover/'.$campaign->cover_src)}}"/>
+                    <x-form.image_uploader id="cover-uploader" name="cover_src" cls="w-[30rem] h-[18rem]" src="{{asset($campaign->getCoverPath())}}"/>
                 @endslot
                 @slot('save_method', 'saveImgEdit(this.closest(`.edit-container`), saveCampaignEdits)')
             @endcomponent
