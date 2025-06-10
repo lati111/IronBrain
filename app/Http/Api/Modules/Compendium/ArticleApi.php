@@ -65,6 +65,7 @@ class ArticleApi extends AbstractCompendiumDocsApi
         $article->name = $request->get('name');
         $article->player_uuid = $player->uuid;
         $article->campaign_uuid = $campaign->uuid;
+        $article->type = $request->get('type');
         $article->dm_access = $request->get('dm_access', true);
         $article->private = $request->get('private', true);
         $article->save();
