@@ -31,6 +31,8 @@ class CompendiumController extends Controller
         $player = $this->getPlayer($campaign);
 
         return $this->view('modules.compendium.campaign', [
+            'parent_url' => route('compendium.campaigns'),
+            'parent_route_name' => 'Campaigns',
             'campaign' => $campaign,
             'player' => $player
         ]);
@@ -49,6 +51,8 @@ class CompendiumController extends Controller
         $article->with($article->type);
 
         return $this->view('modules.compendium.article', [
+            'parent_url' => route('compendium.campaign', ['campaign_uuid' => $campaign_uuid]),
+            'parent_route_name' => $campaign->title,
             'article' => $article,
             'campaign' => $campaign,
             'player' => $player

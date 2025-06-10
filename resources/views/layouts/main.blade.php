@@ -8,7 +8,13 @@
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <title>@yield('htmlTitle') | IronBrain</title>
 
-        @vite(['resources/css/app.css', 'resources/ts/app.ts', 'resources/ts/main.ts'])
+        @vite([
+            'resources/css/app.css',
+            'resources/css/ironbrain.css',
+            'resources/ts/app.ts',
+            'resources/ts/main.ts'
+        ])
+
         @yield('header')
     </head>
 
@@ -32,13 +38,18 @@
             </div>
         </div>
 
-
         {{--| header |--}}
         @include('layouts.parts.header')
 
         {{--| body |--}}
         <main class="relative flex justify-center items-center">
             <div id="container">
+                @isset($parent_url)
+                    <a id="parent_page_btn" href="{{$parent_url}}">
+                        <x-elements.buttons.icon-text-button src="{{asset('img/icons/arrow-left.svg')}}">{{$parent_route_name ?? "Return"}}</x-elements.buttons.icon-text-button>
+                    </a>
+                @endisset
+
                 @yield('content')
             </div>
         </main>

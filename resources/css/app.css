@@ -127,13 +127,8 @@
     --bs-body-font-family: 'Platform';
 }
 
-
 body {
     font-family: var(--bs-body-font-family), serif;
-}
-
-#logo {
-    margin-top: -0.25rem;
 }
 
 .title {
@@ -158,11 +153,11 @@ body {
 }
 
 img.interactive {
-    filter: invert(13%) sepia(94%) saturate(6728%) hue-rotate(4deg) brightness(112%) contrast(117%);
+    filter: var(--main-red-filter)
 }
 
 img.interactive:hover, img.interactive.active, img.interactive:focus {
-    filter: invert(15%) sepia(28%) saturate(5245%) hue-rotate(343deg) brightness(98%) contrast(130%);
+    filter: var(--sub-red-filter);
 }
 
 .cancel_interactive {

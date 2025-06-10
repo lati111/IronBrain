@@ -7,6 +7,9 @@
     --main-black: #000000;
     --sub-white: #f8f8f8;
     --background: white;
+
+    --main-red-filter: invert(13%) sepia(94%) saturate(6728%) hue-rotate(4deg) brightness(112%) contrast(117%);
+    --sub-red-filter: invert(15%) sepia(28%) saturate(5245%) hue-rotate(343deg) brightness(98%) contrast(130%);
 }
 
 .border-tertiary-gray {

@@ -1,0 +1,51 @@
+:root:root {
+    --page-width: 1440px;
+}
+
+/*| Header |*/
+
+header {
+    display: grid;
+    grid-template-columns: 1fr 180px calc(var(--page-width) - 180px - 140px) 140px 1fr;
+    grid-template-rows: 1fr;
+}
+
+#logo {
+    width: 160px;
+}
+
+/*| Container |*/
+
+#container {
+    position: relative;
+    width: var(--page-width);
+    margin: auto;
+}
+
+#parent_page_btn {
+    position: absolute;
+}
+
+/*| Buttons |*/
+
+.icon-text-btn {
+    color: var(--main-red);
+    height: 24px;
+}
+
+.icon-text-btn img {
+    display: inline;
+    filter: var(--main-red-filter);
+}
+
+.icon-text-btn span {
+    vertical-align: middle;
+}
+
+.icon-text-btn:hover {
+    color: var(--sub-red);
+}
+
+.icon-text-btn:hover img {
+    filter: var(--sub-red-filter);
+}
