@@ -4,6 +4,7 @@ import {IronbrainError} from "../../Exceptions/IronbrainError";
 import {openModal} from "../modal";
 import {DataSelect} from "./DataSelect";
 import {DatalistConstructionError} from "@lati111/laravel_datatables/src/Exceptions/DatalistConstructionError";
+import { DatalistLoadingError } from "@lati111/laravel_datatables/src/Exceptions/DatalistLoadingError";
 
 /** @inheritDoc */
 
@@ -86,7 +87,7 @@ export class DataCardlist extends LaravelDataCardList {
 
     /**
      * Set a setter callback to fill in a specific column
-     * @param key The column to use this setter on
+     * @param column The column to use this setter on
      * @param callback The callback to use for this setter
      */
     public setColumnSetter(column: string, callback: Function) {
@@ -94,7 +95,7 @@ export class DataCardlist extends LaravelDataCardList {
     }
 
     protected createItem(data: { [key: string]: any }): HTMLElement {
-            const template = this.cardTemplate as HTMLElement;
+            const template = this.template as HTMLElement;
             const item = template.cloneNode(true) as HTMLElement;
 
             for (const key in data) {

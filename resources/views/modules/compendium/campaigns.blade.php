@@ -5,7 +5,6 @@
 
 @section('header')
     @vite([
-        'resources/css/components/datalist/cardlist.css',
         'resources/ts/modules/compendium/campaigns.ts'
 ])
 @stop
