@@ -39,8 +39,8 @@
 
         {{--| Description |--}}
         <div>
-            <x-form.editable-inputs.toggleable-edit-text-area name="description" value="{{$campaign->description}}" save_callback="saveCampaignEdits" display_cls="min-w-[20rem]" label_text="Description">
-                <x-form.input.text_area name="description" value="{{$campaign->description}}" width="96" />
+            <x-form.editable-inputs.toggleable-edit-text-area name="description" value="{{$campaign->description}}" save_callback="saveCampaignEdits" cls="min-w-[20rem] w-[40rem]" display_cls="max-w-[40rem]" label_text="Description">
+                <x-form.input.text_area name="description" value="{{$campaign->description}}" height="[180px]" width="full" />
             </x-form.editable-inputs.toggleable-edit-text-area>
         </div>
 

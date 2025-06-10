@@ -13,7 +13,7 @@
     @component('components.form.editable-inputs.toggleable-edit-field')
         @slot('name', $name)
         @slot('display')
-            <span class="display text-center inline {{$cls ?? ''}} {{$display_cls ?? ''}}" data-name="{{$name}}">{{$value ?? ''}}</span>
+            <span class="display text-center inline whitespace-pre-wrap {{$cls ?? ''}} {{$display_cls ?? ''}}" data-name="{{$name}}">{{$value ?? ''}}</span>
         @endslot
         @slot('input')
             <span class="display text-center inline {{$cls ?? ''}} {{$edit_cls ?? ''}}">{{$slot}}</span>

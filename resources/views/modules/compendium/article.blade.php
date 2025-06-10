@@ -26,7 +26,7 @@
         {{--| Description |--}}
         <div>
             <x-form.editable-inputs.toggleable-edit-text-area name="description" value="{{$article->description}}" save_callback="saveArticleInfoEdits" cls="min-w-[20rem] w-[40rem]" display_cls="max-w-[40rem]" label_text="Description">
-                <x-form.input.text_area name="description" value="{{$article->description}}" height="[20rem]" width="full" />
+                <x-form.input.text_area name="description" value="{{$article->description}}" height="[180px]" width="full" />
             </x-form.editable-inputs.toggleable-edit-text-area>
         </div>
     </form>
