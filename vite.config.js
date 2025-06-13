@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import { readdirSync, statSync } from 'fs';
-const path = require("path")
+import * as path from "node:path";
 
 const getAllFiles = function(dirPath, arrayOfFiles) {
     let files = readdirSync(dirPath)
