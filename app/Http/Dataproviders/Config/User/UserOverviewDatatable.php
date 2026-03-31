@@ -40,7 +40,7 @@ class UserOverviewDatatable extends AbstractApi
     }
 
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         /** @var Builder $query */
         $query = User::select([

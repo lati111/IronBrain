@@ -38,7 +38,7 @@ class ModuleOverviewCardlist extends AbstractCardlist
     }
 
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         /** @var Builder $modules */
         $modules = Module::select()

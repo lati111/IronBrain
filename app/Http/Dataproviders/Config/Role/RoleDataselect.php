@@ -32,7 +32,7 @@ class RoleDataselect extends AbstractApi
     }
 
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         /** @var Builder $query */
         $query = Role::select([

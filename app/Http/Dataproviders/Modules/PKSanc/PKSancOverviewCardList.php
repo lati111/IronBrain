@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 class PKSancOverviewCardList extends AbstractPKSancOverviewCardList
 {
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         /** @var Builder $pokemonCollection */
         $pokemonCollection = StoredPokemon::select()

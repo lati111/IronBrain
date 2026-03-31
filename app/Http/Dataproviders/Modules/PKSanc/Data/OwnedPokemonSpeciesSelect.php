@@ -33,7 +33,7 @@ class OwnedPokemonSpeciesSelect extends AbstractCardlist
     }
 
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         $this->setDefaultPerPage(50);
 

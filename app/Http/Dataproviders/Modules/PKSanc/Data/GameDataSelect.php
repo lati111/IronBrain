@@ -37,7 +37,7 @@ class GameDataSelect extends AbstractCardlist
     }
 
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         /** @var Builder $modules */
         $modules = Game::select();

@@ -44,7 +44,7 @@ class RolePermissionDatatable extends AbstractApi
      * { @inheritdoc }
      * @throws IronBrainDataException
      */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         $role = Role::find($request->route('role_id'));
         if ($role === null) {
