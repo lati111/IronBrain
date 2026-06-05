@@ -6,8 +6,11 @@ use App\Enum\PKSanc\Genders;
 use App\Models\AbstractModel;
 use App\Models\PKSanc\Move;
 use App\Models\PKSanc\Pokemon;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Validator;
 
@@ -26,6 +29,24 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        Route::macro('dataprovider', function (string $uri, string $name, string $dataprovider) {
+            return Route::prefix($uri)->group(function () use ($uri, $name, $dataprovider) {
+                Route::get('/', [$dataprovider, 'data'])->name($name);
+
+                if (method_exists($dataprovider, 'count')) {
+                    Route::get('/pages', [$dataprovider, 'count']);
+                }
+
+                if (method_exists($dataprovider, 'filters')) {
+                    Route::get('/filters', [$dataprovider, 'filters']);
+                }
+            });
+        });
+
         Validator::extend('checkbox', function ($attribute, $value, $parameters, $validator) {
             return in_array($value, [true, false, null, 'True', 'False', 'on', 'off'], true);
         });
