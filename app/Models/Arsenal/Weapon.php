@@ -11,12 +11,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string type The type of weapon eg primary, secondary etc
  * @property string weapon_type The class of weapon eg rifle, shotgun
  * @property string exalted_id The id of the warframe this exalted weapon belongs to
+ * @property string|null wiki_url The link to the wiki, if it exists
+ * @property bool prime Whether this is a prime item
  */
 
 class Weapon extends ArsenalDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__weapon';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
     /**
      * Get the warframe this exalted weapon belongs to

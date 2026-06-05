@@ -19,4 +19,6 @@ class LoadoutExalted extends ArsenalUserDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__loadout_exalted';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 }

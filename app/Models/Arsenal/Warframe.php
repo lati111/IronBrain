@@ -10,11 +10,15 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * @inheritdoc
- * @property string description The warframe's description
+ * @property string description The warframe's
+ * @property string|null wiki_url The link to the wiki, if it exists
+ * @property bool prime Whether this is a prime item
  */
 
 class Warframe extends ArsenalDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__warframe';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 }

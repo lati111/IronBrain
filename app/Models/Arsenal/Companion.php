@@ -13,10 +13,14 @@ use Illuminate\Database\Eloquent\Model;
  * @property string type The companion type, eg. pet, sentinel
  * @property string pet_type The companion type, eg. kubrow, kavat
  * @property string description The warframe's description
+ * @property string|null wiki_url The link to the wiki, if it exists
+ * @property bool prime Whether this is a prime item
  */
 
 class Companion extends ArsenalDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__companion';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 }

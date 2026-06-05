@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('name', 64);
             $table->text('description');
             $table->text('icon')->nullable();
+            $table->boolean('prime')->default(false);
+            $table->text('wiki_url')->nullable();
             $table->timestamps();
         });
 
@@ -46,6 +48,9 @@ return new class extends Migration
             $table->string('name', 64);
             $table->text('description');
             $table->text('icon')->nullable();
+            $table->boolean('prime')->default(false);
+            $table->text('wiki_url')->nullable();
+
             $table->timestamps();
 
             $table->foreign('exalted_id')->references('id')->on('arsenal__warframe')->onDelete('cascade')->onUpdate('no action');
@@ -78,6 +83,9 @@ return new class extends Migration
             $table->string('name', 64);
             $table->text('description');
             $table->text('icon')->nullable();
+            $table->boolean('prime')->default(false);
+            $table->text('wiki_url')->nullable();
+
             $table->timestamps();
         });
 
@@ -101,7 +109,8 @@ return new class extends Migration
 
         //| Component
         Schema::create('arsenal__component', function (Blueprint $table) {
-            $table->string('id', 255)->primary();
+            $table->uuid('uuid')->primary();
+            $table->string('id', 255);
             $table->string('blueprint_id', 255);
             $table->string('type', 64);
 
@@ -114,12 +123,12 @@ return new class extends Migration
         Schema::create('arsenal__user_component', function (Blueprint $table) {
             $table->uuid('uuid')->primary();
             $table->foreignUuid('owner_uuid');
-            $table->string('id', 255);
+            $table->foreignUuid('id', 255);
             $table->integer('amount')->default(1);
             $table->timestamps();
 
             $table->foreign('owner_uuid')->references('uuid')->on('auth__user')->onDelete('cascade')->onUpdate('no action');
-            $table->foreign('id')->references('id')->on('arsenal__component')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('id')->references('uuid')->on('arsenal__component')->onDelete('cascade')->onUpdate('no action');
         });
 
         //| Loadout

@@ -20,6 +20,8 @@ class UserWeapon extends ArsenalUserDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__user_weapon';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
     /**
      * Get the owned weapon

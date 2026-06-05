@@ -20,6 +20,8 @@ class UserCompanion extends ArsenalUserDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__user_companion';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
     /**
      * Get the owned companion

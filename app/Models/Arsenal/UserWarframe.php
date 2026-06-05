@@ -20,6 +20,8 @@ class UserWarframe extends ArsenalUserDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__user_warframe';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
     /**
      * Get the owned warframe

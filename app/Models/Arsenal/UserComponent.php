@@ -15,6 +15,8 @@ class UserComponent extends ArsenalUserDataModel
 {
     /** @inheritdoc */
     public const string TABLE_NAME = 'arsenal__user_component';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
     /**
      * Get the owned component
