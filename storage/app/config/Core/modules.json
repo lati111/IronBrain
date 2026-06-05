@@ -13,6 +13,19 @@
         "submodules": []
     },
     {
+        "code": "arsenal",
+        "name": "Arsenal",
+        "description": "An organizer for your warframe arsenal to keep track of your loadouts, weapons and warframes.",
+        "thumbnail": "arsenal.jpg",
+        "route": "arsenal.home.show",
+        "permission": null,
+        "order": 2,
+        "in_overview": true,
+        "in_nav": true,
+        "requires_login": true,
+        "submodules": []
+    },
+    {
         "code": "config",
         "name": "Config",
         "description": "The wrapper for the various configs used to configure the website",

@@ -74,3 +74,13 @@ Route::prefix('/pksanc')
         });
     });
 });
+
+//| arsenal
+Route::prefix('/arsenal')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        // pages
+        Route::get('/', [PKSancController::class, 'showOverview'])
+            ->name('arsenal.home.show');
+    });
+
