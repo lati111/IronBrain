@@ -72,8 +72,14 @@ return [
     'links' => [
         public_path('img/profile') => storage_path('app/img/profile'),
         public_path('img/modules/thumbnail') => storage_path('app/modules/thumbnail'),
+
         public_path('img/modules/pksanc/pokeball') => storage_path('app/modules/pksanc/pokeball'),
         public_path('img/modules/pksanc/pokemon') => storage_path('app/modules/pksanc/pokemon'),
+
+        public_path('img/modules/arsenal/warframe') => storage_path('app/modules/arsenal/warframe'),
+        public_path('img/modules/arsenal/weapon') => storage_path('app/modules/arsenal/weapon'),
+        public_path('img/modules/arsenal/companion') => storage_path('app/modules/arsenal/companion'),
+        public_path('img/modules/arsenal/component') => storage_path('app/modules/arsenal/component'),
     ],
 
 ];
