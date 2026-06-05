@@ -51,7 +51,6 @@ Route::prefix('/config')
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
     ->group(function() {
-    // pages
     Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');
 
@@ -79,8 +78,7 @@ Route::prefix('/pksanc')
 Route::prefix('/arsenal')
     ->middleware('auth:sanctum')
     ->group(function() {
-        // pages
-        Route::get('/', [PKSancController::class, 'showOverview'])
+        Route::get('/', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showOverview'])
             ->name('arsenal.home.show');
     });
 
