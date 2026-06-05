@@ -39,7 +39,7 @@ class DepositApi extends AbstractApi
     {
         $user = Auth::user();
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|min:4|max:255',
+            'name' => ['required', 'string', 'min:4', 'max:255', 'regex:/^[a-zA-Z0-9_\- ]+$/'],
             'csv' => 'required|mimes:csv,txt|max:480',
             'game' => 'required|exists:pksanc__game,game'
         ]);
@@ -82,6 +82,8 @@ class DepositApi extends AbstractApi
      */
     public function confirmDeposit(Request $request, string $staging_uuid): JsonResponse
     {
+        $user = Auth::user();
+
         $validator = Validator::make($request->all(), [
             'excluded_uuids' => 'nullable|array',
             'excluded_uuids.*' => 'required|string',
@@ -91,9 +93,12 @@ class DepositApi extends AbstractApi
             $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
-        $csv = ImportCsv::where('uuid', $staging_uuid)->first();
+        $csv = ImportCsv::where('uuid', $staging_uuid)
+            ->where('uploader_uuid', $user->uuid)
+            ->first();
+
         if ($csv === null) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, PKSancStrings::CSV_NOT_FOUND);
+            return $this->respond(Response::HTTP_NOT_FOUND, PKSancStrings::CSV_NOT_FOUND);
         }
 
         foreach($csv->Pokemon()->get() as $pokemon) {
