@@ -11,7 +11,7 @@ use Lati111\LaravelDataproviders\Filters\AbstractFilter;
 class PokemonTypeSelectFilter extends AbstractFilter
 {
     /** { @inheritdoc } */
-    protected string $type = 'select';
+    public string $type = 'select';
 
     public function __construct() {
         parent::__construct(new Pokemon(), 'name');
