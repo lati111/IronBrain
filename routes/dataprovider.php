@@ -66,3 +66,13 @@ Route::prefix('/pksanc/data')
         Route::dataprovider('/owned-species/dataselect', 'data.pksanc.owned-species.dataselect',
             \App\Http\Dataproviders\Modules\PKSanc\Data\OwnedPokemonSpeciesSelect::class);
     });
+
+
+//| Arsenal
+
+Route::prefix('/arsenal/data')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::dataprovider('/loadouts', 'data.arsenal.loadouts',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalLoadoutCardlist::class);
+    });
