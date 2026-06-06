@@ -44,7 +44,17 @@ Route::prefix('/config')
     });
 
 
-//| PKsanc
+//| Arsenal
+
+Route::prefix('/arsenal')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::post('/armory/add', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'addItem'])
+            ->name('api.arsenal.armory.add');
+    });
+
+
+//| PKSanc
 
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
@@ -64,13 +74,11 @@ Route::prefix('/pksanc')
         Route::post('/romhacks/add', [\App\Http\Api\Modules\PKSanc\ContributionApi::class, 'addRomhack'])
             ->name('pksanc.games.romhacks.add');
 
-        Route::prefix('/pokedex')
-            ->middleware('auth:sanctum')
-            ->group(function() {
-                Route::post('/mark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'setPokedexMarking'])
-                    ->name('pksanc.pokedex.mark');
+        Route::prefix('/pokedex')->group(function() {
+            Route::post('/mark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'setPokedexMarking'])
+                ->name('pksanc.pokedex.mark');
 
-                Route::post('/unmark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'removePokedexMarking'])
-                    ->name('pksanc.pokedex.unmark');
-            });
+            Route::post('/unmark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'removePokedexMarking'])
+                ->name('pksanc.pokedex.unmark');
+        });
     });

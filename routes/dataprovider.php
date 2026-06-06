@@ -75,4 +75,7 @@ Route::prefix('/arsenal/data')
     ->group(function() {
         Route::dataprovider('/loadouts', 'data.arsenal.loadouts',
             \App\Http\Dataproviders\Modules\Arsenal\ArsenalLoadoutCardlist::class);
+
+        Route::dataprovider('/armory', 'data.arsenal.armory',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalArmoryCardlist::class);
     });

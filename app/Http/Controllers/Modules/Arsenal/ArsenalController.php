@@ -15,4 +15,13 @@ class ArsenalController extends Controller
     {
         return view('modules.arsenal.home', $this->getBaseVariables());
     }
+
+    /**
+     * Shows the arsenal armory page
+     * @return View Returns a View of the page
+     */
+    public function showArmory(): View
+    {
+        return view('modules.arsenal.armory', $this->getBaseVariables());
+    }
 }
