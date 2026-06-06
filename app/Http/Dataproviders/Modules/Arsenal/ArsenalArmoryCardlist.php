@@ -87,10 +87,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ->select([
                 DB::raw("'warframe' as category"),
                 DB::raw('w.id as item_id'),
-                DB::raw('w.name as name'),
+                DB::raw('COALESCE(uw.name, w.name) as name'),
                 DB::raw('w.icon as icon'),
                 DB::raw('w.prime as prime'),
                 DB::raw('CASE WHEN uw.uuid IS NOT NULL THEN 1 ELSE 0 END as owned'),
+                DB::raw('uw.uuid as user_uuid'),
             ])
             ->leftJoin(UserWarframe::TABLE_NAME . ' as uw', function ($join) use ($user) {
                 $join->on('uw.id', '=', 'w.id')
@@ -101,10 +102,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ->select([
                 DB::raw('LOWER(wp.type) as category'),
                 DB::raw('wp.id as item_id'),
-                DB::raw('wp.name as name'),
+                DB::raw('COALESCE(uw.name, wp.name) as name'),
                 DB::raw('wp.icon as icon'),
                 DB::raw('wp.prime as prime'),
                 DB::raw('CASE WHEN uw.uuid IS NOT NULL THEN 1 ELSE 0 END as owned'),
+                DB::raw('uw.uuid as user_uuid'),
             ])
             ->leftJoin(UserWeapon::TABLE_NAME . ' as uw', function ($join) use ($user) {
                 $join->on('uw.id', '=', 'wp.id')
@@ -116,10 +118,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ->select([
                 DB::raw("'companion' as category"),
                 DB::raw('c.id as item_id'),
-                DB::raw('c.name as name'),
+                DB::raw('COALESCE(uc.name, c.name) as name'),
                 DB::raw('c.icon as icon'),
                 DB::raw('c.prime as prime'),
                 DB::raw('CASE WHEN uc.uuid IS NOT NULL THEN 1 ELSE 0 END as owned'),
+                DB::raw('uc.uuid as user_uuid'),
             ])
             ->leftJoin(UserCompanion::TABLE_NAME . ' as uc', function ($join) use ($user) {
                 $join->on('uc.id', '=', 'c.id')

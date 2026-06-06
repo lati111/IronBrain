@@ -1,6 +1,8 @@
-<div id="armory-cardlist-template" class="card rounded shadow border gray-border p-3 w-[8.5rem] flex flex-col">
+<div id="armory-cardlist-template" class="card rounded shadow border gray-border p-3 w-[8.5rem] flex flex-col cursor-pointer"
+     onclick="openItemModal(this)">
     <input type="hidden" name="item_id">
     <input type="hidden" name="item_type">
+    <input type="hidden" name="user_uuid">
 
     {{--| Item display (greyed out when unowned) |--}}
     <div class="flex flex-col items-center gap-1 flex-1"
@@ -18,7 +20,7 @@
     {{--| Add button (shown only for unowned items) |--}}
     <div class="flex justify-center mt-2 hidden" data-show-if-true-name="unowned">
         <button class="interactive text-xs px-3 py-1 w-full"
-                onclick="addItem(this.closest('#armory-cardlist-template'))">
+                onclick="addItem(this.closest('#armory-cardlist-template')); event.stopPropagation()">
             + Add
         </button>
     </div>

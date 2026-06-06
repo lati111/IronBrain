@@ -1,6 +1,6 @@
 import {DataCardlist} from "../../components/datalists/DataCardlist";
-import {postData} from "../../main";
-import {openModal} from "../../components/modal";
+import {postData, getData, FetchResponse} from "../../main";
+import {openModal, init as initModals, closeModal} from "../../components/modal";
 
 class CategoryCardlist extends DataCardlist {
     public setSearch(term: string): void {
@@ -14,6 +14,7 @@ class CategoryCardlist extends DataCardlist {
 
 const CATEGORIES = ['warframe', 'primary', 'secondary', 'melee', 'companion', 'companion_weapon', 'archgun', 'archmelee'] as const;
 const cardlists: CategoryCardlist[] = [];
+let currentCard: HTMLElement | null = null;
 
 function calculatePerPage(): number {
     const availableWidth = document.documentElement.clientWidth;
@@ -44,6 +45,8 @@ async function init(): Promise<void> {
 
     await Promise.all(cardlists.map(list => list.init()));
 
+    initModals();
+
     const searchInput = document.getElementById('armory-searchbar') as HTMLInputElement | null;
     const searchButton = document.getElementById('armory-search-confirm-button') as HTMLButtonElement | null;
 
@@ -60,6 +63,8 @@ function searchAll(term: string): void {
     }
 }
 
+// ─── Card quick-add (inline button) ──────────────────────────────────────────
+
 async function addItem(card: HTMLElement): Promise<void> {
     const itemId = (card.querySelector('input[name="item_id"]') as HTMLInputElement).value;
     const itemType = (card.querySelector('input[name="item_type"]') as HTMLInputElement).value;
@@ -74,17 +79,191 @@ async function addItem(card: HTMLElement): Promise<void> {
     response.announce();
 
     if (response.ok || response.code === 208) {
-        const contentDiv = card.querySelector('[data-add-class-if-true-name="unowned"]') as HTMLElement | null;
-        contentDiv?.classList.remove('opacity-40');
-
-        const addBtn = card.querySelector('[data-show-if-true-name="unowned"]') as HTMLElement | null;
-        addBtn?.classList.add('hidden');
-
-        const ownedBadge = card.querySelector('[data-show-if-true-name="owned"]') as HTMLElement | null;
-        ownedBadge?.classList.remove('hidden');
+        storeUuid(card, response.data as string);
+        markCardOwned(card);
+        await openItemModal(card);
     }
 }
 
-(<any>window).init = init;
-(<any>window).addItem = addItem;
-(<any>window).openModal = openModal;
+// ─── Modal open ───────────────────────────────────────────────────────────────
+
+async function openItemModal(card: HTMLElement): Promise<void> {
+    currentCard = card;
+
+    const itemId   = (card.querySelector('input[name="item_id"]')   as HTMLInputElement).value;
+    const itemType = (card.querySelector('input[name="item_type"]')  as HTMLInputElement).value;
+    const userUuid = (card.querySelector('input[name="user_uuid"]')  as HTMLInputElement).value;
+
+    const icon = card.querySelector('img') as HTMLImageElement | null;
+    (document.getElementById('modal-item-icon') as HTMLImageElement).src = icon?.src ?? '';
+    (document.getElementById('modal-item-icon') as HTMLImageElement).alt = icon?.alt ?? '';
+    (document.getElementById('modal-item-name') as HTMLElement).textContent =
+        (card.querySelector('[data-name="name"]') as HTMLElement | null)?.textContent ?? '';
+
+    (document.getElementById('modal-item-id')   as HTMLInputElement).value = itemId;
+    (document.getElementById('modal-item-type') as HTMLInputElement).value = itemType;
+    (document.getElementById('modal-user-uuid') as HTMLInputElement).value = userUuid;
+
+    if (!userUuid || userUuid === 'null') {
+        showEl('modal-unowned-content');
+        hideEl('modal-form-content');
+        hideEl('modal-save-btn');
+        hideEl('modal-remove-btn');
+        showEl('modal-add-btn');
+    } else {
+        const formData = new FormData();
+        formData.append('uuid', userUuid);
+        formData.append('type', itemType);
+
+        const response = await getData('/api/arsenal/armory/item', formData);
+        if (!response?.ok) return;
+
+        populateForm(response.data, itemType);
+
+        hideEl('modal-unowned-content');
+        showEl('modal-form-content');
+        showEl('modal-save-btn');
+        showEl('modal-remove-btn');
+        hideEl('modal-add-btn');
+
+        const nameInput = document.getElementById('modal-name') as HTMLInputElement;
+        const headerEl  = document.getElementById('modal-item-name') as HTMLElement;
+        nameInput.oninput = () => {
+            const base = (document.getElementById('modal-base-name') as HTMLInputElement).value;
+            headerEl.textContent = nameInput.value.trim() || base;
+        };
+    }
+
+    openModal('armory-item-modal');
+}
+
+function populateForm(data: any, type: string): void {
+    (document.getElementById('modal-base-name') as HTMLInputElement).value  = data.base_name ?? '';
+    (document.getElementById('modal-name')      as HTMLInputElement).value  = data.name ?? '';
+    (document.getElementById('modal-forma')     as HTMLInputElement).value  = data.forma ?? 0;
+    (document.getElementById('modal-potato')   as HTMLInputElement).checked = !!data.potato;
+    (document.getElementById('modal-built')    as HTMLInputElement).checked = !!data.built;
+    (document.getElementById('modal-exilus')   as HTMLInputElement).checked = !!data.exilus;
+    (document.getElementById('modal-fashioned')as HTMLInputElement).checked = !!data.fashioned;
+    (document.getElementById('modal-riven')    as HTMLInputElement).checked = !!data.riven;
+    (document.getElementById('modal-school')   as HTMLSelectElement).value  = data.school ?? '';
+
+    const potatoLabel = document.getElementById('modal-potato-label');
+    if (potatoLabel) potatoLabel.textContent = type === 'weapon' ? 'Orokin Catalyst' : 'Orokin Reactor';
+
+    setRowVisible('modal-name-row',     true);
+    setRowVisible('modal-exilus-row',   type === 'warframe' || type === 'weapon');
+    setRowVisible('modal-fashioned-row',type === 'warframe' || type === 'companion');
+    setRowVisible('modal-riven-row',    type === 'weapon');
+    setRowVisible('modal-school-row',   type === 'warframe');
+}
+
+// ─── Modal actions ────────────────────────────────────────────────────────────
+
+async function addItemFromModal(): Promise<void> {
+    const itemId   = (document.getElementById('modal-item-id')   as HTMLInputElement).value;
+    const itemType = (document.getElementById('modal-item-type') as HTMLInputElement).value;
+
+    const formData = new FormData();
+    formData.append('id', itemId);
+    formData.append('type', itemType);
+
+    const response = await postData('/api/arsenal/armory/add', formData);
+    if (!response) return;
+
+    response.announce();
+
+    if (response.ok || response.code === 208) {
+        if (currentCard) {
+            storeUuid(currentCard, response.data as string);
+            markCardOwned(currentCard);
+            await openItemModal(currentCard);
+        }
+    }
+}
+
+async function saveItem(): Promise<void> {
+    const formData = new FormData();
+    formData.append('uuid',           (document.getElementById('modal-user-uuid')      as HTMLInputElement).value);
+    formData.append('type',           (document.getElementById('modal-item-type')      as HTMLInputElement).value);
+    formData.append('forma',          (document.getElementById('modal-forma')          as HTMLInputElement).value);
+    formData.append('potato',         (document.getElementById('modal-potato')         as HTMLInputElement).checked ? '1' : '0');
+    formData.append('built',          (document.getElementById('modal-built')          as HTMLInputElement).checked ? '1' : '0');
+    formData.append('exilus',         (document.getElementById('modal-exilus')         as HTMLInputElement).checked ? '1' : '0');
+    formData.append('fashioned',      (document.getElementById('modal-fashioned')      as HTMLInputElement).checked ? '1' : '0');
+    formData.append('riven',          (document.getElementById('modal-riven')          as HTMLInputElement).checked ? '1' : '0');
+    formData.append('school',         (document.getElementById('modal-school')         as HTMLSelectElement).value);
+    formData.append('name',           (document.getElementById('modal-name')           as HTMLInputElement).value);
+
+    const response = await postData('/api/arsenal/armory/update', formData);
+    if (!response) return;
+
+    response.announce();
+    if (response.ok) {
+        const customName = (document.getElementById('modal-name')      as HTMLInputElement).value.trim();
+        const baseName   = (document.getElementById('modal-base-name') as HTMLInputElement).value;
+        const displayName = customName || baseName;
+
+        const nameEl = currentCard?.querySelector('[data-name="name"]') as HTMLElement | null;
+        if (nameEl) nameEl.textContent = displayName;
+
+        closeModal('armory-item-modal');
+    }
+}
+
+async function removeItem(): Promise<void> {
+    const formData = new FormData();
+    formData.append('uuid', (document.getElementById('modal-user-uuid') as HTMLInputElement).value);
+    formData.append('type', (document.getElementById('modal-item-type') as HTMLInputElement).value);
+
+    const response = await postData('/api/arsenal/armory/remove', formData);
+    if (!response) return;
+
+    response.announce();
+
+    if (response.ok) {
+        closeModal('armory-item-modal');
+        if (currentCard) markCardUnowned(currentCard);
+    }
+}
+
+// ─── DOM helpers ──────────────────────────────────────────────────────────────
+
+function markCardOwned(card: HTMLElement): void {
+    card.querySelector('[data-add-class-if-true-name="unowned"]')?.classList.remove('opacity-40');
+    card.querySelector('[data-show-if-true-name="unowned"]')?.classList.add('hidden');
+    card.querySelector('[data-show-if-true-name="owned"]')?.classList.remove('hidden');
+}
+
+function markCardUnowned(card: HTMLElement): void {
+    card.querySelector('[data-add-class-if-true-name="unowned"]')?.classList.add('opacity-40');
+    card.querySelector('[data-show-if-true-name="unowned"]')?.classList.remove('hidden');
+    card.querySelector('[data-show-if-true-name="owned"]')?.classList.add('hidden');
+    storeUuid(card, '');
+}
+
+function storeUuid(card: HTMLElement, uuid: string): void {
+    const input = card.querySelector('input[name="user_uuid"]') as HTMLInputElement | null;
+    if (input) input.value = uuid;
+}
+
+function showEl(id: string): void {
+    document.getElementById(id)?.classList.remove('hidden');
+}
+
+function hideEl(id: string): void {
+    document.getElementById(id)?.classList.add('hidden');
+}
+
+function setRowVisible(id: string, visible: boolean): void {
+    visible ? showEl(id) : hideEl(id);
+}
+
+(<any>window).init           = init;
+(<any>window).addItem        = addItem;
+(<any>window).openItemModal  = openItemModal;
+(<any>window).addItemFromModal = addItemFromModal;
+(<any>window).saveItem       = saveItem;
+(<any>window).removeItem     = removeItem;
+(<any>window).openModal      = openModal;
+(<any>window).closeModal     = closeModal;

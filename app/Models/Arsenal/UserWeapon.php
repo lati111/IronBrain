@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @inheritdoc
+ * @property string|null name The user's custom name for this weapon
  * @property boolean riven Whether a riven has been obtained for this item
  * @property boolean potato Whether a potato has been applied to the weapon
  * @property boolean exilus Whether a exilus adapter has been applied to the weapon

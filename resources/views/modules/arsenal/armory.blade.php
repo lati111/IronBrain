@@ -39,6 +39,94 @@
     </div>
 
     {{--| Category sections |--}}
+    {{--| Ownership detail modal |--}}
+    <x-modal id="armory-item-modal">
+        <div class="w-full flex flex-col gap-3" style="min-width:22rem">
+
+            {{--| Header: icon + name |--}}
+            <div class="flex items-center gap-3 pb-1 border-b">
+                <img id="modal-item-icon" class="w-12 h-12 object-contain flex-shrink-0" alt="">
+                <span id="modal-item-name" class="font-semibold"></span>
+            </div>
+
+            {{--| Hidden state |--}}
+            <input type="hidden" id="modal-user-uuid">
+            <input type="hidden" id="modal-item-id">
+            <input type="hidden" id="modal-item-type">
+            <input type="hidden" id="modal-base-name">
+
+            {{--| Unowned state |--}}
+            <p id="modal-unowned-content" class="hidden text-gray-400 text-sm text-center py-2">
+                Not in your collection
+            </p>
+
+            {{--| Owned form |--}}
+            <div id="modal-form-content" class="hidden w-full flex flex-col gap-3">
+
+                <div class="flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Forma</label>
+                    <input type="number" id="modal-forma" min="0" max="10" value="0"
+                           class="underlined w-14 text-center text-sm">
+                </div>
+
+                <div class="flex items-center justify-between gap-6">
+                    <label id="modal-potato-label" class="text-sm text-gray-600">Orokin Reactor</label>
+                    <input type="checkbox" id="modal-potato" class="w-4 h-4">
+                </div>
+
+                <div class="flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Built</label>
+                    <input type="checkbox" id="modal-built" class="w-4 h-4">
+                </div>
+
+                <div id="modal-exilus-row" class="hidden flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Exilus Adapter</label>
+                    <input type="checkbox" id="modal-exilus" class="w-4 h-4">
+                </div>
+
+                <div id="modal-fashioned-row" class="hidden flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Fashioned</label>
+                    <input type="checkbox" id="modal-fashioned" class="w-4 h-4">
+                </div>
+
+                <div id="modal-riven-row" class="hidden flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Riven</label>
+                    <input type="checkbox" id="modal-riven" class="w-4 h-4">
+                </div>
+
+                <div id="modal-school-row" class="hidden flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Focus School</label>
+                    <select id="modal-school" class="underlined text-sm">
+                        <option value="">None</option>
+                        <option value="madurai">Madurai</option>
+                        <option value="vazarin">Vazarin</option>
+                        <option value="naramon">Naramon</option>
+                        <option value="unairu">Unairu</option>
+                        <option value="zenurik">Zenurik</option>
+                    </select>
+                </div>
+
+                <div id="modal-name-row" class="hidden flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Name</label>
+                    <input type="text" id="modal-name" class="underlined text-sm text-right"
+                           placeholder="Custom name...">
+                </div>
+
+            </div>
+        </div>
+
+        <x-slot:buttons>
+            <button id="modal-remove-btn" class="cancel_interactive text-sm hidden"
+                    onclick="removeItem()">Remove</button>
+            <button class="cancel_interactive text-sm"
+                    onclick="closeModal('armory-item-modal')">Cancel</button>
+            <button id="modal-save-btn" class="interactive text-sm hidden"
+                    onclick="saveItem()">Save</button>
+            <button id="modal-add-btn" class="interactive text-sm hidden"
+                    onclick="addItemFromModal()">Add to Collection</button>
+        </x-slot:buttons>
+    </x-modal>
+
     @foreach([
         ['warframe', 'Warframes'],
         ['primary', 'Primary Weapons'],

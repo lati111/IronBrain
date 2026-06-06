@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @inheritdoc
+ * @property string|null name The user's custom name for this warframe
  * @property boolean potato Whether a potato has been applied to the warframe
  * @property boolean exilus Whether a exilus adapter has been applied to the warframe
  * @property boolean fashioned Whether or not this frame has been fashioned

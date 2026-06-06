@@ -13,6 +13,7 @@ use App\Models\Arsenal\Warframe;
 use App\Models\Arsenal\Weapon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
@@ -88,17 +89,17 @@ class ArsenalLoadoutCardlist extends AbstractCardlist
             ->select([
                 Loadout::TABLE_NAME . '.uuid',
                 Loadout::TABLE_NAME . '.name as loadout_name',
-                'wf.name as warframe_name',
+                DB::raw('COALESCE(uwf.name, wf.name) as warframe_name'),
                 'wf.icon as warframe_icon',
-                'pw.name as primary_name',
+                DB::raw('COALESCE(upw.name, pw.name) as primary_name'),
                 'pw.icon as primary_icon',
-                'sw.name as secondary_name',
+                DB::raw('COALESCE(usw.name, sw.name) as secondary_name'),
                 'sw.icon as secondary_icon',
-                'mw.name as melee_name',
+                DB::raw('COALESCE(umw.name, mw.name) as melee_name'),
                 'mw.icon as melee_icon',
-                'comp.name as companion_name',
+                DB::raw('COALESCE(uc.name, comp.name) as companion_name'),
                 'comp.icon as companion_icon',
-                'cw.name as companion_weapon_name',
+                DB::raw('COALESCE(ucw.name, cw.name) as companion_weapon_name'),
                 'cw.icon as companion_weapon_icon',
             ]);
     }

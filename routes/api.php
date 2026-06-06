@@ -51,6 +51,12 @@ Route::prefix('/arsenal')
     ->group(function() {
         Route::post('/armory/add', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'addItem'])
             ->name('api.arsenal.armory.add');
+        Route::get('/armory/item', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'getItem'])
+            ->name('api.arsenal.armory.item.get');
+        Route::post('/armory/update', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'updateItem'])
+            ->name('api.arsenal.armory.item.update');
+        Route::post('/armory/remove', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'removeItem'])
+            ->name('api.arsenal.armory.item.remove');
     });
 
 
