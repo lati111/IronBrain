@@ -109,6 +109,7 @@ async function openItemModal(card: HTMLElement): Promise<void> {
         hideEl('modal-form-content');
         hideEl('modal-save-btn');
         hideEl('modal-remove-btn');
+        hideEl('modal-duplicate-btn');
         showEl('modal-add-btn');
     } else {
         const formData = new FormData();
@@ -124,6 +125,7 @@ async function openItemModal(card: HTMLElement): Promise<void> {
         showEl('modal-form-content');
         showEl('modal-save-btn');
         showEl('modal-remove-btn');
+        showEl('modal-duplicate-btn');
         hideEl('modal-add-btn');
 
         const nameInput = document.getElementById('modal-name') as HTMLInputElement;
@@ -227,6 +229,50 @@ async function removeItem(): Promise<void> {
     }
 }
 
+// ─── Duplicate ────────────────────────────────────────────────────────────────
+
+async function duplicateItem(): Promise<void> {
+    const userUuid = (document.getElementById('modal-user-uuid') as HTMLInputElement).value;
+    const itemType = (document.getElementById('modal-item-type') as HTMLInputElement).value;
+
+    const formData = new FormData();
+    formData.append('uuid', userUuid);
+    formData.append('type', itemType);
+
+    const response = await postData('/api/arsenal/armory/duplicate', formData);
+    if (!response) return;
+
+    response.announce();
+
+    if (response.ok) {
+        const newUuid = response.data as string;
+        const category = getCardCategory(currentCard);
+        const list = cardlists.find(l => l.dataproviderID === `${category}-cardlist`);
+
+        closeModal('armory-item-modal');
+
+        if (list) {
+            await list.reload();
+            const content = document.getElementById(`${category}-cardlist-content`);
+            if (content) {
+                const cards = Array.from(content.querySelectorAll(':scope > *')) as HTMLElement[];
+                const newCard = cards.find(card => {
+                    const input = card.querySelector('input[name="user_uuid"]') as HTMLInputElement | null;
+                    return input?.value === newUuid;
+                }) ?? null;
+                if (newCard) await openItemModal(newCard);
+            }
+        }
+    }
+}
+
+function getCardCategory(card: HTMLElement | null): string {
+    if (!card) return '';
+    const content = card.closest('[id$="-cardlist-content"]');
+    if (!content) return '';
+    return content.id.replace('-cardlist-content', '');
+}
+
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
 
 function markCardOwned(card: HTMLElement): void {
@@ -259,11 +305,12 @@ function setRowVisible(id: string, visible: boolean): void {
     visible ? showEl(id) : hideEl(id);
 }
 
-(<any>window).init           = init;
-(<any>window).addItem        = addItem;
-(<any>window).openItemModal  = openItemModal;
+(<any>window).init             = init;
+(<any>window).addItem          = addItem;
+(<any>window).openItemModal    = openItemModal;
 (<any>window).addItemFromModal = addItemFromModal;
-(<any>window).saveItem       = saveItem;
-(<any>window).removeItem     = removeItem;
-(<any>window).openModal      = openModal;
-(<any>window).closeModal     = closeModal;
+(<any>window).saveItem         = saveItem;
+(<any>window).removeItem       = removeItem;
+(<any>window).duplicateItem    = duplicateItem;
+(<any>window).openModal        = openModal;
+(<any>window).closeModal       = closeModal;

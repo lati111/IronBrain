@@ -277,6 +277,73 @@ class ArmoryApi extends AbstractApi
         return $this->respond(Response::HTTP_OK, 'Saved', true);
     }
 
+    // ─── Duplicate ────────────────────────────────────────────────────────────
+
+    public function duplicateItem(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'uuid' => 'required|string|max:255',
+            'type' => ['required', 'string', Rule::in(['warframe', 'weapon', 'companion'])],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $user = Auth::user();
+
+        return match ($request->get('type')) {
+            'warframe'  => $this->duplicateWarframe($user->uuid, $request->get('uuid')),
+            'weapon'    => $this->duplicateWeapon($user->uuid, $request->get('uuid')),
+            'companion' => $this->duplicateCompanion($user->uuid, $request->get('uuid')),
+        };
+    }
+
+    private function duplicateWarframe(string $ownerUuid, string $uuid): JsonResponse
+    {
+        $source = UserWarframe::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
+        if (!$source) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
+        }
+
+        $copy = new UserWarframe();
+        $copy->id = $source->id;
+        $copy->owner_uuid = $ownerUuid;
+        $copy->save();
+
+        return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
+    }
+
+    private function duplicateWeapon(string $ownerUuid, string $uuid): JsonResponse
+    {
+        $source = UserWeapon::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
+        if (!$source) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
+        }
+
+        $copy = new UserWeapon();
+        $copy->id = $source->id;
+        $copy->owner_uuid = $ownerUuid;
+        $copy->save();
+
+        return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
+    }
+
+    private function duplicateCompanion(string $ownerUuid, string $uuid): JsonResponse
+    {
+        $source = UserCompanion::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
+        if (!$source) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
+        }
+
+        $copy = new UserCompanion();
+        $copy->id = $source->id;
+        $copy->owner_uuid = $ownerUuid;
+        $copy->save();
+
+        return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
+    }
+
     // ─── Remove ───────────────────────────────────────────────────────────────
 
     private function deleteWarframe(string $ownerUuid, string $uuid): JsonResponse

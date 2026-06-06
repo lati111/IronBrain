@@ -57,6 +57,8 @@ Route::prefix('/arsenal')
             ->name('api.arsenal.armory.item.update');
         Route::post('/armory/remove', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'removeItem'])
             ->name('api.arsenal.armory.item.remove');
+        Route::post('/armory/duplicate', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'duplicateItem'])
+            ->name('api.arsenal.armory.item.duplicate');
     });
 
 

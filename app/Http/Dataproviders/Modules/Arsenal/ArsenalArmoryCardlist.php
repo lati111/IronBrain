@@ -83,53 +83,95 @@ class ArsenalArmoryCardlist extends AbstractCardlist
 
     private function buildUnionQuery(User $user, string $search, ?string $category, string $operator): QueryBuilder
     {
-        $warframes = DB::table(Warframe::TABLE_NAME . ' as w')
+        $ownedWarframes = DB::table(UserWarframe::TABLE_NAME . ' as uw')
+            ->join(Warframe::TABLE_NAME . ' as w', 'uw.id', '=', 'w.id')
+            ->where('uw.owner_uuid', $user->uuid)
             ->select([
                 DB::raw("'warframe' as category"),
                 DB::raw('w.id as item_id'),
                 DB::raw('COALESCE(uw.name, w.name) as name'),
                 DB::raw('w.icon as icon'),
                 DB::raw('w.prime as prime'),
-                DB::raw('CASE WHEN uw.uuid IS NOT NULL THEN 1 ELSE 0 END as owned'),
+                DB::raw('1 as owned'),
                 DB::raw('uw.uuid as user_uuid'),
-            ])
-            ->leftJoin(UserWarframe::TABLE_NAME . ' as uw', function ($join) use ($user) {
-                $join->on('uw.id', '=', 'w.id')
-                    ->where('uw.owner_uuid', '=', $user->uuid);
-            });
+            ]);
 
-        $weapons = DB::table(Weapon::TABLE_NAME . ' as wp')
+        $unownedWarframes = DB::table(Warframe::TABLE_NAME . ' as w')
+            ->whereNotIn('w.id', function ($q) use ($user) {
+                $q->from(UserWarframe::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid);
+            })
+            ->select([
+                DB::raw("'warframe' as category"),
+                DB::raw('w.id as item_id'),
+                DB::raw('w.name as name'),
+                DB::raw('w.icon as icon'),
+                DB::raw('w.prime as prime'),
+                DB::raw('0 as owned'),
+                DB::raw('NULL as user_uuid'),
+            ]);
+
+        $ownedWeapons = DB::table(UserWeapon::TABLE_NAME . ' as uw')
+            ->join(Weapon::TABLE_NAME . ' as wp', 'uw.id', '=', 'wp.id')
+            ->where('uw.owner_uuid', $user->uuid)
+            ->whereNull('wp.exalted_id')
             ->select([
                 DB::raw('LOWER(wp.type) as category'),
                 DB::raw('wp.id as item_id'),
                 DB::raw('COALESCE(uw.name, wp.name) as name'),
                 DB::raw('wp.icon as icon'),
                 DB::raw('wp.prime as prime'),
-                DB::raw('CASE WHEN uw.uuid IS NOT NULL THEN 1 ELSE 0 END as owned'),
+                DB::raw('1 as owned'),
                 DB::raw('uw.uuid as user_uuid'),
-            ])
-            ->leftJoin(UserWeapon::TABLE_NAME . ' as uw', function ($join) use ($user) {
-                $join->on('uw.id', '=', 'wp.id')
-                    ->where('uw.owner_uuid', '=', $user->uuid);
-            })
-            ->whereNull('wp.exalted_id');
+            ]);
 
-        $companions = DB::table(Companion::TABLE_NAME . ' as c')
+        $unownedWeapons = DB::table(Weapon::TABLE_NAME . ' as wp')
+            ->whereNotIn('wp.id', function ($q) use ($user) {
+                $q->from(UserWeapon::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid);
+            })
+            ->whereNull('wp.exalted_id')
+            ->select([
+                DB::raw('LOWER(wp.type) as category'),
+                DB::raw('wp.id as item_id'),
+                DB::raw('wp.name as name'),
+                DB::raw('wp.icon as icon'),
+                DB::raw('wp.prime as prime'),
+                DB::raw('0 as owned'),
+                DB::raw('NULL as user_uuid'),
+            ]);
+
+        $ownedCompanions = DB::table(UserCompanion::TABLE_NAME . ' as uc')
+            ->join(Companion::TABLE_NAME . ' as c', 'uc.id', '=', 'c.id')
+            ->where('uc.owner_uuid', $user->uuid)
             ->select([
                 DB::raw("'companion' as category"),
                 DB::raw('c.id as item_id'),
                 DB::raw('COALESCE(uc.name, c.name) as name'),
                 DB::raw('c.icon as icon'),
                 DB::raw('c.prime as prime'),
-                DB::raw('CASE WHEN uc.uuid IS NOT NULL THEN 1 ELSE 0 END as owned'),
+                DB::raw('1 as owned'),
                 DB::raw('uc.uuid as user_uuid'),
-            ])
-            ->leftJoin(UserCompanion::TABLE_NAME . ' as uc', function ($join) use ($user) {
-                $join->on('uc.id', '=', 'c.id')
-                    ->where('uc.owner_uuid', '=', $user->uuid);
-            });
+            ]);
 
-        $union = $warframes->unionAll($weapons)->unionAll($companions);
+        $unownedCompanions = DB::table(Companion::TABLE_NAME . ' as c')
+            ->whereNotIn('c.id', function ($q) use ($user) {
+                $q->from(UserCompanion::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid);
+            })
+            ->select([
+                DB::raw("'companion' as category"),
+                DB::raw('c.id as item_id'),
+                DB::raw('c.name as name'),
+                DB::raw('c.icon as icon'),
+                DB::raw('c.prime as prime'),
+                DB::raw('0 as owned'),
+                DB::raw('NULL as user_uuid'),
+            ]);
+
+        $union = $ownedWarframes
+            ->unionAll($unownedWarframes)
+            ->unionAll($ownedWeapons)
+            ->unionAll($unownedWeapons)
+            ->unionAll($ownedCompanions)
+            ->unionAll($unownedCompanions);
 
         $outer = DB::query()->fromSub($union, 'armory');
 

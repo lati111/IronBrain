@@ -120,6 +120,8 @@
                     onclick="removeItem()">Remove</button>
             <button class="cancel_interactive text-sm"
                     onclick="closeModal('armory-item-modal')">Cancel</button>
+            <button id="modal-duplicate-btn" class="interactive text-sm hidden"
+                    onclick="duplicateItem()">Add Duplicate</button>
             <button id="modal-save-btn" class="interactive text-sm hidden"
                     onclick="saveItem()">Save</button>
             <button id="modal-add-btn" class="interactive text-sm hidden"
