@@ -78,4 +78,7 @@ Route::prefix('/arsenal/data')
 
         Route::dataprovider('/armory', 'data.arsenal.armory',
             \App\Http\Dataproviders\Modules\Arsenal\ArsenalArmoryCardlist::class);
+
+        Route::dataprovider('/owned-slot', 'data.arsenal.owned-slot',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalOwnedSlotCardlist::class);
     });

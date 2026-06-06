@@ -31,6 +31,7 @@ class ArsenalLoadoutCardlist extends AbstractCardlist
         $data = $this->getData($request)
             ->get()
             ->map(function ($loadout) {
+                $loadout['has_warframe'] = $loadout->warframe_name !== null ? 1 : 0;
                 if ($loadout->warframe_icon !== null) {
                     $loadout['warframe_icon'] = asset('img/' . $loadout->warframe_icon);
                 }
@@ -73,8 +74,8 @@ class ArsenalLoadoutCardlist extends AbstractCardlist
 
         return Loadout::query()
             ->where(Loadout::TABLE_NAME . '.owner_uuid', $user->uuid)
-            ->join(UserWarframe::TABLE_NAME . ' as uwf', Loadout::TABLE_NAME . '.warframe_uuid', '=', 'uwf.uuid')
-            ->join(Warframe::TABLE_NAME . ' as wf', 'uwf.id', '=', 'wf.id')
+            ->leftJoin(UserWarframe::TABLE_NAME . ' as uwf', Loadout::TABLE_NAME . '.warframe_uuid', '=', 'uwf.uuid')
+            ->leftJoin(Warframe::TABLE_NAME . ' as wf', 'uwf.id', '=', 'wf.id')
             ->leftJoin(UserWeapon::TABLE_NAME . ' as upw', Loadout::TABLE_NAME . '.primary_uuid', '=', 'upw.uuid')
             ->leftJoin(Weapon::TABLE_NAME . ' as pw', 'upw.id', '=', 'pw.id')
             ->leftJoin(UserWeapon::TABLE_NAME . ' as usw', Loadout::TABLE_NAME . '.secondary_uuid', '=', 'usw.uuid')
