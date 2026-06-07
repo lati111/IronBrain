@@ -17,7 +17,8 @@
     {{--| Top bar |--}}
     <div class="flex justify-center">
         <div id="top-bar-container" class="relative">
-            <a href="{{route('arsenal.home.show')}}" class="interactive">Loadouts</a>
+            <a href="{{route('arsenal.home.show')}}" class="interactive absolute left-0 top-0">Loadouts</a>
+            <a href="{{route('arsenal.foundry.show')}}" class="interactive absolute right-0 top-0">Foundry</a>
         </div>
     </div>
 

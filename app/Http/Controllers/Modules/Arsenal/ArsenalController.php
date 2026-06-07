@@ -24,4 +24,13 @@ class ArsenalController extends Controller
     {
         return view('modules.arsenal.armory', $this->getBaseVariables());
     }
+
+    /**
+     * Shows the arsenal foundry page
+     * @return View Returns a View of the page
+     */
+    public function showFoundry(): View
+    {
+        return view('modules.arsenal.foundry', $this->getBaseVariables());
+    }
 }

@@ -81,4 +81,7 @@ Route::prefix('/arsenal/data')
 
         Route::dataprovider('/owned-slot', 'data.arsenal.owned-slot',
             \App\Http\Dataproviders\Modules\Arsenal\ArsenalOwnedSlotCardlist::class);
+
+        Route::dataprovider('/foundry', 'data.arsenal.foundry',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalFoundryCardlist::class);
     });

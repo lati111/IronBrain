@@ -83,5 +83,8 @@ Route::prefix('/arsenal')
 
         Route::get('/armory', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showArmory'])
             ->name('arsenal.armory.show');
+
+        Route::get('/foundry', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showFoundry'])
+            ->name('arsenal.foundry.show');
     });
 

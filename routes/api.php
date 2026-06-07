@@ -68,6 +68,9 @@ Route::prefix('/arsenal')
             ->name('api.arsenal.loadout.slot.clear');
         Route::post('/loadout/rename', [\App\Http\Api\Modules\Arsenal\LoadoutApi::class, 'renameLoadout'])
             ->name('api.arsenal.loadout.rename');
+
+        Route::post('/foundry/component/set', [\App\Http\Api\Modules\Arsenal\FoundryApi::class, 'setComponentAmount'])
+            ->name('api.arsenal.foundry.component.set');
     });
 
 
