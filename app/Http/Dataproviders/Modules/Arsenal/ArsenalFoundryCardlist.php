@@ -3,6 +3,7 @@ namespace App\Http\Dataproviders\Modules\Arsenal;
 
 use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
+use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\Component;
 use App\Models\Arsenal\FoundryResult;
@@ -25,13 +26,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ArsenalFoundryCardlist extends AbstractCardlist
 {
-    use Dataprovider, Paginatable;
+    use Dataprovider, Paginatable, HasPages;
 
-    public function __construct()
-    {
-        $this->setDefaultPerPage(20);
-    }
-
+    /** { @inheritdoc } */
     public function data(Request $request): JsonResponse
     {
         $blueprints = $this->getData($request)->get();
@@ -64,25 +61,18 @@ class ArsenalFoundryCardlist extends AbstractCardlist
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $result);
     }
 
-    public function count(Request $request): JsonResponse
-    {
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $this->getPages($request));
-    }
-
+    /** { @inheritdoc } */
     protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
-        $user = Auth::user();
-        $search    = trim($request->get('search', ''));
-        $variant   = $request->get('variant',   'all');
-        $itemType  = $request->get('item_type', 'all');
-        $ownership = $request->get('ownership', 'all');
-
-        $inner = $this->buildInnerQuery($user, $search, $variant, $itemType, $ownership);
+        $user      = Auth::user();
+        $search    = trim($request->get('search',    ''));
+        $variant   = $request->get('variant',        'all');
+        $itemType  = $request->get('item_type',      'all');
+        $ownership = $request->get('ownership',      'all');
 
         return FoundryResult::query()
-            ->fromSub($inner, 'foundry')
-            ->orderByRaw('completion_pct DESC')
-            ->orderByRaw('name ASC');
+            ->fromSub($this->buildInnerQuery($user, $search, $variant, $itemType, $ownership), 'foundry')
+            ->orderByRaw('completion_pct DESC, name ASC');
     }
 
     private function buildInnerQuery(User $user, string $search, string $variant, string $itemType, string $ownership)

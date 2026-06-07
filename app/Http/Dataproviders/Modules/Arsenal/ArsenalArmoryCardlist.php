@@ -3,6 +3,7 @@ namespace App\Http\Dataproviders\Modules\Arsenal;
 
 use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
+use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Arsenal\ArmoryResult;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\UserCompanion;
@@ -12,6 +13,7 @@ use App\Models\Arsenal\Warframe;
 use App\Models\Arsenal\Weapon;
 use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,22 +25,18 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ArsenalArmoryCardlist extends AbstractCardlist
 {
-    use Dataprovider, Paginatable, Searchable;
+    use Dataprovider, Paginatable, HasPages, Searchable;
 
-    public function __construct()
-    {
-        $this->setDefaultPerPage(9);
-    }
-
+    /** { @inheritdoc } */
     public function data(Request $request): JsonResponse
     {
         $items = $this->getData($request)
             ->get()
             ->map(function ($item) {
                 $item->category_display = ucfirst($item->category);
-                $item->item_type = $this->getItemType($item->category);
-                $item->unowned = $item->owned ? 0 : 1;
-                $item->school_abbr = $item->school ? strtoupper(substr($item->school, 0, 1)) : '';
+                $item->item_type        = $this->getItemType($item->category);
+                $item->unowned          = $item->owned ? 0 : 1;
+                $item->school_abbr      = $item->school ? strtoupper(substr($item->school, 0, 1)) : '';
                 if ($item->icon !== null) {
                     $item->icon = asset('img/' . $item->icon);
                 }
@@ -48,11 +46,10 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $items);
     }
 
-    public function count(Request $request): JsonResponse
-    {
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $this->getPages($request));
-    }
-
+    /**
+     * Returns the available filter options for this cardlist
+     * @return JsonResponse Returns a response in JSON format
+     */
     public function filters(Request $request): JsonResponse
     {
         $filter = $request->get('filter');
@@ -65,7 +62,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, [
                 'type' => 'select',
                 'operators' => [
-                    ['operator' => '=', 'text' => 'is'],
+                    ['operator' => '=',  'text' => 'is'],
                     ['operator' => '!=', 'text' => 'is not'],
                 ],
                 'options' => ['warframe', 'primary', 'secondary', 'melee', 'companion', 'companion_weapon', 'archgun', 'archmelee'],
@@ -75,24 +72,25 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         return $this->respond(Response::HTTP_NOT_FOUND, 'Filter not found', null);
     }
 
+    /** { @inheritdoc } */
     protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
-        $user = Auth::user();
-        $q = ArmoryResult::query()->fromSub($this->buildUnionQuery($user), 'armory');
-
+        $user     = Auth::user();
         $category = $request->get('category');
         $operator = '=';
 
+        // JSON filters format supports operators (e.g. !=); direct param always uses =
         if ($category === null) {
-            $filtersJson = $request->get('filters', '[]');
-            foreach (json_decode($filtersJson, true) ?? [] as $filter) {
-                if (isset($filter['filter']) && $filter['filter'] === 'category') {
+            foreach (json_decode($request->get('filters', '[]'), true) ?? [] as $filter) {
+                if (($filter['filter'] ?? '') === 'category') {
                     $category = $filter['value'] ?? null;
                     $operator = $filter['operator'] ?? '=';
                     break;
                 }
             }
         }
+
+        $q = ArmoryResult::query()->fromSub($this->buildUnionQuery($user), 'armory');
 
         if ($category !== null) {
             $q->where('category', $operator, $category);
@@ -115,12 +113,13 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         return $q->orderByRaw('owned DESC, category ASC, name ASC');
     }
 
+    /** { @inheritdoc } */
     public function getSearchFields(): array
     {
         return ['name'];
     }
 
-    private function buildUnionQuery(User $user)
+    private function buildUnionQuery(User $user): QueryBuilder
     {
         $ownedWarframes = DB::table(UserWarframe::TABLE_NAME . ' as uw')
             ->join(Warframe::TABLE_NAME . ' as w', 'uw.id', '=', 'w.id')
@@ -240,9 +239,9 @@ class ArsenalArmoryCardlist extends AbstractCardlist
     private function getItemType(string $category): string
     {
         return match ($category) {
-            'warframe' => 'warframe',
+            'warframe'  => 'warframe',
             'companion' => 'companion',
-            default => 'weapon',
+            default     => 'weapon',
         };
     }
 }
