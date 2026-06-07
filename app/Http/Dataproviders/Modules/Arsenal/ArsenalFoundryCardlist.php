@@ -5,6 +5,7 @@ use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\Component;
+use App\Models\Arsenal\FoundryResult;
 use App\Models\Arsenal\UserCompanion;
 use App\Models\Arsenal\UserComponent;
 use App\Models\Arsenal\UserWarframe;
@@ -12,38 +13,35 @@ use App\Models\Arsenal\UserWeapon;
 use App\Models\Arsenal\Warframe;
 use App\Models\Arsenal\Weapon;
 use App\Models\Auth\User;
-use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Lati111\LaravelDataproviders\Traits\Dataprovider;
+use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Symfony\Component\HttpFoundation\Response;
 
 class ArsenalFoundryCardlist extends AbstractCardlist
 {
-    private const int DEFAULT_PER_PAGE = 20;
+    use Dataprovider, Paginatable;
+
+    public function __construct()
+    {
+        $this->setDefaultPerPage(20);
+    }
 
     public function data(Request $request): JsonResponse
     {
-        $user      = Auth::user();
-        $search    = trim($request->get('search', ''));
-        $variant   = $request->get('variant',   'all');
-        $itemType  = $request->get('item_type', 'all');
-        $ownership = $request->get('ownership', 'all');
-        $page      = max(1, (int) $request->get('page', 1));
-        $perPage   = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
-
-        $blueprints = $this->buildBaseQuery($user, $search, $variant, $itemType, $ownership)
-            ->forPage($page, $perPage)
-            ->get();
+        $blueprints = $this->getData($request)->get();
 
         if ($blueprints->isEmpty()) {
             return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, collect());
         }
 
-        $blueprintIds = $blueprints->pluck('blueprint_id')->toArray();
-        $componentsByBlueprint = $this->fetchComponents($user, $blueprintIds);
+        $user = Auth::user();
+        $componentsByBlueprint = $this->fetchComponents($user, $blueprints->pluck('blueprint_id')->toArray());
 
         $result = $blueprints->map(function ($bp) use ($componentsByBlueprint) {
             if (!empty($bp->icon)) {
@@ -68,23 +66,26 @@ class ArsenalFoundryCardlist extends AbstractCardlist
 
     public function count(Request $request): JsonResponse
     {
-        $user      = Auth::user();
+        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $this->getPages($request));
+    }
+
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
+    {
+        $user = Auth::user();
         $search    = trim($request->get('search', ''));
         $variant   = $request->get('variant',   'all');
         $itemType  = $request->get('item_type', 'all');
         $ownership = $request->get('ownership', 'all');
-        $perPage   = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
 
-        $subquery = $this->buildBaseQuery($user, $search, $variant, $itemType, $ownership);
-        $total    = DB::select(
-            'SELECT COUNT(*) as cnt FROM (' . $subquery->toSql() . ') as sub',
-            $subquery->getBindings()
-        )[0]->cnt;
+        $inner = $this->buildInnerQuery($user, $search, $variant, $itemType, $ownership);
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, (int) ceil($total / $perPage));
+        return FoundryResult::query()
+            ->fromSub($inner, 'foundry')
+            ->orderByRaw('completion_pct DESC')
+            ->orderByRaw('name ASC');
     }
 
-    private function buildBaseQuery(User $user, string $search, string $variant = 'all', string $itemType = 'all', string $ownership = 'all'): QueryBuilder
+    private function buildInnerQuery(User $user, string $search, string $variant, string $itemType, string $ownership)
     {
         $q = DB::table(Component::TABLE_NAME . ' as c')
             ->leftJoin(Warframe::TABLE_NAME . ' as wf', function ($join) {
@@ -148,9 +149,6 @@ class ArsenalFoundryCardlist extends AbstractCardlist
         } elseif ($ownership === 'unowned') {
             $q->havingRaw('already_owned = 0');
         }
-
-        $q->orderByRaw('completion_pct DESC');
-        $q->orderByRaw('COALESCE(wf.name, wp.name, comp.name) ASC');
 
         return $q;
     }

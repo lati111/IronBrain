@@ -3,6 +3,7 @@ namespace App\Http\Dataproviders\Modules\Arsenal;
 
 use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
+use App\Models\Arsenal\ArmoryResult;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\UserCompanion;
 use App\Models\Arsenal\UserWarframe;
@@ -10,30 +11,28 @@ use App\Models\Arsenal\UserWeapon;
 use App\Models\Arsenal\Warframe;
 use App\Models\Arsenal\Weapon;
 use App\Models\Auth\User;
-use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Lati111\LaravelDataproviders\Traits\Dataprovider;
+use Lati111\LaravelDataproviders\Traits\Paginatable;
+use Lati111\LaravelDataproviders\Traits\Searchable;
 use Symfony\Component\HttpFoundation\Response;
 
 class ArsenalArmoryCardlist extends AbstractCardlist
 {
-    private const DEFAULT_PER_PAGE = 9;
+    use Dataprovider, Paginatable, Searchable;
 
-    /** { @inheritdoc } */
+    public function __construct()
+    {
+        $this->setDefaultPerPage(9);
+    }
+
     public function data(Request $request): JsonResponse
     {
-        $user = Auth::user();
-        $search = trim($request->get('search', ''));
-        $page = max(1, (int) $request->get('page', 1));
-        $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
-        [$category, $operator] = $this->parseCategoryFilter($request);
-        $variant = $this->parseVariantFilter($request);
-        $owned = $this->parseOwnershipFilter($request);
-
-        $items = $this->buildUnionQuery($user, $search, $category, $operator, $variant, $owned)
-            ->forPage($page, $perPage)
+        $items = $this->getData($request)
             ->get()
             ->map(function ($item) {
                 $item->category_display = ucfirst($item->category);
@@ -49,19 +48,9 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $items);
     }
 
-    /** { @inheritdoc } */
     public function count(Request $request): JsonResponse
     {
-        $user = Auth::user();
-        $search = trim($request->get('search', ''));
-        $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
-        [$category, $operator] = $this->parseCategoryFilter($request);
-        $variant = $this->parseVariantFilter($request);
-        $owned = $this->parseOwnershipFilter($request);
-
-        $total = $this->buildUnionQuery($user, $search, $category, $operator, $variant, $owned)->count();
-
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, (int) ceil($total / $perPage));
+        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $this->getPages($request));
     }
 
     public function filters(Request $request): JsonResponse
@@ -86,7 +75,52 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         return $this->respond(Response::HTTP_NOT_FOUND, 'Filter not found', null);
     }
 
-    private function buildUnionQuery(User $user, string $search, ?string $category, string $operator, ?string $variant = null, ?bool $owned = null): QueryBuilder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
+    {
+        $user = Auth::user();
+        $q = ArmoryResult::query()->fromSub($this->buildUnionQuery($user), 'armory');
+
+        $category = $request->get('category');
+        $operator = '=';
+
+        if ($category === null) {
+            $filtersJson = $request->get('filters', '[]');
+            foreach (json_decode($filtersJson, true) ?? [] as $filter) {
+                if (isset($filter['filter']) && $filter['filter'] === 'category') {
+                    $category = $filter['value'] ?? null;
+                    $operator = $filter['operator'] ?? '=';
+                    break;
+                }
+            }
+        }
+
+        if ($category !== null) {
+            $q->where('category', $operator, $category);
+        }
+
+        $variant = $request->get('variant');
+        if ($variant === 'prime') {
+            $q->where('prime', 1);
+        } elseif ($variant === 'non-prime') {
+            $q->where('prime', 0);
+        }
+
+        $ownership = $request->get('ownership');
+        if ($ownership === 'owned') {
+            $q->where('owned', 1);
+        } elseif ($ownership === 'unowned') {
+            $q->where('owned', 0);
+        }
+
+        return $q->orderByRaw('owned DESC, category ASC, name ASC');
+    }
+
+    public function getSearchFields(): array
+    {
+        return ['name'];
+    }
+
+    private function buildUnionQuery(User $user)
     {
         $ownedWarframes = DB::table(UserWarframe::TABLE_NAME . ' as uw')
             ->join(Warframe::TABLE_NAME . ' as w', 'uw.id', '=', 'w.id')
@@ -107,9 +141,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ]);
 
         $unownedWarframes = DB::table(Warframe::TABLE_NAME . ' as w')
-            ->whereNotIn('w.id', function ($q) use ($user) {
-                $q->from(UserWarframe::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid);
-            })
+            ->whereNotIn('w.id', fn($q) => $q->from(UserWarframe::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid))
             ->select([
                 DB::raw("'warframe' as category"),
                 DB::raw('w.id as item_id'),
@@ -145,9 +177,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ]);
 
         $unownedWeapons = DB::table(Weapon::TABLE_NAME . ' as wp')
-            ->whereNotIn('wp.id', function ($q) use ($user) {
-                $q->from(UserWeapon::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid);
-            })
+            ->whereNotIn('wp.id', fn($q) => $q->from(UserWeapon::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid))
             ->whereNull('wp.exalted_id')
             ->select([
                 DB::raw('LOWER(wp.type) as category'),
@@ -183,9 +213,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ]);
 
         $unownedCompanions = DB::table(Companion::TABLE_NAME . ' as c')
-            ->whereNotIn('c.id', function ($q) use ($user) {
-                $q->from(UserCompanion::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid);
-            })
+            ->whereNotIn('c.id', fn($q) => $q->from(UserCompanion::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid))
             ->select([
                 DB::raw("'companion' as category"),
                 DB::raw('c.id as item_id'),
@@ -201,69 +229,12 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('NULL as school'),
             ]);
 
-        $union = $ownedWarframes
+        return $ownedWarframes
             ->unionAll($unownedWarframes)
             ->unionAll($ownedWeapons)
             ->unionAll($unownedWeapons)
             ->unionAll($ownedCompanions)
             ->unionAll($unownedCompanions);
-
-        $outer = DB::query()->fromSub($union, 'armory');
-
-        if ($search !== '') {
-            $outer->where('name', 'LIKE', '%' . $search . '%');
-        }
-
-        if ($category !== null) {
-            $outer->where('category', $operator, $category);
-        }
-
-        if ($variant === 'prime') {
-            $outer->where('prime', 1);
-        } elseif ($variant === 'non-prime') {
-            $outer->where('prime', 0);
-        }
-
-        if ($owned !== null) {
-            $outer->where('owned', $owned ? 1 : 0);
-        }
-
-        return $outer->orderByRaw('owned DESC, category ASC, name ASC');
-    }
-
-    private function parseVariantFilter(Request $request): ?string
-    {
-        $variant = $request->get('variant');
-        if ($variant === 'prime') return 'prime';
-        if ($variant === 'non-prime') return 'non-prime';
-        return null;
-    }
-
-    private function parseOwnershipFilter(Request $request): ?bool
-    {
-        $ownership = $request->get('ownership');
-        if ($ownership === 'owned') return true;
-        if ($ownership === 'unowned') return false;
-        return null;
-    }
-
-    private function parseCategoryFilter(Request $request): array
-    {
-        $direct = $request->get('category');
-        if ($direct !== null) {
-            return [$direct, '='];
-        }
-
-        $filtersJson = $request->get('filters', '[]');
-        $filters = json_decode($filtersJson, true) ?? [];
-
-        foreach ($filters as $filter) {
-            if (isset($filter['filter']) && $filter['filter'] === 'category') {
-                return [$filter['value'] ?? null, $filter['operator'] ?? '='];
-            }
-        }
-
-        return [null, '='];
     }
 
     private function getItemType(string $category): string
