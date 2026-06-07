@@ -5,7 +5,10 @@ use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\Component;
+use App\Models\Arsenal\UserCompanion;
 use App\Models\Arsenal\UserComponent;
+use App\Models\Arsenal\UserWarframe;
+use App\Models\Arsenal\UserWeapon;
 use App\Models\Arsenal\Warframe;
 use App\Models\Arsenal\Weapon;
 use App\Models\Auth\User;
@@ -106,8 +109,14 @@ class ArsenalFoundryCardlist extends AbstractCardlist
                 c.type as blueprint_type,
                 COALESCE(wf.name, wp.name, comp.name) as name,
                 COALESCE(wf.icon, wp.icon, comp.icon) as icon,
-                ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) as completion_pct
-            ");
+                ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) as completion_pct,
+                CASE
+                    WHEN LOWER(c.type) = 'warframe'  THEN CASE WHEN EXISTS(SELECT 1 FROM " . UserWarframe::TABLE_NAME  . " WHERE id = c.blueprint_id AND owner_uuid = ?) THEN 1 ELSE 0 END
+                    WHEN LOWER(c.type) = 'weapon'    THEN CASE WHEN EXISTS(SELECT 1 FROM " . UserWeapon::TABLE_NAME    . " WHERE id = c.blueprint_id AND owner_uuid = ?) THEN 1 ELSE 0 END
+                    WHEN LOWER(c.type) = 'companion' THEN CASE WHEN EXISTS(SELECT 1 FROM " . UserCompanion::TABLE_NAME . " WHERE id = c.blueprint_id AND owner_uuid = ?) THEN 1 ELSE 0 END
+                    ELSE 0
+                END as already_owned
+            ", [$user->uuid, $user->uuid, $user->uuid]);
 
         if ($search !== '') {
             $q->where(function ($q) use ($search) {
@@ -135,9 +144,9 @@ class ArsenalFoundryCardlist extends AbstractCardlist
         }
 
         if ($ownership === 'owned') {
-            $q->havingRaw('ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) >= 100');
+            $q->havingRaw('already_owned = 1');
         } elseif ($ownership === 'unowned') {
-            $q->havingRaw('ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) < 100');
+            $q->havingRaw('already_owned = 0');
         }
 
         $q->orderByRaw('completion_pct DESC');

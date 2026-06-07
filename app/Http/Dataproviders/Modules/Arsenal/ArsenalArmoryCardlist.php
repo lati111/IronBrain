@@ -39,6 +39,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 $item->category_display = ucfirst($item->category);
                 $item->item_type = $this->getItemType($item->category);
                 $item->unowned = $item->owned ? 0 : 1;
+                $item->school_abbr = $item->school ? strtoupper(substr($item->school, 0, 1)) : '';
                 if ($item->icon !== null) {
                     $item->icon = asset('img/' . $item->icon);
                 }
@@ -98,6 +99,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('w.prime as prime'),
                 DB::raw('1 as owned'),
                 DB::raw('uw.uuid as user_uuid'),
+                DB::raw('uw.forma as forma'),
+                DB::raw('uw.potato as potato'),
+                DB::raw('uw.built as built'),
+                DB::raw('0 as riven'),
+                DB::raw('uw.school as school'),
             ]);
 
         $unownedWarframes = DB::table(Warframe::TABLE_NAME . ' as w')
@@ -112,6 +118,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('w.prime as prime'),
                 DB::raw('0 as owned'),
                 DB::raw('NULL as user_uuid'),
+                DB::raw('0 as forma'),
+                DB::raw('0 as potato'),
+                DB::raw('0 as built'),
+                DB::raw('0 as riven'),
+                DB::raw('NULL as school'),
             ]);
 
         $ownedWeapons = DB::table(UserWeapon::TABLE_NAME . ' as uw')
@@ -126,6 +137,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('wp.prime as prime'),
                 DB::raw('1 as owned'),
                 DB::raw('uw.uuid as user_uuid'),
+                DB::raw('uw.forma as forma'),
+                DB::raw('uw.potato as potato'),
+                DB::raw('uw.built as built'),
+                DB::raw('uw.riven as riven'),
+                DB::raw('uw.school as school'),
             ]);
 
         $unownedWeapons = DB::table(Weapon::TABLE_NAME . ' as wp')
@@ -141,6 +157,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('wp.prime as prime'),
                 DB::raw('0 as owned'),
                 DB::raw('NULL as user_uuid'),
+                DB::raw('0 as forma'),
+                DB::raw('0 as potato'),
+                DB::raw('0 as built'),
+                DB::raw('0 as riven'),
+                DB::raw('NULL as school'),
             ]);
 
         $ownedCompanions = DB::table(UserCompanion::TABLE_NAME . ' as uc')
@@ -154,6 +175,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('c.prime as prime'),
                 DB::raw('1 as owned'),
                 DB::raw('uc.uuid as user_uuid'),
+                DB::raw('uc.forma as forma'),
+                DB::raw('uc.potato as potato'),
+                DB::raw('uc.built as built'),
+                DB::raw('0 as riven'),
+                DB::raw('uc.school as school'),
             ]);
 
         $unownedCompanions = DB::table(Companion::TABLE_NAME . ' as c')
@@ -168,6 +194,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('c.prime as prime'),
                 DB::raw('0 as owned'),
                 DB::raw('NULL as user_uuid'),
+                DB::raw('0 as forma'),
+                DB::raw('0 as potato'),
+                DB::raw('0 as built'),
+                DB::raw('0 as riven'),
+                DB::raw('NULL as school'),
             ]);
 
         $union = $ownedWarframes
