@@ -23,12 +23,15 @@ class ArsenalFoundryCardlist extends AbstractCardlist
 
     public function data(Request $request): JsonResponse
     {
-        $user    = Auth::user();
-        $search  = trim($request->get('search', ''));
-        $page    = max(1, (int) $request->get('page', 1));
-        $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
+        $user      = Auth::user();
+        $search    = trim($request->get('search', ''));
+        $variant   = $request->get('variant',   'all');
+        $itemType  = $request->get('item_type', 'all');
+        $ownership = $request->get('ownership', 'all');
+        $page      = max(1, (int) $request->get('page', 1));
+        $perPage   = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
 
-        $blueprints = $this->buildBaseQuery($user, $search)
+        $blueprints = $this->buildBaseQuery($user, $search, $variant, $itemType, $ownership)
             ->forPage($page, $perPage)
             ->get();
 
@@ -62,11 +65,14 @@ class ArsenalFoundryCardlist extends AbstractCardlist
 
     public function count(Request $request): JsonResponse
     {
-        $user    = Auth::user();
-        $search  = trim($request->get('search', ''));
-        $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
+        $user      = Auth::user();
+        $search    = trim($request->get('search', ''));
+        $variant   = $request->get('variant',   'all');
+        $itemType  = $request->get('item_type', 'all');
+        $ownership = $request->get('ownership', 'all');
+        $perPage   = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
 
-        $subquery = $this->buildBaseQuery($user, $search);
+        $subquery = $this->buildBaseQuery($user, $search, $variant, $itemType, $ownership);
         $total    = DB::select(
             'SELECT COUNT(*) as cnt FROM (' . $subquery->toSql() . ') as sub',
             $subquery->getBindings()
@@ -75,7 +81,7 @@ class ArsenalFoundryCardlist extends AbstractCardlist
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, (int) ceil($total / $perPage));
     }
 
-    private function buildBaseQuery(User $user, string $search): QueryBuilder
+    private function buildBaseQuery(User $user, string $search, string $variant = 'all', string $itemType = 'all', string $ownership = 'all'): QueryBuilder
     {
         $q = DB::table(Component::TABLE_NAME . ' as c')
             ->leftJoin(Warframe::TABLE_NAME . ' as wf', function ($join) {
@@ -94,9 +100,10 @@ class ArsenalFoundryCardlist extends AbstractCardlist
                 $join->on('uc.id', '=', 'c.uuid')
                      ->where('uc.owner_uuid', '=', $user->uuid);
             })
-            ->groupBy('c.blueprint_id', DB::raw('COALESCE(wf.name, wp.name, comp.name)'), DB::raw('COALESCE(wf.icon, wp.icon, comp.icon)'))
+            ->groupBy('c.blueprint_id', 'c.type', DB::raw('COALESCE(wf.name, wp.name, comp.name)'), DB::raw('COALESCE(wf.icon, wp.icon, comp.icon)'))
             ->selectRaw("
                 c.blueprint_id as blueprint_id,
+                c.type as blueprint_type,
                 COALESCE(wf.name, wp.name, comp.name) as name,
                 COALESCE(wf.icon, wp.icon, comp.icon) as icon,
                 ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) as completion_pct
@@ -110,6 +117,27 @@ class ArsenalFoundryCardlist extends AbstractCardlist
                       ['%' . $search . '%']
                   );
             });
+        }
+
+        if ($variant === 'prime') {
+            $q->whereRaw("COALESCE(wf.name, wp.name, comp.name) LIKE '%Prime%'");
+        } elseif ($variant === 'non-prime') {
+            $q->whereRaw("COALESCE(wf.name, wp.name, comp.name) NOT LIKE '%Prime%'");
+        }
+
+        if ($itemType === 'warframe') {
+            $q->whereRaw("LOWER(c.type) = 'warframe'");
+        } elseif ($itemType === 'companion') {
+            $q->whereRaw("LOWER(c.type) = 'companion'");
+        } elseif (in_array($itemType, ['primary', 'secondary', 'melee'])) {
+            $q->whereRaw("LOWER(c.type) = 'weapon'")
+              ->whereRaw('LOWER(wp.type) = ?', [$itemType]);
+        }
+
+        if ($ownership === 'owned') {
+            $q->havingRaw('ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) >= 100');
+        } elseif ($ownership === 'unowned') {
+            $q->havingRaw('ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) < 100');
         }
 
         $q->orderByRaw('completion_pct DESC');

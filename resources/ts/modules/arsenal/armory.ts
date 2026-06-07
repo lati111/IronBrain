@@ -2,7 +2,17 @@ import {DataCardlist} from "../../components/datalists/DataCardlist";
 import {postData, getData, FetchResponse} from "../../main";
 import {openModal, init as initModals, closeModal} from "../../components/modal";
 
+const activeFilters: Record<string, string> = { variant: 'all', ownership: 'all', itemType: 'all' };
+let basePerPage = 1;
+
 class CategoryCardlist extends DataCardlist {
+    public override generateDataUrl(baseUrl: string = this.url): URL {
+        const url = super.generateDataUrl(baseUrl);
+        if (activeFilters.variant   !== 'all') url.searchParams.set('variant',   activeFilters.variant);
+        if (activeFilters.ownership !== 'all') url.searchParams.set('ownership', activeFilters.ownership);
+        return url;
+    }
+
     public setSearch(term: string): void {
         this.searchterm = term;
     }
@@ -33,19 +43,21 @@ function setPerPage(category: string, perPage: number): void {
         selector.appendChild(option);
     }
     selector.value = String(perPage);
+    selector.dispatchEvent(new Event('change'));
 }
 
 async function init(): Promise<void> {
-    const perPage = calculatePerPage();
+    basePerPage = calculatePerPage();
 
     for (const category of CATEGORIES) {
-        setPerPage(category, perPage);
+        setPerPage(category, basePerPage);
         cardlists.push(new CategoryCardlist(`${category}-cardlist`));
     }
 
     await Promise.all(cardlists.map(list => list.init()));
 
     initModals();
+    initFilters();
 
     const searchInput = document.getElementById('armory-searchbar') as HTMLInputElement | null;
     const searchButton = document.getElementById('armory-search-confirm-button') as HTMLButtonElement | null;
@@ -54,6 +66,55 @@ async function init(): Promise<void> {
     searchInput?.addEventListener('keypress', (e: KeyboardEvent) => {
         if (e.key === 'Enter') searchAll(searchInput.value);
     });
+}
+
+function initFilters(): void {
+    document.querySelectorAll<HTMLButtonElement>('.armory-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const group = btn.dataset.filterGroup!;
+            const value = btn.dataset.filterValue!;
+
+            document.querySelectorAll<HTMLButtonElement>(`.armory-filter-btn[data-filter-group="${group}"]`).forEach(b => {
+                b.classList.remove('bg-white', 'text-red-900', 'shadow-sm');
+                b.classList.add('text-gray-400');
+            });
+            btn.classList.remove('text-gray-400');
+            btn.classList.add('bg-white', 'text-red-900', 'shadow-sm');
+
+            activeFilters[group] = value;
+            applyFilters();
+        });
+    });
+}
+
+function calculateFilteredPerPage(): number {
+    return basePerPage * 2;
+}
+
+function applyFilters(): void {
+    const { itemType } = activeFilters;
+    const filteredPerPage = calculateFilteredPerPage();
+
+    for (const cat of CATEGORIES) {
+        const section = document.getElementById(`section-${cat}`);
+        const content = document.getElementById(`${cat}-cardlist-content`);
+        if (!section) continue;
+
+        if (itemType === 'all') {
+            section.classList.remove('hidden');
+            setPerPage(cat, basePerPage);
+            content?.classList.add('flex-nowrap', 'overflow-x-auto');
+            content?.classList.remove('flex-wrap', 'justify-center');
+        } else if (cat === itemType) {
+            section.classList.remove('hidden');
+            setPerPage(cat, filteredPerPage);
+            content?.classList.remove('flex-nowrap', 'overflow-x-auto');
+            content?.classList.add('flex-wrap', 'justify-center');
+        } else {
+            section.classList.add('hidden');
+        }
+    }
+
 }
 
 function searchAll(term: string): void {

@@ -39,6 +39,132 @@
         </div>
     </div>
 
+    {{--| Filter bar |--}}
+    <div class="flex justify-center gap-3 mb-4 flex-wrap">
+
+        {{-- Group 1: Variant --}}
+        <div class="inline-flex bg-gray-100 border border-gray-200 rounded-lg p-0.5 gap-0.5 shadow-sm">
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded bg-white text-red-900 shadow-sm transition-colors"
+                    data-filter-group="variant" data-filter-value="all" title="All variants">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5.5 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm5 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="variant" data-filter-value="prime" title="Prime only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 1.5 9.6 5.4H14l-3.4 2.6 1.3 3.9L8 9.5l-3.9 2.4 1.3-3.9L2 5.4h4.4z"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="variant" data-filter-value="non-prime" title="Non-prime only">
+                <svg viewBox="0 0 16 16" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+            </button>
+        </div>
+
+        {{-- Group 2: Item type --}}
+        <div class="inline-flex bg-gray-100 border border-gray-200 rounded-lg p-0.5 gap-0.5 shadow-sm">
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded bg-white text-red-900 shadow-sm transition-colors"
+                    data-filter-group="itemType" data-filter-value="all" title="All types">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/>
+                    <rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="warframe" title="Warframes only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="4" r="2.5"/>
+                    <path d="M3.5 14a4.5 4.5 0 0 1 9 0z"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="primary" title="Primary weapons only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1" y="6" width="11" height="3" rx="1"/>
+                    <rect x="12" y="6.5" width="3" height="2" rx=".5"/>
+                    <rect x="1" y="9" width="3" height="3" rx=".5"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="secondary" title="Secondary weapons only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="5" width="8" height="3" rx="1"/>
+                    <rect x="10" y="5.5" width="3" height="2" rx=".5"/>
+                    <rect x="3" y="8" width="2.5" height="3.5" rx=".5"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="melee" title="Melee weapons only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.5 2 14 4.5l-8 8-1.5.5.5-1.5z"/>
+                    <path d="M2 13.5 3.5 12l1.5 1.5L3.5 15z"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="companion" title="Companions only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="5" cy="5.5" r="1.5"/>
+                    <circle cx="8" cy="4" r="1.5"/>
+                    <circle cx="11" cy="5.5" r="1.5"/>
+                    <ellipse cx="8" cy="11" rx="3.5" ry="3"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="companion_weapon" title="Companion weapons only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="6.5" width="7" height="2.5" rx=".8"/>
+                    <rect x="10" y="7" width="2.5" height="1.5" rx=".5"/>
+                    <rect x="4" y="9" width="1.5" height="2.5" rx=".5"/>
+                    <circle cx="11.5" cy="10.5" r="1.5"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="archgun" title="Arch-Guns only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1" y="5" width="11" height="5" rx="1.5"/>
+                    <rect x="12" y="6" width="3" height="3" rx=".5"/>
+                    <rect x="1" y="10" width="5" height="4" rx=".5"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="itemType" data-filter-value="archmelee" title="Arch-Melee only">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="7" y="3" width="2" height="11" rx="1"/>
+                    <rect x="2.5" y="1.5" width="11" height="4" rx="1"/>
+                </svg>
+            </button>
+        </div>
+
+        {{-- Group 3: Ownership --}}
+        <div class="inline-flex bg-gray-100 border border-gray-200 rounded-lg p-0.5 gap-0.5 shadow-sm">
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded bg-white text-red-900 shadow-sm transition-colors"
+                    data-filter-group="ownership" data-filter-value="all" title="All items">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/>
+                    <rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="ownership" data-filter-value="owned" title="Owned only">
+                <svg viewBox="0 0 16 16" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M5.5 8l2 2 3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button class="armory-filter-btn w-8 h-8 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                    data-filter-group="ownership" data-filter-value="unowned" title="Unowned only">
+                <svg viewBox="0 0 16 16" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+
+    </div>
+
     {{--| Category sections |--}}
     {{--| Ownership detail modal |--}}
     <x-modal id="armory-item-modal">
@@ -140,8 +266,7 @@
         ['archgun', 'Arch-Guns'],
         ['archmelee', 'Arch-Melee'],
     ] as [$category, $label])
-    <div class="flex flex-col gap-2 justify-center max-w-screen-2xl mx-auto w-full mb-8">
-        <h4 class="text-center">{{$label}}</h4>
+    <div id="section-{{$category}}" class="flex flex-col gap-2 justify-center max-w-screen-2xl mx-auto w-full mb-8">
 
         {{--| Hidden per-page selector required by pagination |--}}
         <div class="hidden">

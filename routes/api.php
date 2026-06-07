@@ -71,6 +71,8 @@ Route::prefix('/arsenal')
 
         Route::post('/foundry/component/set', [\App\Http\Api\Modules\Arsenal\FoundryApi::class, 'setComponentAmount'])
             ->name('api.arsenal.foundry.component.set');
+        Route::post('/foundry/blueprint/craft', [\App\Http\Api\Modules\Arsenal\FoundryApi::class, 'craftBlueprint'])
+            ->name('api.arsenal.foundry.blueprint.craft');
     });
 
 

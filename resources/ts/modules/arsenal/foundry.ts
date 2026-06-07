@@ -1,5 +1,6 @@
 import {DataCardlist} from "../../components/datalists/DataCardlist";
 import {postData} from "../../main";
+import {openModal, init as initModals, closeModal} from "../../components/modal";
 
 interface ComponentData {
     uuid: string;
@@ -11,6 +12,14 @@ interface ComponentData {
 
 class FoundryCardlist extends DataCardlist {
     public readonly componentCache = new Map<string, ComponentData[]>();
+
+    public override generateDataUrl(baseUrl: string = this.url): URL {
+        const url = super.generateDataUrl(baseUrl);
+        if (activeFilters.variant   !== 'all') url.searchParams.set('variant',   activeFilters.variant);
+        if (activeFilters.itemType  !== 'all') url.searchParams.set('item_type', activeFilters.itemType);
+        if (activeFilters.ownership !== 'all') url.searchParams.set('ownership', activeFilters.ownership);
+        return url;
+    }
 
     protected override createItem(data: { [key: string]: any }): HTMLElement {
         if (Array.isArray(data.components)) {
@@ -25,7 +34,9 @@ class FoundryCardlist extends DataCardlist {
 }
 
 let foundryCardlist: FoundryCardlist;
-let equalizeTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingCraft: { card: HTMLElement; blueprintId: string; type: string } | null = null;
+
+const activeFilters: Record<string, string> = { variant: 'all', itemType: 'all', ownership: 'all' };
 
 async function init(): Promise<void> {
     const contentDiv = document.getElementById('foundry-cardlist-content');
@@ -35,7 +46,6 @@ async function init(): Promise<void> {
                 for (const node of mutation.addedNodes) {
                     if (node instanceof HTMLElement && node.hasAttribute('data-blueprint-item')) {
                         populateCard(node);
-                        scheduleEqualize();
                     }
                 }
             }
@@ -43,37 +53,113 @@ async function init(): Promise<void> {
         observer.observe(contentDiv, {childList: true});
     }
 
-    window.addEventListener('resize', scheduleEqualize);
-
     foundryCardlist = new FoundryCardlist('foundry-cardlist');
     await foundryCardlist.init();
+
+    initModals();
+    initFilters();
+
+    (<any>window).confirmCraft = confirmCraft;
 }
 
-function scheduleEqualize(): void {
-    if (equalizeTimer !== null) clearTimeout(equalizeTimer);
-    equalizeTimer = setTimeout(equalizeCardHeights, 100);
+function initFilters(): void {
+    document.querySelectorAll<HTMLButtonElement>('.foundry-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const group = btn.dataset.filterGroup!;
+            const value = btn.dataset.filterValue!;
+
+            document.querySelectorAll<HTMLButtonElement>(`.foundry-filter-btn[data-filter-group="${group}"]`).forEach(b => {
+                b.classList.remove('bg-white', 'text-red-900', 'shadow-sm');
+                b.classList.add('text-gray-400');
+            });
+            btn.classList.remove('text-gray-400');
+            btn.classList.add('bg-white', 'text-red-900', 'shadow-sm');
+
+            activeFilters[group] = value;
+            applyFilters();
+        });
+    });
 }
 
-function equalizeCardHeights(): void {
-    equalizeTimer = null;
-    const content = document.getElementById('foundry-cardlist-content');
-    if (!content) return;
-    const cards = content.querySelectorAll<HTMLElement>('[data-blueprint-item]');
-    cards.forEach(c => { c.style.minHeight = ''; });
-    let maxH = 0;
-    cards.forEach(c => { maxH = Math.max(maxH, c.offsetHeight); });
-    if (maxH > 0) cards.forEach(c => { c.style.minHeight = maxH + 'px'; });
+function applyFilters(): void {
+    foundryCardlist.reload();
+}
+
+function showCraftModal(card: HTMLElement, blueprintId: string, type: string): void {
+    const name = card.querySelector<HTMLElement>('span[data-name="name"]')?.textContent?.trim() ?? '';
+    const nameEl = document.getElementById('craft-modal-name');
+    if (nameEl) nameEl.textContent = name;
+    pendingCraft = { card, blueprintId, type };
+    openModal('craft-modal');
+}
+
+async function confirmCraft(): Promise<void> {
+    if (!pendingCraft) return;
+    const { card, blueprintId, type } = pendingCraft;
+    closeModal('craft-modal');
+    pendingCraft = null;
+
+    const formData = new FormData();
+    formData.append('blueprint_id', blueprintId);
+    formData.append('type', type);
+
+    const response = await postData('/api/arsenal/foundry/blueprint/craft', formData);
+    if (!response) return;
+
+    if (response.ok) {
+        const components = foundryCardlist.componentCache.get(blueprintId);
+        if (components) {
+            for (const comp of components) comp.obtained = 0;
+
+            card.querySelectorAll<HTMLElement>('[data-component-uuid]').forEach(groupEl => {
+                const comp = components.find(c => c.uuid === groupEl.dataset.componentUuid);
+                if (!comp) return;
+                const stackEl = groupEl.querySelector<HTMLElement>('[data-icon-stack]');
+                if (stackEl) renderIconStack(comp, stackEl);
+            });
+
+            updateCompletionBar(card, components);
+        }
+
+        const pctInput = card.querySelector<HTMLInputElement>('input[name="completion_pct"]');
+        if (pctInput) pctInput.value = '0';
+
+        setCraftable(card, false);
+    }
+
+    response.announce();
+}
+
+function setCraftable(card: HTMLElement, craftable: boolean): void {
+    const iconWrapper = card.querySelector<HTMLElement>('[data-blueprint-icon-wrapper]');
+    if (!iconWrapper) return;
+
+    if (craftable) {
+        iconWrapper.classList.add('cursor-pointer', 'ring-2', 'ring-offset-1', 'ring-green-400', 'rounded');
+        iconWrapper.title = 'Click to craft';
+    } else {
+        iconWrapper.classList.remove('cursor-pointer', 'ring-2', 'ring-offset-1', 'ring-green-400', 'rounded');
+        iconWrapper.title = '';
+        iconWrapper.onclick = null;
+    }
 }
 
 function populateCard(card: HTMLElement): void {
     const pct         = parseInt((card.querySelector('input[name="completion_pct"]') as HTMLInputElement)?.value ?? '0') || 0;
     const blueprintId = (card.querySelector('input[name="blueprint_id"]') as HTMLInputElement)?.value ?? '';
+    const type        = (card.querySelector('input[name="blueprint_type"]') as HTMLInputElement)?.value ?? '';
     const components  = foundryCardlist.componentCache.get(blueprintId) ?? [];
 
     const bar   = card.querySelector('[data-completion-bar]')   as HTMLElement | null;
     const label = card.querySelector('[data-completion-label]') as HTMLElement | null;
     if (bar)   bar.style.width = pct + '%';
     if (label) label.textContent = pct + '%';
+
+    if (pct >= 100) {
+        setCraftable(card, true);
+        card.querySelector<HTMLElement>('[data-blueprint-icon-wrapper]')!
+            .onclick = () => showCraftModal(card, blueprintId, type);
+    }
 
     const slotsContainer = card.querySelector('[data-component-slots]') as HTMLElement | null;
     if (!slotsContainer) return;

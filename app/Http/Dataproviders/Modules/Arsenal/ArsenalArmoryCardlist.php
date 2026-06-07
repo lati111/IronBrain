@@ -29,8 +29,10 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         $page = max(1, (int) $request->get('page', 1));
         $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
         [$category, $operator] = $this->parseCategoryFilter($request);
+        $variant = $this->parseVariantFilter($request);
+        $owned = $this->parseOwnershipFilter($request);
 
-        $items = $this->buildUnionQuery($user, $search, $category, $operator)
+        $items = $this->buildUnionQuery($user, $search, $category, $operator, $variant, $owned)
             ->forPage($page, $perPage)
             ->get()
             ->map(function ($item) {
@@ -53,8 +55,10 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         $search = trim($request->get('search', ''));
         $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
         [$category, $operator] = $this->parseCategoryFilter($request);
+        $variant = $this->parseVariantFilter($request);
+        $owned = $this->parseOwnershipFilter($request);
 
-        $total = $this->buildUnionQuery($user, $search, $category, $operator)->count();
+        $total = $this->buildUnionQuery($user, $search, $category, $operator, $variant, $owned)->count();
 
         return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, (int) ceil($total / $perPage));
     }
@@ -81,7 +85,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         return $this->respond(Response::HTTP_NOT_FOUND, 'Filter not found', null);
     }
 
-    private function buildUnionQuery(User $user, string $search, ?string $category, string $operator): QueryBuilder
+    private function buildUnionQuery(User $user, string $search, ?string $category, string $operator, ?string $variant = null, ?bool $owned = null): QueryBuilder
     {
         $ownedWarframes = DB::table(UserWarframe::TABLE_NAME . ' as uw')
             ->join(Warframe::TABLE_NAME . ' as w', 'uw.id', '=', 'w.id')
@@ -183,7 +187,33 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             $outer->where('category', $operator, $category);
         }
 
+        if ($variant === 'prime') {
+            $outer->where('prime', 1);
+        } elseif ($variant === 'non-prime') {
+            $outer->where('prime', 0);
+        }
+
+        if ($owned !== null) {
+            $outer->where('owned', $owned ? 1 : 0);
+        }
+
         return $outer->orderByRaw('owned DESC, category ASC, name ASC');
+    }
+
+    private function parseVariantFilter(Request $request): ?string
+    {
+        $variant = $request->get('variant');
+        if ($variant === 'prime') return 'prime';
+        if ($variant === 'non-prime') return 'non-prime';
+        return null;
+    }
+
+    private function parseOwnershipFilter(Request $request): ?bool
+    {
+        $ownership = $request->get('ownership');
+        if ($ownership === 'owned') return true;
+        if ($ownership === 'unowned') return false;
+        return null;
     }
 
     private function parseCategoryFilter(Request $request): array
