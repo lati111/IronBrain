@@ -148,62 +148,31 @@ class LoadoutApi extends AbstractApi
     private function validateAndGetSlotItem(string $ownerUuid, string $slot, string $itemUuid): array
     {
         return match ($slot) {
-            'warframe'  => $this->getWarframeSlotItem($ownerUuid, $itemUuid),
-            'companion' => $this->getCompanionSlotItem($ownerUuid, $itemUuid),
-            default     => $this->getWeaponSlotItem($ownerUuid, $slot, $itemUuid),
+            'warframe'  => $this->fetchSlotItem(UserWarframe::TABLE_NAME,  'uw', Warframe::TABLE_NAME,   'w',   $ownerUuid, $itemUuid, 'Warframe not found in collection'),
+            'companion' => $this->fetchSlotItem(UserCompanion::TABLE_NAME, 'uc', Companion::TABLE_NAME,  'c',   $ownerUuid, $itemUuid, 'Companion not found in collection'),
+            default     => $this->fetchSlotItem(UserWeapon::TABLE_NAME,    'uw', Weapon::TABLE_NAME,     'wp',  $ownerUuid, $itemUuid, 'Weapon not found in collection', ['LOWER(wp.type) = ?', [$slot]]),
         };
     }
 
-    private function getWarframeSlotItem(string $ownerUuid, string $itemUuid): array
-    {
-        $item = DB::table(UserWarframe::TABLE_NAME . ' as uw')
-            ->join(Warframe::TABLE_NAME . ' as w', 'uw.id', '=', 'w.id')
-            ->where('uw.uuid', $itemUuid)
-            ->where('uw.owner_uuid', $ownerUuid)
-            ->select([DB::raw('COALESCE(uw.name, w.name) as name'), 'w.icon'])
-            ->first();
+    private function fetchSlotItem(
+        string $userTable, string $userAlias,
+        string $baseTable, string $baseAlias,
+        string $ownerUuid, string $itemUuid, string $notFoundMsg,
+        ?array $extraWhere = null
+    ): array {
+        $q = DB::table("$userTable as $userAlias")
+            ->join("$baseTable as $baseAlias", "$userAlias.id", '=', "$baseAlias.id")
+            ->where("$userAlias.uuid", $itemUuid)
+            ->where("$userAlias.owner_uuid", $ownerUuid)
+            ->select([DB::raw("COALESCE($userAlias.name, $baseAlias.name) as name"), "$baseAlias.icon"]);
 
-        if (!$item) {
-            return [false, null, 'Warframe not found in collection'];
+        if ($extraWhere !== null) {
+            $q->whereRaw($extraWhere[0], $extraWhere[1]);
         }
 
-        return [true, [
-            'name' => $item->name,
-            'icon' => $item->icon ? asset('img/' . $item->icon) : null,
-        ], null];
-    }
-
-    private function getCompanionSlotItem(string $ownerUuid, string $itemUuid): array
-    {
-        $item = DB::table(UserCompanion::TABLE_NAME . ' as uc')
-            ->join(Companion::TABLE_NAME . ' as c', 'uc.id', '=', 'c.id')
-            ->where('uc.uuid', $itemUuid)
-            ->where('uc.owner_uuid', $ownerUuid)
-            ->select([DB::raw('COALESCE(uc.name, c.name) as name'), 'c.icon'])
-            ->first();
-
+        $item = $q->first();
         if (!$item) {
-            return [false, null, 'Companion not found in collection'];
-        }
-
-        return [true, [
-            'name' => $item->name,
-            'icon' => $item->icon ? asset('img/' . $item->icon) : null,
-        ], null];
-    }
-
-    private function getWeaponSlotItem(string $ownerUuid, string $slot, string $itemUuid): array
-    {
-        $item = DB::table(UserWeapon::TABLE_NAME . ' as uw')
-            ->join(Weapon::TABLE_NAME . ' as wp', 'uw.id', '=', 'wp.id')
-            ->where('uw.uuid', $itemUuid)
-            ->where('uw.owner_uuid', $ownerUuid)
-            ->whereRaw('LOWER(wp.type) = ?', [$slot])
-            ->select([DB::raw('COALESCE(uw.name, wp.name) as name'), 'wp.icon'])
-            ->first();
-
-        if (!$item) {
-            return [false, null, 'Weapon not found in collection'];
+            return [false, null, $notFoundMsg];
         }
 
         return [true, [

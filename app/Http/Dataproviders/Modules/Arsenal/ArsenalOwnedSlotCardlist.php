@@ -24,10 +24,10 @@ class ArsenalOwnedSlotCardlist extends AbstractCardlist
     /** { @inheritdoc } */
     public function data(Request $request): JsonResponse
     {
-        $user = Auth::user();
-        $slot = trim($request->get('slot', ''));
-        $search = trim($request->get('search', ''));
-        $page = max(1, (int) $request->get('page', 1));
+        $user    = Auth::user();
+        $slot    = trim($request->get('slot', ''));
+        $search  = trim($request->get('search', ''));
+        $page    = max(1, (int) $request->get('page', 1));
         $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
 
         $items = $this->buildQuery($user, $slot, $search)
@@ -46,9 +46,9 @@ class ArsenalOwnedSlotCardlist extends AbstractCardlist
     /** { @inheritdoc } */
     public function count(Request $request): JsonResponse
     {
-        $user = Auth::user();
-        $slot = trim($request->get('slot', ''));
-        $search = trim($request->get('search', ''));
+        $user    = Auth::user();
+        $slot    = trim($request->get('slot', ''));
+        $search  = trim($request->get('search', ''));
         $perPage = max(1, (int) $request->get('per_page', $request->get('perpage', self::DEFAULT_PER_PAGE)));
 
         $total = $this->buildQuery($user, $slot, $search)->count();
@@ -58,64 +58,36 @@ class ArsenalOwnedSlotCardlist extends AbstractCardlist
     private function buildQuery(User $user, string $slot, string $search): QueryBuilder
     {
         return match ($slot) {
-            'warframe'  => $this->warframeQuery($user, $search),
-            'companion' => $this->companionQuery($user, $search),
-            default     => $this->weaponQuery($user, $slot, $search),
+            'warframe'  => $this->ownedItemQuery(UserWarframe::TABLE_NAME,  'uw', Warframe::TABLE_NAME,  'w',   $user, $search),
+            'companion' => $this->ownedItemQuery(UserCompanion::TABLE_NAME, 'uc', Companion::TABLE_NAME, 'c',   $user, $search),
+            default     => $this->ownedItemQuery(UserWeapon::TABLE_NAME,    'uw', Weapon::TABLE_NAME,    'wp',  $user, $search, ['LOWER(wp.type) = ?', [$slot]]),
         };
     }
 
-    private function warframeQuery(User $user, string $search): QueryBuilder
-    {
-        $q = DB::table(UserWarframe::TABLE_NAME . ' as uw')
-            ->join(Warframe::TABLE_NAME . ' as w', 'uw.id', '=', 'w.id')
-            ->where('uw.owner_uuid', $user->uuid)
+    private function ownedItemQuery(
+        string $userTable, string $userAlias,
+        string $baseTable, string $baseAlias,
+        User $user, string $search, ?array $extraWhere = null
+    ): QueryBuilder {
+        $coalesce = "COALESCE($userAlias.name, $baseAlias.name)";
+
+        $q = DB::table("$userTable as $userAlias")
+            ->join("$baseTable as $baseAlias", "$userAlias.id", '=', "$baseAlias.id")
+            ->where("$userAlias.owner_uuid", $user->uuid)
             ->select([
-                'uw.uuid as item_uuid',
-                DB::raw('COALESCE(uw.name, w.name) as name'),
-                'w.icon as icon',
+                "$userAlias.uuid as item_uuid",
+                DB::raw("$coalesce as name"),
+                "$baseAlias.icon as icon",
             ]);
 
-        if ($search !== '') {
-            $q->where(DB::raw('COALESCE(uw.name, w.name)'), 'LIKE', '%' . $search . '%');
+        if ($extraWhere !== null) {
+            $q->whereRaw($extraWhere[0], $extraWhere[1]);
         }
 
-        return $q->orderByRaw('COALESCE(uw.name, w.name)');
-    }
-
-    private function companionQuery(User $user, string $search): QueryBuilder
-    {
-        $q = DB::table(UserCompanion::TABLE_NAME . ' as uc')
-            ->join(Companion::TABLE_NAME . ' as c', 'uc.id', '=', 'c.id')
-            ->where('uc.owner_uuid', $user->uuid)
-            ->select([
-                'uc.uuid as item_uuid',
-                DB::raw('COALESCE(uc.name, c.name) as name'),
-                'c.icon as icon',
-            ]);
-
         if ($search !== '') {
-            $q->where(DB::raw('COALESCE(uc.name, c.name)'), 'LIKE', '%' . $search . '%');
+            $q->where(DB::raw($coalesce), 'LIKE', '%' . $search . '%');
         }
 
-        return $q->orderByRaw('COALESCE(uc.name, c.name)');
-    }
-
-    private function weaponQuery(User $user, string $slot, string $search): QueryBuilder
-    {
-        $q = DB::table(UserWeapon::TABLE_NAME . ' as uw')
-            ->join(Weapon::TABLE_NAME . ' as wp', 'uw.id', '=', 'wp.id')
-            ->where('uw.owner_uuid', $user->uuid)
-            ->whereRaw('LOWER(wp.type) = ?', [$slot])
-            ->select([
-                'uw.uuid as item_uuid',
-                DB::raw('COALESCE(uw.name, wp.name) as name'),
-                'wp.icon as icon',
-            ]);
-
-        if ($search !== '') {
-            $q->where(DB::raw('COALESCE(uw.name, wp.name)'), 'LIKE', '%' . $search . '%');
-        }
-
-        return $q->orderByRaw('COALESCE(uw.name, wp.name)');
+        return $q->orderByRaw($coalesce);
     }
 }

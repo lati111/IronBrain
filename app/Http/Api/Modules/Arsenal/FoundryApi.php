@@ -20,6 +20,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class FoundryApi extends AbstractApi
 {
+    private const array MODEL_MAP = [
+        'warframe'  => [UserWarframe::class,  Warframe::class],
+        'weapon'    => [UserWeapon::class,    Weapon::class],
+        'companion' => [UserCompanion::class, Companion::class],
+    ];
+
     public function setComponentAmount(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -101,46 +107,22 @@ class FoundryApi extends AbstractApi
             ->whereIn('id', $componentUuids)
             ->delete();
 
-        return match ($type) {
-            'warframe'  => $this->grantWarframe($user->uuid, $blueprintId),
-            'weapon'    => $this->grantWeapon($user->uuid, $blueprintId),
-            'companion' => $this->grantCompanion($user->uuid, $blueprintId),
-        };
+        return $this->grantItem($type, $user->uuid, $blueprintId);
     }
 
-    private function grantWarframe(string $ownerUuid, string $id): JsonResponse
+    private function grantItem(string $type, string $ownerUuid, string $id): JsonResponse
     {
-        if (!Warframe::where('id', $id)->exists()) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Warframe not found');
+        [$userClass, $baseClass] = self::MODEL_MAP[$type];
+
+        if (!$baseClass::where('id', $id)->exists()) {
+            return $this->respond(Response::HTTP_NOT_FOUND, ucfirst($type) . ' not found');
         }
-        $item             = new UserWarframe();
+
+        $item             = new $userClass();
         $item->id         = $id;
         $item->owner_uuid = $ownerUuid;
         $item->save();
-        return $this->respond(Response::HTTP_OK, 'Blueprint crafted', null);
-    }
 
-    private function grantWeapon(string $ownerUuid, string $id): JsonResponse
-    {
-        if (!Weapon::where('id', $id)->exists()) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Weapon not found');
-        }
-        $item             = new UserWeapon();
-        $item->id         = $id;
-        $item->owner_uuid = $ownerUuid;
-        $item->save();
-        return $this->respond(Response::HTTP_OK, 'Blueprint crafted', null);
-    }
-
-    private function grantCompanion(string $ownerUuid, string $id): JsonResponse
-    {
-        if (!Companion::where('id', $id)->exists()) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Companion not found');
-        }
-        $item             = new UserCompanion();
-        $item->id         = $id;
-        $item->owner_uuid = $ownerUuid;
-        $item->save();
         return $this->respond(Response::HTTP_OK, 'Blueprint crafted', null);
     }
 }

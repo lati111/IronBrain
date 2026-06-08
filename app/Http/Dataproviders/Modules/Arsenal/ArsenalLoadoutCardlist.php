@@ -28,39 +28,17 @@ class ArsenalLoadoutCardlist extends AbstractCardlist
     /** { @inheritdoc } */
     public function data(Request $request): JsonResponse
     {
+        $slots = ['warframe', 'primary', 'secondary', 'melee', 'companion', 'companion_weapon'];
+
         $data = $this->getData($request)
             ->get()
-            ->map(function ($loadout) {
-                $loadout['has_warframe'] = $loadout->warframe_name !== null ? 1 : 0;
-                if ($loadout->warframe_icon !== null) {
-                    $loadout['warframe_icon'] = asset('img/' . $loadout->warframe_icon);
+            ->map(function ($loadout) use ($slots) {
+                foreach ($slots as $slot) {
+                    $loadout["has_$slot"] = $loadout->{"{$slot}_name"} !== null ? 1 : 0;
+                    if ($loadout->{"{$slot}_icon"} !== null) {
+                        $loadout["{$slot}_icon"] = asset('img/' . $loadout->{"{$slot}_icon"});
+                    }
                 }
-
-                $loadout['has_primary'] = $loadout->primary_name !== null ? 1 : 0;
-                if ($loadout->primary_icon !== null) {
-                    $loadout['primary_icon'] = asset('img/' . $loadout->primary_icon);
-                }
-
-                $loadout['has_secondary'] = $loadout->secondary_name !== null ? 1 : 0;
-                if ($loadout->secondary_icon !== null) {
-                    $loadout['secondary_icon'] = asset('img/' . $loadout->secondary_icon);
-                }
-
-                $loadout['has_melee'] = $loadout->melee_name !== null ? 1 : 0;
-                if ($loadout->melee_icon !== null) {
-                    $loadout['melee_icon'] = asset('img/' . $loadout->melee_icon);
-                }
-
-                $loadout['has_companion'] = $loadout->companion_name !== null ? 1 : 0;
-                if ($loadout->companion_icon !== null) {
-                    $loadout['companion_icon'] = asset('img/' . $loadout->companion_icon);
-                }
-
-                $loadout['has_companion_weapon'] = $loadout->companion_weapon_name !== null ? 1 : 0;
-                if ($loadout->companion_weapon_icon !== null) {
-                    $loadout['companion_weapon_icon'] = asset('img/' . $loadout->companion_weapon_icon);
-                }
-
                 return $loadout;
             });
 

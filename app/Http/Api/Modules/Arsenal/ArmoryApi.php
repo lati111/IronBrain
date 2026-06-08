@@ -18,6 +18,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ArmoryApi extends AbstractApi
 {
+    private const array MODEL_MAP = [
+        'warframe'  => [UserWarframe::class,  Warframe::class],
+        'weapon'    => [UserWeapon::class,    Weapon::class],
+        'companion' => [UserCompanion::class, Companion::class],
+    ];
+
     public function addItem(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -29,13 +35,7 @@ class ArmoryApi extends AbstractApi
             return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
-        $user = Auth::user();
-
-        return match ($request->get('type')) {
-            'warframe'  => $this->addWarframe($user->uuid, $request->get('id')),
-            'weapon'    => $this->addWeapon($user->uuid, $request->get('id')),
-            'companion' => $this->addCompanion($user->uuid, $request->get('id')),
-        };
+        return $this->createUserItem($request->get('type'), Auth::user()->uuid, $request->get('id'));
     }
 
     public function getItem(Request $request): JsonResponse
@@ -61,17 +61,17 @@ class ArmoryApi extends AbstractApi
     public function updateItem(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'uuid'           => 'required|string|max:255',
-            'type'           => ['required', 'string', Rule::in(['warframe', 'weapon', 'companion'])],
-            'forma'          => 'nullable|integer|min:0|max:10',
-            'shards'         => 'nullable|integer|min:0|max:5',
-            'potato'         => 'nullable|in:0,1',
-            'built'          => 'nullable|in:0,1',
-            'exilus'         => 'nullable|in:0,1',
-            'fashioned'      => 'nullable|in:0,1',
-            'riven'          => 'nullable|in:0,1',
-            'school'         => ['nullable', 'string', Rule::in(['', 'madurai', 'vazarin', 'naramon', 'unairu', 'zenurik'])],
-            'name'           => 'nullable|string|max:255',
+            'uuid'      => 'required|string|max:255',
+            'type'      => ['required', 'string', Rule::in(['warframe', 'weapon', 'companion'])],
+            'forma'     => 'nullable|integer|min:0|max:10',
+            'shards'    => 'nullable|integer|min:0|max:5',
+            'potato'    => 'nullable|in:0,1',
+            'built'     => 'nullable|in:0,1',
+            'exilus'    => 'nullable|in:0,1',
+            'fashioned' => 'nullable|in:0,1',
+            'riven'     => 'nullable|in:0,1',
+            'school'    => ['nullable', 'string', Rule::in(['', 'madurai', 'vazarin', 'naramon', 'unairu', 'zenurik'])],
+            'name'      => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -98,79 +98,85 @@ class ArmoryApi extends AbstractApi
             return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
-        $user = Auth::user();
-
-        return match ($request->get('type')) {
-            'warframe'  => $this->deleteWarframe($user->uuid, $request->get('uuid')),
-            'weapon'    => $this->deleteWeapon($user->uuid, $request->get('uuid')),
-            'companion' => $this->deleteCompanion($user->uuid, $request->get('uuid')),
-        };
+        return $this->deleteUserItem($request->get('type'), Auth::user()->uuid, $request->get('uuid'));
     }
 
-    // ─── Add ─────────────────────────────────────────────────────────────────
-
-    private function addWarframe(string $ownerUuid, string $id): JsonResponse
+    public function duplicateItem(Request $request): JsonResponse
     {
-        if (!Warframe::where('id', $id)->exists()) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Warframe not found');
+        $validator = Validator::make($request->all(), [
+            'uuid' => 'required|string|max:255',
+            'type' => ['required', 'string', Rule::in(['warframe', 'weapon', 'companion'])],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
-        $existing = UserWarframe::where('id', $id)->where('owner_uuid', $ownerUuid)->first();
+        return $this->cloneUserItem($request->get('type'), Auth::user()->uuid, $request->get('uuid'));
+    }
+
+    // ─── Generic CRUD ─────────────────────────────────────────────────────────
+
+    private function createUserItem(string $type, string $ownerUuid, string $id): JsonResponse
+    {
+        [$userClass, $baseClass] = self::MODEL_MAP[$type];
+
+        if (!$baseClass::where('id', $id)->exists()) {
+            return $this->respond(Response::HTTP_NOT_FOUND, ucfirst($type) . ' not found');
+        }
+
+        $existing = $userClass::where('id', $id)->where('owner_uuid', $ownerUuid)->first();
         if ($existing) {
             return $this->respond(Response::HTTP_ALREADY_REPORTED, 'Already in collection', $existing->uuid);
         }
 
-        $item = new UserWarframe();
-        $item->id = $id;
+        $item             = new $userClass();
+        $item->id         = $id;
         $item->owner_uuid = $ownerUuid;
         $item->save();
 
         return $this->respond(Response::HTTP_CREATED, 'Added to collection', $item->uuid);
     }
 
-    private function addWeapon(string $ownerUuid, string $id): JsonResponse
+    private function deleteUserItem(string $type, string $ownerUuid, string $uuid): JsonResponse
     {
-        if (!Weapon::where('id', $id)->exists()) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Weapon not found');
+        [$userClass] = self::MODEL_MAP[$type];
+        $deleted = $userClass::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->delete();
+
+        if (!$deleted) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
 
-        $existing = UserWeapon::where('id', $id)->where('owner_uuid', $ownerUuid)->first();
-        if ($existing) {
-            return $this->respond(Response::HTTP_ALREADY_REPORTED, 'Already in collection', $existing->uuid);
-        }
-
-        $item = new UserWeapon();
-        $item->id = $id;
-        $item->owner_uuid = $ownerUuid;
-        $item->save();
-
-        return $this->respond(Response::HTTP_CREATED, 'Added to collection', $item->uuid);
+        return $this->respond(Response::HTTP_OK, 'Removed from collection', true);
     }
 
-    private function addCompanion(string $ownerUuid, string $id): JsonResponse
+    private function cloneUserItem(string $type, string $ownerUuid, string $uuid): JsonResponse
     {
-        if (!Companion::where('id', $id)->exists()) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Companion not found');
+        [$userClass] = self::MODEL_MAP[$type];
+        $source = $userClass::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
+
+        if (!$source) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
 
-        $existing = UserCompanion::where('id', $id)->where('owner_uuid', $ownerUuid)->first();
-        if ($existing) {
-            return $this->respond(Response::HTTP_ALREADY_REPORTED, 'Already in collection', $existing->uuid);
-        }
+        $copy             = new $userClass();
+        $copy->id         = $source->id;
+        $copy->owner_uuid = $ownerUuid;
+        $copy->save();
 
-        $item = new UserCompanion();
-        $item->id = $id;
-        $item->owner_uuid = $ownerUuid;
-        $item->save();
+        return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
+    }
 
-        return $this->respond(Response::HTTP_CREATED, 'Added to collection', $item->uuid);
+    private function findOwned(string $class, string $uuid, string $ownerUuid): mixed
+    {
+        return $class::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
     }
 
     // ─── Fetch ────────────────────────────────────────────────────────────────
 
     private function fetchWarframe(string $ownerUuid, string $uuid): JsonResponse
     {
-        $item = UserWarframe::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
+        $item = $this->findOwned(UserWarframe::class, $uuid, $ownerUuid);
         if (!$item) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
@@ -178,19 +184,19 @@ class ArmoryApi extends AbstractApi
         return $this->respond(Response::HTTP_OK, 'Data retrieved', [
             'name'      => $item->name,
             'base_name' => $item->getWarframe()?->name,
-            'forma'       => $item->forma,
-            'shards'      => $item->shards,
-            'potato'      => (bool) $item->potato,
-            'built'       => (bool) $item->built,
-            'exilus'      => (bool) $item->exilus,
-            'fashioned'   => (bool) $item->fashioned,
-            'school'      => $item->school,
+            'forma'     => $item->forma,
+            'shards'    => $item->shards,
+            'potato'    => (bool) $item->potato,
+            'built'     => (bool) $item->built,
+            'exilus'    => (bool) $item->exilus,
+            'fashioned' => (bool) $item->fashioned,
+            'school'    => $item->school,
         ]);
     }
 
     private function fetchWeapon(string $ownerUuid, string $uuid): JsonResponse
     {
-        $item = UserWeapon::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
+        $item = $this->findOwned(UserWeapon::class, $uuid, $ownerUuid);
         if (!$item) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
@@ -208,7 +214,7 @@ class ArmoryApi extends AbstractApi
 
     private function fetchCompanion(string $ownerUuid, string $uuid): JsonResponse
     {
-        $item = UserCompanion::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
+        $item = $this->findOwned(UserCompanion::class, $uuid, $ownerUuid);
         if (!$item) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
@@ -227,7 +233,7 @@ class ArmoryApi extends AbstractApi
 
     private function saveWarframe(string $ownerUuid, Request $request): JsonResponse
     {
-        $item = UserWarframe::where('uuid', $request->get('uuid'))->where('owner_uuid', $ownerUuid)->first();
+        $item = $this->findOwned(UserWarframe::class, $request->get('uuid'), $ownerUuid);
         if (!$item) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
@@ -247,7 +253,7 @@ class ArmoryApi extends AbstractApi
 
     private function saveWeapon(string $ownerUuid, Request $request): JsonResponse
     {
-        $item = UserWeapon::where('uuid', $request->get('uuid'))->where('owner_uuid', $ownerUuid)->first();
+        $item = $this->findOwned(UserWeapon::class, $request->get('uuid'), $ownerUuid);
         if (!$item) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
@@ -265,7 +271,7 @@ class ArmoryApi extends AbstractApi
 
     private function saveCompanion(string $ownerUuid, Request $request): JsonResponse
     {
-        $item = UserCompanion::where('uuid', $request->get('uuid'))->where('owner_uuid', $ownerUuid)->first();
+        $item = $this->findOwned(UserCompanion::class, $request->get('uuid'), $ownerUuid);
         if (!$item) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
@@ -278,104 +284,5 @@ class ArmoryApi extends AbstractApi
         $item->save();
 
         return $this->respond(Response::HTTP_OK, 'Saved', true);
-    }
-
-    // ─── Duplicate ────────────────────────────────────────────────────────────
-
-    public function duplicateItem(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'uuid' => 'required|string|max:255',
-            'type' => ['required', 'string', Rule::in(['warframe', 'weapon', 'companion'])],
-        ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
-        }
-
-        $user = Auth::user();
-
-        return match ($request->get('type')) {
-            'warframe'  => $this->duplicateWarframe($user->uuid, $request->get('uuid')),
-            'weapon'    => $this->duplicateWeapon($user->uuid, $request->get('uuid')),
-            'companion' => $this->duplicateCompanion($user->uuid, $request->get('uuid')),
-        };
-    }
-
-    private function duplicateWarframe(string $ownerUuid, string $uuid): JsonResponse
-    {
-        $source = UserWarframe::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
-        if (!$source) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
-        }
-
-        $copy = new UserWarframe();
-        $copy->id = $source->id;
-        $copy->owner_uuid = $ownerUuid;
-        $copy->save();
-
-        return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
-    }
-
-    private function duplicateWeapon(string $ownerUuid, string $uuid): JsonResponse
-    {
-        $source = UserWeapon::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
-        if (!$source) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
-        }
-
-        $copy = new UserWeapon();
-        $copy->id = $source->id;
-        $copy->owner_uuid = $ownerUuid;
-        $copy->save();
-
-        return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
-    }
-
-    private function duplicateCompanion(string $ownerUuid, string $uuid): JsonResponse
-    {
-        $source = UserCompanion::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
-        if (!$source) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
-        }
-
-        $copy = new UserCompanion();
-        $copy->id = $source->id;
-        $copy->owner_uuid = $ownerUuid;
-        $copy->save();
-
-        return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
-    }
-
-    // ─── Remove ───────────────────────────────────────────────────────────────
-
-    private function deleteWarframe(string $ownerUuid, string $uuid): JsonResponse
-    {
-        $deleted = UserWarframe::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->delete();
-        if (!$deleted) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
-        }
-
-        return $this->respond(Response::HTTP_OK, 'Removed from collection', true);
-    }
-
-    private function deleteWeapon(string $ownerUuid, string $uuid): JsonResponse
-    {
-        $deleted = UserWeapon::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->delete();
-        if (!$deleted) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
-        }
-
-        return $this->respond(Response::HTTP_OK, 'Removed from collection', true);
-    }
-
-    private function deleteCompanion(string $ownerUuid, string $uuid): JsonResponse
-    {
-        $deleted = UserCompanion::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->delete();
-        if (!$deleted) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
-        }
-
-        return $this->respond(Response::HTTP_OK, 'Removed from collection', true);
     }
 }

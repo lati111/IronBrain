@@ -1,6 +1,7 @@
 import {DataCardlist} from "../../components/datalists/DataCardlist";
 import {postData} from "../../main";
 import {openModal, init as initModals, closeModal} from "../../components/modal";
+import {showEl, hideEl} from "./utils";
 
 class LoadoutCardlist extends DataCardlist {
     public async reload(): Promise<void> {
@@ -218,13 +219,6 @@ function updateCardSlot(card: HTMLElement, slot: string, data: {name: string, ic
     }
 }
 
-function showEl(id: string): void {
-    document.getElementById(id)?.classList.remove('hidden');
-}
-
-function hideEl(id: string): void {
-    document.getElementById(id)?.classList.add('hidden');
-}
 
 (<any>window).init                = init;
 (<any>window).createLoadout       = createLoadout;

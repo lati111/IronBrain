@@ -1,6 +1,7 @@
 import {DataCardlist} from "../../components/datalists/DataCardlist";
 import {postData} from "../../main";
 import {openModal, init as initModals, closeModal} from "../../components/modal";
+import {initFilters} from "./utils";
 
 interface ComponentData {
     uuid: string;
@@ -57,26 +58,9 @@ async function init(): Promise<void> {
     await foundryCardlist.init();
 
     initModals();
-    initFilters();
+    initFilters(activeFilters, applyFilters);
 
     (<any>window).confirmCraft = confirmCraft;
-}
-
-function initFilters(): void {
-    document.querySelectorAll<HTMLButtonElement>('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const group = btn.dataset.filterGroup!;
-            const value = btn.dataset.filterValue!;
-
-            document.querySelectorAll<HTMLButtonElement>(`.filter-btn[data-filter-group="${group}"]`).forEach(b => {
-                b.classList.remove('selected');
-            });
-            btn.classList.add('selected');
-
-            activeFilters[group] = value;
-            applyFilters();
-        });
-    });
 }
 
 function applyFilters(): void {

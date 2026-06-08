@@ -147,23 +147,13 @@ class ArsenalArmoryCardlist extends AbstractCardlist
 
         $unownedWarframes = DB::table(Warframe::TABLE_NAME . ' as w')
             ->whereNotIn('w.id', fn($q) => $q->from(UserWarframe::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid))
-            ->select([
+            ->select(array_merge([
                 DB::raw("'warframe' as category"),
                 DB::raw('w.id as item_id'),
                 DB::raw('w.name as name'),
                 DB::raw('w.icon as icon'),
                 DB::raw('w.prime as prime'),
-                DB::raw('0 as owned'),
-                DB::raw('NULL as user_uuid'),
-                DB::raw('0 as forma'),
-                DB::raw('0 as potato'),
-                DB::raw('0 as built'),
-                DB::raw('0 as fashioned'),
-                DB::raw('0 as exilus'),
-                DB::raw('0 as riven'),
-                DB::raw('NULL as school'),
-                DB::raw('0 as shards'),
-            ]);
+            ], $this->unownedColumns()));
 
         $ownedWeapons = DB::table(UserWeapon::TABLE_NAME . ' as uw')
             ->join(Weapon::TABLE_NAME . ' as wp', 'uw.id', '=', 'wp.id')
@@ -190,23 +180,13 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         $unownedWeapons = DB::table(Weapon::TABLE_NAME . ' as wp')
             ->whereNotIn('wp.id', fn($q) => $q->from(UserWeapon::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid))
             ->whereNull('wp.exalted_id')
-            ->select([
+            ->select(array_merge([
                 DB::raw('LOWER(wp.type) as category'),
                 DB::raw('wp.id as item_id'),
                 DB::raw('wp.name as name'),
                 DB::raw('wp.icon as icon'),
                 DB::raw('wp.prime as prime'),
-                DB::raw('0 as owned'),
-                DB::raw('NULL as user_uuid'),
-                DB::raw('0 as forma'),
-                DB::raw('0 as potato'),
-                DB::raw('0 as built'),
-                DB::raw('0 as fashioned'),
-                DB::raw('0 as exilus'),
-                DB::raw('0 as riven'),
-                DB::raw('NULL as school'),
-                DB::raw('0 as shards'),
-            ]);
+            ], $this->unownedColumns()));
 
         $ownedCompanions = DB::table(UserCompanion::TABLE_NAME . ' as uc')
             ->join(Companion::TABLE_NAME . ' as c', 'uc.id', '=', 'c.id')
@@ -231,23 +211,13 @@ class ArsenalArmoryCardlist extends AbstractCardlist
 
         $unownedCompanions = DB::table(Companion::TABLE_NAME . ' as c')
             ->whereNotIn('c.id', fn($q) => $q->from(UserCompanion::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid))
-            ->select([
+            ->select(array_merge([
                 DB::raw("'companion' as category"),
                 DB::raw('c.id as item_id'),
                 DB::raw('c.name as name'),
                 DB::raw('c.icon as icon'),
                 DB::raw('c.prime as prime'),
-                DB::raw('0 as owned'),
-                DB::raw('NULL as user_uuid'),
-                DB::raw('0 as forma'),
-                DB::raw('0 as potato'),
-                DB::raw('0 as built'),
-                DB::raw('0 as fashioned'),
-                DB::raw('0 as exilus'),
-                DB::raw('0 as riven'),
-                DB::raw('NULL as school'),
-                DB::raw('0 as shards'),
-            ]);
+            ], $this->unownedColumns()));
 
         return $ownedWarframes
             ->unionAll($unownedWarframes)
@@ -255,6 +225,22 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ->unionAll($unownedWeapons)
             ->unionAll($ownedCompanions)
             ->unionAll($unownedCompanions);
+    }
+
+    private function unownedColumns(): array
+    {
+        return [
+            DB::raw('0 as owned'),
+            DB::raw('NULL as user_uuid'),
+            DB::raw('0 as forma'),
+            DB::raw('0 as potato'),
+            DB::raw('0 as built'),
+            DB::raw('0 as fashioned'),
+            DB::raw('0 as exilus'),
+            DB::raw('0 as riven'),
+            DB::raw('NULL as school'),
+            DB::raw('0 as shards'),
+        ];
     }
 
     private function getItemType(string $category): string
