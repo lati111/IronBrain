@@ -24,6 +24,11 @@ class CategoryCardlist extends DataCardlist {
 }
 
 const CATEGORIES = ['warframe', 'primary', 'secondary', 'melee', 'companion', 'companion_weapon', 'archgun', 'archmelee'] as const;
+
+const FILTER_CATEGORIES: Record<string, string[]> = {
+    archwing:  ['archgun', 'archmelee'],
+    companion: ['companion', 'companion_weapon'],
+};
 const cardlists: CategoryCardlist[] = [];
 let currentCard: HTMLElement | null = null;
 
@@ -71,23 +76,23 @@ async function init(): Promise<void> {
 
 function applyFilters(): void {
     const { itemType } = activeFilters;
-    const filteredPerPage = basePerPage * 2;
+    const visible = itemType === 'all' ? null : (FILTER_CATEGORIES[itemType] ?? [itemType]);
 
     for (const cat of CATEGORIES) {
         const section = document.getElementById(`section-${cat}`);
         const content = document.getElementById(`${cat}-cardlist-content`);
         if (!section) continue;
 
-        if (itemType === 'all') {
+        if (visible === null || visible.includes(cat)) {
             section.classList.remove('hidden');
-            setPerPage(cat, basePerPage);
-            content?.classList.add('flex-nowrap', 'overflow-x-auto');
-            content?.classList.remove('flex-wrap', 'justify-center');
-        } else if (cat === itemType) {
-            section.classList.remove('hidden');
-            setPerPage(cat, filteredPerPage);
-            content?.classList.remove('flex-nowrap', 'overflow-x-auto');
-            content?.classList.add('flex-wrap', 'justify-center');
+            setPerPage(cat, visible === null ? basePerPage : basePerPage * 2);
+            if (visible === null) {
+                content?.classList.add('flex-nowrap', 'overflow-x-auto');
+                content?.classList.remove('flex-wrap', 'justify-center');
+            } else {
+                content?.classList.remove('flex-nowrap', 'overflow-x-auto');
+                content?.classList.add('flex-wrap', 'justify-center');
+            }
         } else {
             section.classList.add('hidden');
         }

@@ -128,7 +128,13 @@ class ArsenalFoundryCardlist extends AbstractCardlist
         if ($itemType === 'warframe') {
             $q->whereRaw("LOWER(c.type) = 'warframe'");
         } elseif ($itemType === 'companion') {
-            $q->whereRaw("LOWER(c.type) = 'companion'");
+            $q->where(function ($inner) {
+                $inner->whereRaw("LOWER(c.type) = 'companion'")
+                      ->orWhereRaw("LOWER(c.type) = 'weapon' AND LOWER(wp.type) = 'companion_weapon'");
+            });
+        } elseif ($itemType === 'archwing') {
+            $q->whereRaw("LOWER(c.type) = 'weapon'")
+              ->whereRaw("LOWER(wp.type) IN ('archgun', 'archmelee')");
         } elseif (in_array($itemType, ['primary', 'secondary', 'melee'])) {
             $q->whereRaw("LOWER(c.type) = 'weapon'")
               ->whereRaw('LOWER(wp.type) = ?', [$itemType]);

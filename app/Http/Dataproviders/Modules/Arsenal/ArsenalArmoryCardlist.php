@@ -119,7 +119,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
     /** { @inheritdoc } */
     public function getSearchFields(): array
     {
-        return ['name'];
+        return ['name', 'base_name'];
     }
 
     private function buildUnionQuery(User $user): QueryBuilder
@@ -131,6 +131,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw("'warframe' as category"),
                 DB::raw('w.id as item_id'),
                 DB::raw('COALESCE(uw.name, w.name) as name'),
+                DB::raw('w.name as base_name'),
                 DB::raw('w.icon as icon'),
                 DB::raw('w.prime as prime'),
                 DB::raw('1 as owned'),
@@ -151,6 +152,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw("'warframe' as category"),
                 DB::raw('w.id as item_id'),
                 DB::raw('w.name as name'),
+                DB::raw('w.name as base_name'),
                 DB::raw('w.icon as icon'),
                 DB::raw('w.prime as prime'),
             ], $this->unownedColumns()));
@@ -163,6 +165,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('LOWER(wp.type) as category'),
                 DB::raw('wp.id as item_id'),
                 DB::raw('COALESCE(uw.name, wp.name) as name'),
+                DB::raw('wp.name as base_name'),
                 DB::raw('wp.icon as icon'),
                 DB::raw('wp.prime as prime'),
                 DB::raw('1 as owned'),
@@ -184,6 +187,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('LOWER(wp.type) as category'),
                 DB::raw('wp.id as item_id'),
                 DB::raw('wp.name as name'),
+                DB::raw('wp.name as base_name'),
                 DB::raw('wp.icon as icon'),
                 DB::raw('wp.prime as prime'),
             ], $this->unownedColumns()));
@@ -195,6 +199,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw("'companion' as category"),
                 DB::raw('c.id as item_id'),
                 DB::raw('COALESCE(uc.name, c.name) as name'),
+                DB::raw('c.name as base_name'),
                 DB::raw('c.icon as icon'),
                 DB::raw('c.prime as prime'),
                 DB::raw('1 as owned'),
@@ -215,6 +220,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw("'companion' as category"),
                 DB::raw('c.id as item_id'),
                 DB::raw('c.name as name'),
+                DB::raw('c.name as base_name'),
                 DB::raw('c.icon as icon'),
                 DB::raw('c.prime as prime'),
             ], $this->unownedColumns()));
