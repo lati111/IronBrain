@@ -8,6 +8,7 @@ use App\Models\Arsenal\UserCompanion;
 use App\Models\Arsenal\UserWarframe;
 use App\Models\Arsenal\UserWeapon;
 use App\Models\Arsenal\Warframe;
+use App\Models\Arsenal\Loadout;
 use App\Models\Arsenal\Weapon;
 use App\Models\Auth\User;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -78,7 +79,13 @@ class ArsenalOwnedSlotCardlist extends AbstractCardlist
                 "$userAlias.uuid as item_uuid",
                 DB::raw("$coalesce as name"),
                 "$baseAlias.icon as icon",
-            ]);
+                "$userAlias.potato as potato",
+                "$userAlias.built as built",
+            ])
+            ->selectRaw(
+                'EXISTS (SELECT 1 FROM ' . Loadout::TABLE_NAME . ' WHERE owner_uuid = ? AND (' . $userAlias . '.uuid = warframe_uuid OR ' . $userAlias . '.uuid = primary_uuid OR ' . $userAlias . '.uuid = secondary_uuid OR ' . $userAlias . '.uuid = melee_uuid OR ' . $userAlias . '.uuid = companion_uuid OR ' . $userAlias . '.uuid = companion_weapon_uuid)) as in_loadout',
+                [$user->uuid]
+            );
 
         if ($extraWhere !== null) {
             $q->whereRaw($extraWhere[0], $extraWhere[1]);

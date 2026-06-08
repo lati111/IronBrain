@@ -6,7 +6,7 @@
 
     {{--| Already-owned indicator |--}}
     <img src="{{asset('img/modules/arsenal/icon/owned.png')}}" alt="Already owned" title="Already owned"
-         class="mini-icon active absolute top-1.5 left-1.5 hidden"
+         class="mini-icon owned absolute top-1.5 left-1.5 hidden"
          data-show-if-true-name="already_owned">
 
     {{--| Blueprint icon + name beside component slots, all on one row |--}}
