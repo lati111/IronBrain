@@ -1,4 +1,4 @@
-<div id="armory-cardlist-template" class="card rounded shadow border gray-border p-3 flex flex-col cursor-pointer"
+<div id="armory-cardlist-template" class="card rounded shadow border gray-border p-3 flex flex-col cursor-pointer w-44"
      onclick="openItemModal(this)">
     <input type="hidden" name="item_id">
     <input type="hidden" name="item_type">

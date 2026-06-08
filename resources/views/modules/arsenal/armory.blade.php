@@ -95,7 +95,7 @@
                  data-history="false"
                  data-empty-body="<p class='text-center w-full'>No results</p>">
                 <x-datalist.parts.load-spinner dataprovider_id="{{$category}}-cardlist"/>
-                <div id="{{$category}}-cardlist-content" class="hidden flex flex-nowrap gap-6 overflow-x-auto pb-2"></div>
+                <div id="{{$category}}-cardlist-content" class="hidden flex flex-wrap justify-center gap-6 pb-2"></div>
             </div>
 
             {{--| Pagination |--}}

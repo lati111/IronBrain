@@ -4,13 +4,14 @@ import {openModal, init as initModals, closeModal} from "../../components/modal"
 import {showEl, hideEl, initFilters} from "./utils";
 
 const activeFilters: Record<string, string> = { variant: 'all', ownership: 'all', itemType: 'all' };
-let basePerPage = 1;
+const basePerPage = 5;
 
 class CategoryCardlist extends DataCardlist {
     public override generateDataUrl(baseUrl: string = this.url): URL {
         const url = super.generateDataUrl(baseUrl);
         if (activeFilters.variant   !== 'all') url.searchParams.set('variant',   activeFilters.variant);
         if (activeFilters.ownership !== 'all') url.searchParams.set('ownership', activeFilters.ownership);
+        if (this.searchterm)                   url.searchParams.set('search',    this.searchterm);
         return url;
     }
 
@@ -32,13 +33,6 @@ const FILTER_CATEGORIES: Record<string, string[]> = {
 const cardlists: CategoryCardlist[] = [];
 let currentCard: HTMLElement | null = null;
 
-function calculatePerPage(): number {
-    const availableWidth = document.documentElement.clientWidth;
-    const cardWidth = 8.5 * 16;  // 136px — matches w-[8.5rem]
-    const gap = 1.5 * 16;        // 24px — matches gap-6
-    return Math.max(1, Math.floor((availableWidth + gap) / (cardWidth + gap)));
-}
-
 function setPerPage(category: string, perPage: number): void {
     const selector = document.getElementById(`${category}-cardlist-pagination-perpage-selector`) as HTMLSelectElement | null;
     if (!selector) return;
@@ -53,8 +47,6 @@ function setPerPage(category: string, perPage: number): void {
 }
 
 async function init(): Promise<void> {
-    basePerPage = calculatePerPage();
-
     for (const category of CATEGORIES) {
         setPerPage(category, basePerPage);
         cardlists.push(new CategoryCardlist(`${category}-cardlist`));
@@ -80,19 +72,11 @@ function applyFilters(): void {
 
     for (const cat of CATEGORIES) {
         const section = document.getElementById(`section-${cat}`);
-        const content = document.getElementById(`${cat}-cardlist-content`);
         if (!section) continue;
 
         if (visible === null || visible.includes(cat)) {
             section.classList.remove('hidden');
             setPerPage(cat, visible === null ? basePerPage : basePerPage * 2);
-            if (visible === null) {
-                content?.classList.add('flex-nowrap', 'overflow-x-auto');
-                content?.classList.remove('flex-wrap', 'justify-center');
-            } else {
-                content?.classList.remove('flex-nowrap', 'overflow-x-auto');
-                content?.classList.add('flex-wrap', 'justify-center');
-            }
         } else {
             section.classList.add('hidden');
         }
