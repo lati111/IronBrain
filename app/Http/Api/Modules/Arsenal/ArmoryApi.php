@@ -64,6 +64,7 @@ class ArmoryApi extends AbstractApi
             'uuid'           => 'required|string|max:255',
             'type'           => ['required', 'string', Rule::in(['warframe', 'weapon', 'companion'])],
             'forma'          => 'nullable|integer|min:0|max:10',
+            'shards'         => 'nullable|integer|min:0|max:5',
             'potato'         => 'nullable|in:0,1',
             'built'          => 'nullable|in:0,1',
             'exilus'         => 'nullable|in:0,1',
@@ -177,12 +178,13 @@ class ArmoryApi extends AbstractApi
         return $this->respond(Response::HTTP_OK, 'Data retrieved', [
             'name'      => $item->name,
             'base_name' => $item->getWarframe()?->name,
-            'forma'     => $item->forma,
-            'potato'    => (bool) $item->potato,
-            'built'     => (bool) $item->built,
-            'exilus'    => (bool) $item->exilus,
-            'fashioned' => (bool) $item->fashioned,
-            'school'    => $item->school,
+            'forma'       => $item->forma,
+            'shards'      => $item->shards,
+            'potato'      => (bool) $item->potato,
+            'built'       => (bool) $item->built,
+            'exilus'      => (bool) $item->exilus,
+            'fashioned'   => (bool) $item->fashioned,
+            'school'      => $item->school,
         ]);
     }
 
@@ -232,6 +234,7 @@ class ArmoryApi extends AbstractApi
 
         $item->name      = $request->get('name') ?: null;
         $item->forma     = (int) $request->get('forma', 0);
+        $item->shards    = (int) $request->get('shards', 0);
         $item->potato    = (bool) $request->get('potato', false);
         $item->built     = (bool) $request->get('built', false);
         $item->exilus    = (bool) $request->get('exilus', false);

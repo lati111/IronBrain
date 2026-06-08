@@ -201,7 +201,8 @@ async function openItemModal(card: HTMLElement): Promise<void> {
 function populateForm(data: any, type: string): void {
     (document.getElementById('modal-base-name') as HTMLInputElement).value  = data.base_name ?? '';
     (document.getElementById('modal-name')      as HTMLInputElement).value  = data.name ?? '';
-    (document.getElementById('modal-forma')     as HTMLInputElement).value  = data.forma ?? 0;
+    (document.getElementById('modal-forma')      as HTMLInputElement).value  = data.forma ?? 0;
+    (document.getElementById('modal-shards') as HTMLInputElement).value = String(data.shards ?? 0);
     (document.getElementById('modal-potato')   as HTMLInputElement).checked = !!data.potato;
     (document.getElementById('modal-built')    as HTMLInputElement).checked = !!data.built;
     (document.getElementById('modal-exilus')   as HTMLInputElement).checked = !!data.exilus;
@@ -212,11 +213,12 @@ function populateForm(data: any, type: string): void {
     const potatoLabel = document.getElementById('modal-potato-label');
     if (potatoLabel) potatoLabel.textContent = type === 'weapon' ? 'Orokin Catalyst' : 'Orokin Reactor';
 
-    setRowVisible('modal-name-row',     true);
-    setRowVisible('modal-exilus-row',   type === 'warframe' || type === 'weapon');
-    setRowVisible('modal-fashioned-row',type === 'warframe' || type === 'companion');
-    setRowVisible('modal-riven-row',    type === 'weapon');
-    setRowVisible('modal-school-row',   type === 'warframe');
+    setRowVisible('modal-name-row',        true);
+    setRowVisible('modal-exilus-row',      type === 'warframe' || type === 'weapon');
+    setRowVisible('modal-fashioned-row',   type === 'warframe' || type === 'companion');
+    setRowVisible('modal-riven-row',       type === 'weapon');
+    setRowVisible('modal-school-row',      type === 'warframe');
+    setRowVisible('modal-shards-row', type === 'warframe');
 }
 
 // ─── Modal actions ────────────────────────────────────────────────────────────
@@ -245,31 +247,70 @@ async function addItemFromModal(): Promise<void> {
 
 async function saveItem(): Promise<void> {
     const formData = new FormData();
-    formData.append('uuid',           (document.getElementById('modal-user-uuid')      as HTMLInputElement).value);
-    formData.append('type',           (document.getElementById('modal-item-type')      as HTMLInputElement).value);
-    formData.append('forma',          (document.getElementById('modal-forma')          as HTMLInputElement).value);
-    formData.append('potato',         (document.getElementById('modal-potato')         as HTMLInputElement).checked ? '1' : '0');
-    formData.append('built',          (document.getElementById('modal-built')          as HTMLInputElement).checked ? '1' : '0');
-    formData.append('exilus',         (document.getElementById('modal-exilus')         as HTMLInputElement).checked ? '1' : '0');
-    formData.append('fashioned',      (document.getElementById('modal-fashioned')      as HTMLInputElement).checked ? '1' : '0');
-    formData.append('riven',          (document.getElementById('modal-riven')          as HTMLInputElement).checked ? '1' : '0');
-    formData.append('school',         (document.getElementById('modal-school')         as HTMLSelectElement).value);
-    formData.append('name',           (document.getElementById('modal-name')           as HTMLInputElement).value);
+    formData.append('uuid',      (document.getElementById('modal-user-uuid') as HTMLInputElement).value);
+    formData.append('type',      (document.getElementById('modal-item-type') as HTMLInputElement).value);
+    formData.append('forma',     (document.getElementById('modal-forma')     as HTMLInputElement).value);
+    formData.append('potato',    (document.getElementById('modal-potato')    as HTMLInputElement).checked ? '1' : '0');
+    formData.append('built',     (document.getElementById('modal-built')     as HTMLInputElement).checked ? '1' : '0');
+    formData.append('exilus',    (document.getElementById('modal-exilus')    as HTMLInputElement).checked ? '1' : '0');
+    formData.append('fashioned', (document.getElementById('modal-fashioned') as HTMLInputElement).checked ? '1' : '0');
+    formData.append('riven',     (document.getElementById('modal-riven')     as HTMLInputElement).checked ? '1' : '0');
+    formData.append('school',       (document.getElementById('modal-school')       as HTMLSelectElement).value);
+    formData.append('shards',       (document.getElementById('modal-shards')        as HTMLInputElement).value);
+    formData.append('name',         (document.getElementById('modal-name')         as HTMLInputElement).value);
 
     const response = await postData('/api/arsenal/armory/update', formData);
     if (!response) return;
 
     response.announce();
     if (response.ok) {
-        const customName = (document.getElementById('modal-name')      as HTMLInputElement).value.trim();
-        const baseName   = (document.getElementById('modal-base-name') as HTMLInputElement).value;
-        const displayName = customName || baseName;
+        const customName  = (document.getElementById('modal-name')      as HTMLInputElement).value.trim();
+        const baseName    = (document.getElementById('modal-base-name') as HTMLInputElement).value;
+        const nameEl      = currentCard?.querySelector('[data-name="name"]') as HTMLElement | null;
+        if (nameEl) nameEl.textContent = customName || baseName;
 
-        const nameEl = currentCard?.querySelector('[data-name="name"]') as HTMLElement | null;
-        if (nameEl) nameEl.textContent = displayName;
-
+        if (currentCard) updateCardIcons(currentCard);
         closeModal('armory-item-modal');
     }
+}
+
+function updateCardIcons(card: HTMLElement): void {
+    const booleans = ['built', 'fashioned', 'exilus', 'potato', 'riven'] as const;
+    for (const field of booleans) {
+        const active = (document.getElementById(`modal-${field}`) as HTMLInputElement).checked;
+        card.querySelector<HTMLElement>(`[data-show-if-true-name="${field}"]`)?.classList.toggle('hidden', !active);
+        const input = card.querySelector<HTMLInputElement>(`input[name="${field}"]`);
+        if (input) input.value = active ? '1' : '0';
+    }
+
+    const forma    = parseInt((document.getElementById('modal-forma') as HTMLInputElement).value, 10) || 0;
+    const formaRow = card.querySelector<HTMLElement>('[data-show-if-true-name="has_forma"]');
+    const formaEl  = card.querySelector<HTMLElement>('[data-name="forma"]');
+    const formaIn  = card.querySelector<HTMLInputElement>('input[name="forma"]');
+    formaRow?.classList.toggle('hidden', forma === 0);
+    if (formaEl) formaEl.textContent = String(forma);
+    if (formaIn) formaIn.value = String(forma);
+
+    const shards    = parseInt((document.getElementById('modal-shards') as HTMLInputElement).value, 10) || 0;
+    const shardsRow = card.querySelector<HTMLElement>('[data-show-if-true-name="has_shards"]');
+    const shardsEl  = card.querySelector<HTMLElement>('[data-name="shards"]');
+    const shardsIn  = card.querySelector<HTMLInputElement>('input[name="shards"]');
+    shardsRow?.classList.toggle('hidden', shards === 0);
+    if (shardsEl) shardsEl.textContent = String(shards);
+    if (shardsIn) shardsIn.value = String(shards);
+
+    const school    = (document.getElementById('modal-school') as HTMLSelectElement).value;
+    const schoolImg = card.querySelector<HTMLImageElement>('[data-show-if-true-name="has_school"]');
+    const schoolIn  = card.querySelector<HTMLInputElement>('input[name="school"]');
+    if (schoolImg) {
+        if (school) {
+            schoolImg.src = `/img/modules/arsenal/icon/focus/${school.toLowerCase()}.png`;
+            schoolImg.classList.remove('hidden');
+        } else {
+            schoolImg.classList.add('hidden');
+        }
+    }
+    if (schoolIn) schoolIn.value = school;
 }
 
 async function removeItem(): Promise<void> {
@@ -335,15 +376,15 @@ function getCardCategory(card: HTMLElement | null): string {
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
 
 function markCardOwned(card: HTMLElement): void {
-    card.querySelector('[data-add-class-if-true-name="unowned"]')?.classList.remove('opacity-40');
-    card.querySelector('[data-show-if-true-name="unowned"]')?.classList.add('hidden');
-    card.querySelector('[data-show-if-true-name="owned"]')?.classList.remove('hidden');
+    card.querySelectorAll<HTMLElement>('[data-add-class-if-true-name="unowned"]').forEach(el => el.classList.remove('opacity-40'));
+    card.querySelectorAll<HTMLElement>('[data-show-if-true-name="unowned"]').forEach(el => el.classList.add('hidden'));
+    card.querySelectorAll<HTMLElement>('[data-show-if-true-name="owned"]').forEach(el => el.classList.remove('hidden'));
 }
 
 function markCardUnowned(card: HTMLElement): void {
-    card.querySelector('[data-add-class-if-true-name="unowned"]')?.classList.add('opacity-40');
-    card.querySelector('[data-show-if-true-name="unowned"]')?.classList.remove('hidden');
-    card.querySelector('[data-show-if-true-name="owned"]')?.classList.add('hidden');
+    card.querySelectorAll<HTMLElement>('[data-add-class-if-true-name="unowned"]').forEach(el => el.classList.add('opacity-40'));
+    card.querySelectorAll<HTMLElement>('[data-show-if-true-name="unowned"]').forEach(el => el.classList.remove('hidden'));
+    card.querySelectorAll<HTMLElement>('[data-show-if-true-name="owned"]').forEach(el => el.classList.add('hidden'));
     storeUuid(card, '');
 }
 

@@ -36,7 +36,10 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 $item->category_display = ucfirst($item->category);
                 $item->item_type        = $this->getItemType($item->category);
                 $item->unowned          = $item->owned ? 0 : 1;
-                $item->school_abbr      = $item->school ? strtoupper(substr($item->school, 0, 1)) : '';
+                $item->has_forma        = $item->forma > 0 ? 1 : 0;
+                $item->has_shards       = $item->shards > 0 ? 1 : 0;
+                $item->school_icon      = $item->school ? asset('img/modules/arsenal/icon/focus/' . strtolower($item->school) . '.png') : '';
+                $item->has_school       = $item->school ? 1 : 0;
                 if ($item->icon !== null) {
                     $item->icon = asset('img/' . $item->icon);
                 }
@@ -135,8 +138,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('uw.forma as forma'),
                 DB::raw('uw.potato as potato'),
                 DB::raw('uw.built as built'),
+                DB::raw('uw.fashioned as fashioned'),
+                DB::raw('uw.exilus as exilus'),
                 DB::raw('0 as riven'),
                 DB::raw('uw.school as school'),
+                DB::raw('uw.shards as shards'),
             ]);
 
         $unownedWarframes = DB::table(Warframe::TABLE_NAME . ' as w')
@@ -152,8 +158,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('0 as forma'),
                 DB::raw('0 as potato'),
                 DB::raw('0 as built'),
+                DB::raw('0 as fashioned'),
+                DB::raw('0 as exilus'),
                 DB::raw('0 as riven'),
                 DB::raw('NULL as school'),
+                DB::raw('0 as shards'),
             ]);
 
         $ownedWeapons = DB::table(UserWeapon::TABLE_NAME . ' as uw')
@@ -171,8 +180,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('uw.forma as forma'),
                 DB::raw('uw.potato as potato'),
                 DB::raw('uw.built as built'),
+                DB::raw('0 as fashioned'),
+                DB::raw('uw.exilus as exilus'),
                 DB::raw('uw.riven as riven'),
                 DB::raw('uw.school as school'),
+                DB::raw('0 as shards'),
             ]);
 
         $unownedWeapons = DB::table(Weapon::TABLE_NAME . ' as wp')
@@ -189,8 +201,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('0 as forma'),
                 DB::raw('0 as potato'),
                 DB::raw('0 as built'),
+                DB::raw('0 as fashioned'),
+                DB::raw('0 as exilus'),
                 DB::raw('0 as riven'),
                 DB::raw('NULL as school'),
+                DB::raw('0 as shards'),
             ]);
 
         $ownedCompanions = DB::table(UserCompanion::TABLE_NAME . ' as uc')
@@ -207,8 +222,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('uc.forma as forma'),
                 DB::raw('uc.potato as potato'),
                 DB::raw('uc.built as built'),
+                DB::raw('uc.fashioned as fashioned'),
+                DB::raw('0 as exilus'),
                 DB::raw('0 as riven'),
                 DB::raw('uc.school as school'),
+                DB::raw('0 as shards'),
             ]);
 
         $unownedCompanions = DB::table(Companion::TABLE_NAME . ' as c')
@@ -224,8 +242,11 @@ class ArsenalArmoryCardlist extends AbstractCardlist
                 DB::raw('0 as forma'),
                 DB::raw('0 as potato'),
                 DB::raw('0 as built'),
+                DB::raw('0 as fashioned'),
+                DB::raw('0 as exilus'),
                 DB::raw('0 as riven'),
                 DB::raw('NULL as school'),
+                DB::raw('0 as shards'),
             ]);
 
         return $ownedWarframes

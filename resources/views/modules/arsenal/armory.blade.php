@@ -155,6 +155,12 @@
                            class="underlined w-14 text-center text-sm">
                 </div>
 
+                <div id="modal-shards-row" class="hidden flex items-center justify-between gap-6">
+                    <label class="text-sm text-gray-600">Shards</label>
+                    <input type="number" id="modal-shards" min="0" max="5" value="0"
+                           class="underlined w-14 text-center text-sm">
+                </div>
+
                 <div class="flex items-center justify-between gap-6">
                     <label id="modal-potato-label" class="text-sm text-gray-600">Orokin Reactor</label>
                     <input type="checkbox" id="modal-potato" class="w-4 h-4">

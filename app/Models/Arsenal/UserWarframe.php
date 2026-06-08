@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property boolean fashioned Whether or not this frame has been fashioned
  * @property boolean built Whether or not this frame has been fully built
  * @property integer forma How much forma has been applied to this warframe
+ * @property integer shards How many shards have been applied to this warframe (0–5)
  * @property string|null school Which focus school is applied to the item
  */
 
