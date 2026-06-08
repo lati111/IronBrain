@@ -1,4 +1,4 @@
-<div id="foundry-cardlist-template" class="card relative rounded shadow border gray-border px-3 py-2 w-80" data-blueprint-item>
+<div id="foundry-cardlist-template" class="card relative rounded shadow border gray-border px-3 py-2 w-[22rem]" data-blueprint-item>
     <input type="hidden" name="blueprint_id">
     <input type="hidden" name="blueprint_type">
     <input type="hidden" name="completion_pct">

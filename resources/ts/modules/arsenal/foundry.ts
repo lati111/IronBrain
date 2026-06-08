@@ -63,17 +63,15 @@ async function init(): Promise<void> {
 }
 
 function initFilters(): void {
-    document.querySelectorAll<HTMLButtonElement>('.foundry-filter-btn').forEach(btn => {
+    document.querySelectorAll<HTMLButtonElement>('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const group = btn.dataset.filterGroup!;
             const value = btn.dataset.filterValue!;
 
-            document.querySelectorAll<HTMLButtonElement>(`.foundry-filter-btn[data-filter-group="${group}"]`).forEach(b => {
-                b.classList.remove('bg-white', 'text-red-900', 'shadow-sm');
-                b.classList.add('text-gray-400');
+            document.querySelectorAll<HTMLButtonElement>(`.filter-btn[data-filter-group="${group}"]`).forEach(b => {
+                b.classList.remove('selected');
             });
-            btn.classList.remove('text-gray-400');
-            btn.classList.add('bg-white', 'text-red-900', 'shadow-sm');
+            btn.classList.add('selected');
 
             activeFilters[group] = value;
             applyFilters();

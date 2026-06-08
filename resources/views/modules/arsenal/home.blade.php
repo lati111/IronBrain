@@ -17,16 +17,27 @@
     {{--| Top bar |--}}
     <div class="flex justify-center">
         <div id="top-bar-container" class="relative">
-            <a href="{{route('arsenal.foundry.show')}}" class="interactive absolute left-0 top-0">Foundry</a>
-            <a href="{{route('arsenal.armory.show')}}" class="interactive absolute right-0 top-0">Armory</a>
+            <a href="{{route('arsenal.armory.show')}}" class="interactive absolute left-0 top-0">Armory</a>
+            <a href="{{route('arsenal.foundry.show')}}" class="interactive absolute right-0 top-0">Foundry</a>
         </div>
     </div>
 
     <div class="mt-6 pb-4"></div>
 
-    {{--| New Loadout button |--}}
-    <div class="flex justify-center mb-4">
+    {{--| Cardlist topbar |--}}
+    <div class="flex justify-around items-center mb-4">
+        <span></span>
+
+        <x-datalist.parts.searchbar id="loadout-cardlist"></x-datalist.parts.searchbar>
+
         <button class="interactive" onclick="createLoadout()">+ New Loadout</button>
+    </div>
+
+    {{--| Loadout cardlist |--}}
+    <div class="flex flex-row justify-center mb-3">
+        <x-datalist.cardlist.list id="loadout-cardlist" url="{{route('data.arsenal.loadouts')}}" :include-searchbar="false">
+            @include('modules.arsenal.snippits.loadout-cardlist-template')
+        </x-datalist.cardlist.list>
     </div>
 
     {{--| Slot picker modal |--}}
@@ -70,11 +81,4 @@
                     onclick="closeModal('slot-picker-modal')">Cancel</button>
         </x-slot:buttons>
     </x-modal>
-
-    {{--| Loadout cardlist |--}}
-    <div class="flex flex-row justify-center mb-3">
-        <x-datalist.cardlist.list id="loadout-cardlist" url="{{route('data.arsenal.loadouts')}}">
-            @include('modules.arsenal.snippits.loadout-cardlist-template')
-        </x-datalist.cardlist.list>
-    </div>
 @endsection

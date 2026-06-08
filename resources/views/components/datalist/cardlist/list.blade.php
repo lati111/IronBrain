@@ -26,9 +26,11 @@
     </div>
 
     {{--| Searchbar |--}}
+    @if($includeSearchbar ?? true))
     <div class="flex justify-center">
         <x-datalist.parts.searchbar id="{{$id}}"></x-datalist.parts.searchbar>
     </div>
+    @endif
 
     {{--| Filter list display |--}}
     @if(filter_var($filtering ?? false, FILTER_VALIDATE_BOOLEAN))

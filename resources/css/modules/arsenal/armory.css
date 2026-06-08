@@ -1,0 +1,22 @@
+.mini-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.mini-icon:not(.monochrome) {
+    opacity: 60%;
+    filter: grayscale(100%);
+}
+
+.mini-icon:not(.monochrome).active {
+    opacity: 100%;
+    filter: none;
+}
+
+.mini-icon.monochrome {
+    filter: brightness(0) saturate(100%) invert(31%) sepia(19%) saturate(7%) hue-rotate(336deg) brightness(89%) contrast(89%);
+}
+
+.mini-icon.monochrome.active {
+    filter: brightness(0) saturate(100%) invert(9%) sepia(60%) saturate(6050%) hue-rotate(7deg) brightness(95%) contrast(118%);
+}

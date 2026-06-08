@@ -1,7 +1,7 @@
 {{--| header |--}}
 <header class="p-3 mb-3 border-bottom bg-body-tertiary">
     <div class="flex justify-center items-center w-full">
-        <div class="relative flex justify-start items-center flex-wrap w-full max-w-screen-lg gap-4">
+        <div class="relative flex justify-start items-center flex-wrap gap-4">
             {{--| logo |--}}
             <a href="/"
                class="flex items-center link-body-emphasis text-decoration-none">
