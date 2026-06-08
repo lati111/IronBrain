@@ -41,7 +41,10 @@ class ImportService
         $warframe = Warframe::where('id', $data['uniqueName'])->first();
 
         // Handle blacklist
-        if (($data['productCategory'] ?? 'none') === 'MechSuits') {
+        if (
+            ($data['productCategory'] ?? 'none') === 'MechSuits' ||
+            $data['uniqueName'] === '/Lotus/Powersuits/PowersuitAbilities/Helminth'
+        ) {
             if ($warframe === null) {
                 return false;
             }
