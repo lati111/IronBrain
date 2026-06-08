@@ -214,7 +214,7 @@ function populateForm(data: any, type: string): void {
     setRowVisible('modal-exilus-row',      type === 'warframe' || type === 'weapon');
     setRowVisible('modal-fashioned-row',   type === 'warframe' || type === 'companion');
     setRowVisible('modal-riven-row',       type === 'weapon');
-    setRowVisible('modal-school-row',      type === 'warframe');
+    setRowVisible('modal-school-row',      type === 'warframe' || type === 'weapon');
     setRowVisible('modal-shards-row',      type === 'warframe');
 }
 

@@ -209,6 +209,7 @@ class ArmoryApi extends AbstractApi
             'built'     => (bool) $item->built,
             'exilus'    => (bool) $item->exilus,
             'riven'     => (bool) $item->riven,
+            'school'    => $item->school,
         ]);
     }
 
@@ -264,6 +265,7 @@ class ArmoryApi extends AbstractApi
         $item->built  = (bool) $request->get('built', false);
         $item->exilus = (bool) $request->get('exilus', false);
         $item->riven  = (bool) $request->get('riven', false);
+        $item->school = $request->get('school') ?: null;
         $item->save();
 
         return $this->respond(Response::HTTP_OK, 'Saved', true);
