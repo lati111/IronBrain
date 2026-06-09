@@ -86,8 +86,8 @@
         <div class="hidden">
             @component('components.datalist.parts.perpage_select')
                 @slot('id', 'foundry-cardlist-pagination-perpage-selector')
-                @slot('selected_option', 20)
-                @slot('options', [10, 20, 40])
+                @slot('selected_option', 12)
+                @slot('options', [9, 12, 30, 60])
             @endcomponent
         </div>
 

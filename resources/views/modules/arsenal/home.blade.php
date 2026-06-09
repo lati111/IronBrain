@@ -7,6 +7,7 @@
     @vite([
         'resources/css/components/datalist/cardlist.css',
         'resources/css/modules/arsenal/arsenal.css',
+        'resources/css/modules/arsenal/loadouts.css',
         'resources/ts/modules/arsenal/home.ts',
     ])
 @stop

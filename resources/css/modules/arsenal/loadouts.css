@@ -1,0 +1,8 @@
+[data-equipment="warframe"] {
+    height: 135px;
+}
+
+[data-equipment="warframe"] img[data-name="warframe_icon"] {
+    height: 90px;
+    width: 90px;
+}

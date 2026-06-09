@@ -32,7 +32,6 @@
 }
 
 .arsenal-slot-name {
-    max-width: 64px;
     overflow-wrap: break-word;
     hyphens: auto;
 }
