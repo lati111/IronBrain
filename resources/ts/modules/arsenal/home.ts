@@ -3,60 +3,29 @@ import {postData} from "../../main";
 import {openModal, init as initModals, closeModal} from "../../components/modal";
 import {showEl, hideEl} from "./utils";
 
-class LoadoutCardlist extends DataCardlist {
-    public async reload(): Promise<void> {
-        await this.load(true, false);
-    }
-}
-
-class SlotPickerCardlist extends DataCardlist {
-    public setSearch(term: string): void {
-        this.searchterm = term;
-    }
-    public async reload(): Promise<void> {
-        await this.load(true, false);
-    }
-}
-
 const SLOT_LABELS: Record<string, string> = {
     warframe:         'Select Warframe',
     primary:          'Select Primary Weapon',
     secondary:        'Select Secondary Weapon',
     melee:            'Select Melee Weapon',
     companion:        'Select Companion',
-    companion_weapon: 'Select Companion Weapon',
 };
 
-let loadoutCardlist: LoadoutCardlist;
-let slotPickerCardlist: SlotPickerCardlist;
+let loadoutCardlist: DataCardlist;
+let slotPickerCardlist: DataCardlist;
 let currentLoadoutCard: HTMLElement | null = null;
 let currentLoadoutUuid: string = '';
 let currentSlot: string = '';
 let isCreatingLoadout: boolean = false;
 
 async function init(): Promise<void> {
-    loadoutCardlist = new LoadoutCardlist('loadout-cardlist');
+    loadoutCardlist = new DataCardlist('loadout-cardlist');
     await loadoutCardlist.init();
 
-    slotPickerCardlist = new SlotPickerCardlist('slot-picker-cardlist');
+    slotPickerCardlist = new DataCardlist('slot-picker-cardlist');
     await slotPickerCardlist.init();
 
     initModals();
-
-    const searchInput  = document.getElementById('slot-picker-searchbar')     as HTMLInputElement | null;
-    const searchButton = document.getElementById('slot-picker-search-button') as HTMLButtonElement | null;
-
-    searchButton?.addEventListener('click', () => {
-        slotPickerCardlist.setSearch(searchInput?.value ?? '');
-        slotPickerCardlist.reload();
-    });
-
-    searchInput?.addEventListener('keypress', (e: KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            slotPickerCardlist.setSearch(searchInput!.value);
-            slotPickerCardlist.reload();
-        }
-    });
 }
 
 async function createLoadout(): Promise<void> {
@@ -78,7 +47,7 @@ async function createLoadout(): Promise<void> {
 
     hideEl('slot-picker-clear-btn');
 
-    await slotPickerCardlist.reload();
+    await slotPickerCardlist.load(true, false);
     openModal('slot-picker-modal');
 }
 
@@ -102,7 +71,7 @@ async function openSlotModal(slotEl: HTMLElement, slot: string): Promise<void> {
     const hasItem = slot !== 'warframe' && !!nameEl?.textContent?.trim();
     hasItem ? showEl('slot-picker-clear-btn') : hideEl('slot-picker-clear-btn');
 
-    await slotPickerCardlist.reload();
+    await slotPickerCardlist.load(true, false);
     openModal('slot-picker-modal');
 }
 
@@ -121,7 +90,7 @@ async function selectSlotItem(itemCard: HTMLElement): Promise<void> {
 
         if (response.ok) {
             closeModal('slot-picker-modal');
-            await loadoutCardlist.reload();
+            await loadoutCardlist.load(true, false);
         }
         return;
     }

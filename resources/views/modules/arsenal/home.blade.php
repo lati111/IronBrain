@@ -27,11 +27,11 @@
 
     {{--| Cardlist topbar |--}}
     <div class="flex justify-around items-center mb-4">
-        <span></span>
+        <span class="w-64"></span>
 
         <x-datalist.parts.searchbar id="loadout-cardlist"></x-datalist.parts.searchbar>
 
-        <button class="interactive" onclick="createLoadout()">+ New Loadout</button>
+        <button class="interactive w-64" onclick="createLoadout()">+ New Loadout</button>
     </div>
 
     {{--| Loadout cardlist |--}}
@@ -51,11 +51,7 @@
             </div>
 
             {{--| Search |--}}
-            <div class="flex gap-2">
-                <input id="slot-picker-searchbar" type="text"
-                       class="underlined text-center flex-1 h-8" placeholder="Search...">
-                <button id="slot-picker-search-button" class="interactive text-sm px-3">Search</button>
-            </div>
+            <x-datalist.parts.searchbar id="slot-picker-cardlist"></x-datalist.parts.searchbar>
 
             {{--| Hidden item template |--}}
             <div class="hidden">
