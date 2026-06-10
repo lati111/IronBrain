@@ -92,7 +92,10 @@ class ImportService
         $weapon = Weapon::where('id', $data['uniqueName'])->first();
 
         // Handle blacklist
-        if (($data['type'] ?? 'none') === 'Zaw Component') {
+        if (
+            ($data['type'] ?? 'none') === 'Zaw Component' && !str_contains($data['uniqueName'], '/Tip/') ||
+            ($data['type'] ?? 'none') === 'Zaw Component' && str_contains($data['uniqueName'], '/PvPVariant')
+        ) {
             if ($weapon === null) {
                 return false;
             }
