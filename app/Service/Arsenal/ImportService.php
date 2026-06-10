@@ -70,8 +70,10 @@ class ImportService
 
         // Update components
         if (isset($data['components'])) {
+            $occurrences = [];
             foreach ($data['components'] as $component) {
-                $componentUpdated = $this->importComponent($component, $warframe, 'warframe');
+                $occurrences[$component['uniqueName']] = ($occurrences[$component['uniqueName']] ?? 0) + 1;
+                $componentUpdated = $this->importComponent($component, $warframe, 'warframe', $occurrences[$component['uniqueName']]);
                 $updated = $updated || $componentUpdated;
             }
         }
@@ -119,8 +121,10 @@ class ImportService
         // Update components
         if (isset($data['components'])) {
             $componentsUpdates = false;
+            $occurrences = [];
             foreach ($data['components'] as $component) {
-                $componentUpdated = $this->importComponent($component, $weapon, 'weapon');
+                $occurrences[$component['uniqueName']] = ($occurrences[$component['uniqueName']] ?? 0) + 1;
+                $componentUpdated = $this->importComponent($component, $weapon, 'weapon', $occurrences[$component['uniqueName']]);
                 $componentsUpdates = $updated || $componentUpdated;
             }
 
@@ -175,8 +179,10 @@ class ImportService
         // Update components
         if (isset($data['components'])) {
             $componentsUpdates = false;
+            $occurrences = [];
             foreach ($data['components'] as $component) {
-                $componentUpdated = $this->importComponent($component, $companion, 'companion');
+                $occurrences[$component['uniqueName']] = ($occurrences[$component['uniqueName']] ?? 0) + 1;
+                $componentUpdated = $this->importComponent($component, $companion, 'companion', $occurrences[$component['uniqueName']]);
                 $componentsUpdates = $updated || $componentUpdated;
             }
 
@@ -198,10 +204,11 @@ class ImportService
      * @param string $type The type of blueprint
      * @return bool Whether or not the component was updated
      */
-    public function importComponent(array $data, ArsenalDataModel $blueprint, string $type): bool
+    public function importComponent(array $data, ArsenalDataModel $blueprint, string $type, int $occurrence = 1): bool
     {
         $updated = false;
-        $component = Component::where('id', $data['uniqueName'])->where('blueprint_id', $blueprint->id)->first();
+        $effectiveId = $data['uniqueName'] . ($occurrence > 1 ? '-' . $occurrence : '');
+        $component = Component::where('id', $effectiveId)->where('blueprint_id', $blueprint->id)->first();
 
         // Handle blacklist
         if (
@@ -224,7 +231,7 @@ class ImportService
         // Create new
         if ($component === null) {
             $component = new Component();
-            $component->id = $data['uniqueName'];
+            $component->id = $effectiveId;
             $component->blueprint_id = $blueprint->id;
             $component->type = $type;
             $updated = true;
