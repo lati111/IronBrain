@@ -117,10 +117,10 @@ function setCraftable(card: HTMLElement, craftable: boolean): void {
     if (!iconWrapper) return;
 
     if (craftable) {
-        iconWrapper.classList.add('cursor-pointer', 'ring-2', 'ring-offset-1', 'ring-green-400', 'rounded');
+        iconWrapper.classList.add('cursor-pointer', 'rounded');
         iconWrapper.title = 'Click to craft';
     } else {
-        iconWrapper.classList.remove('cursor-pointer', 'ring-2', 'ring-offset-1', 'ring-green-400', 'rounded');
+        iconWrapper.classList.remove('cursor-pointer', 'rounded');
         iconWrapper.title = '';
         iconWrapper.onclick = null;
     }
