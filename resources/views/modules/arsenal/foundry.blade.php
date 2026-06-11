@@ -16,26 +16,14 @@
 
 @section('content')
     {{--| Top bar |--}}
-    <div class="flex justify-center">
-        <div id="top-bar-container" class="relative">
-            <a href="{{route('arsenal.home.show')}}" class="interactive absolute left-0 top-0">Loadouts</a>
-        </div>
-    </div>
-
-    <div class="mt-6 pb-4"></div>
+    <x-arsenal.topbar>
+        <a href="{{route('arsenal.home.show')}}" class="interactive absolute left-0 top-0">Loadouts</a>
+    </x-arsenal.topbar>
 
     {{--| Search bar |--}}
     <div class="flex justify-around mb-6">
         <div class="flex justify-center gap-3 mb-4 flex-wrap">
-            <x-datalist.filters.filter-group>
-                <x-datalist.filters.filter-item title="All" filter-group="itemType" value="all" :selected="true">{{asset('img/modules/arsenal/icon/all.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Warframe" filter-group="itemType" value="warframe">{{asset('img/modules/arsenal/icon/warframe.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Primary" filter-group="itemType" value="primary">{{asset('img/modules/arsenal/icon/primary_rifle.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Secondary" filter-group="itemType" value="secondary">{{asset('img/modules/arsenal/icon/secondary.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Melee" filter-group="itemType" value="melee">{{asset('img/modules/arsenal/icon/melee.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Companion" filter-group="itemType" value="companion">{{asset('img/modules/arsenal/icon/companion.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Archwing" filter-group="itemType" value="archwing">{{asset('img/modules/arsenal/icon/archwing.png')}}</x-datalist.filters.filter-item>
-            </x-datalist.filters.filter-group>
+            <x-arsenal.item-type-filters/>
         </div>
 
         <div id="foundry-cardlist-searchbar" class="searchbar flex flex-row justify-center pt-2"
@@ -48,17 +36,7 @@
         </div>
 
         <div class="flex justify-center gap-3 mb-4 flex-wrap">
-            <x-datalist.filters.filter-group>
-                <x-datalist.filters.filter-item title="All" filter-group="variant" value="all" :selected="true">{{asset('img/modules/arsenal/icon/all.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Prime" filter-group="variant" value="prime">{{asset('img/modules/arsenal/icon/prime.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Mundane" filter-group="variant" value="non-prime">{{asset('img/modules/arsenal/icon/mundane.png')}}</x-datalist.filters.filter-item>
-            </x-datalist.filters.filter-group>
-
-            <x-datalist.filters.filter-group>
-                <x-datalist.filters.filter-item title="All" filter-group="ownership" value="all" :selected="true">{{asset('img/modules/arsenal/icon/all.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Owned" filter-group="ownership" value="owned">{{asset('img/modules/arsenal/icon/owned.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Unowned" filter-group="ownership" value="unowned">{{asset('img/modules/arsenal/icon/unowned.png')}}</x-datalist.filters.filter-item>
-            </x-datalist.filters.filter-group>
+            <x-arsenal.ownership-filters/>
         </div>
     </div>
 
@@ -80,7 +58,7 @@
     </div>
 
     {{--| Blueprint cardlist |--}}
-    <div class="flex flex-col gap-2 justify-center max-w-screen-2xl mx-auto w-full mb-8">
+    <div class="arsenal-section">
 
         {{--| Hidden per-page selector |--}}
         <div class="hidden">

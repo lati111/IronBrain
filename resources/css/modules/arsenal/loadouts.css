@@ -1,3 +1,26 @@
+.arsenal-equipment-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    height: 95px;
+}
+
+.arsenal-equipment-slot:hover {
+    background-color: rgb(249 250 251);
+}
+
+.arsenal-slot-label {
+    font-size: 0.75rem;
+    color: rgb(156 163 175);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
 [data-equipment="warframe"] {
     height: 135px;
 }

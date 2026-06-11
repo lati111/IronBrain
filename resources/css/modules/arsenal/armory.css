@@ -1,0 +1,18 @@
+.arsenal-modal-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+
+.arsenal-modal-label {
+    font-size: 0.875rem;
+    color: rgb(75 85 99);
+}
+
+.arsenal-indicator-count {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgb(75 85 99);
+    line-height: 1;
+}

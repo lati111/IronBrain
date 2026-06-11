@@ -6,7 +6,7 @@
 
         {{--| Warframe, loadout name  |--}}
         <div class="flex flex-col gap-1">
-            @include('modules.arsenal.snippits.loadout-equipment', ['category' => 'warframe', 'text' => 'Warframe'])
+            <x-arsenal.loadout-equipment category="warframe" text="Warframe"/>
 
             <div class="text-center font-medium pb-2 mb-3 border-b border-gray-200">
                 <span data-name="loadout_name" onclick="startRenameLoadout(this)"
@@ -21,14 +21,14 @@
 
         {{--| Primary / secondary |--}}
         <div class="flex flex-col gap-1">
-            @include('modules.arsenal.snippits.loadout-equipment', ['category' => 'primary', 'text' => 'Primary'])
-            @include('modules.arsenal.snippits.loadout-equipment', ['category' => 'secondary', 'text' => 'Secondary'])
+            <x-arsenal.loadout-equipment category="primary" text="Primary"/>
+            <x-arsenal.loadout-equipment category="secondary" text="Secondary"/>
         </div>
 
         {{--| Melee / companion |--}}
         <div class="flex flex-col gap-1">
-            @include('modules.arsenal.snippits.loadout-equipment', ['category' => 'melee', 'text' => 'Melee'])
-            @include('modules.arsenal.snippits.loadout-equipment', ['category' => 'companion', 'text' => 'Companion'])
+            <x-arsenal.loadout-equipment category="melee" text="Melee"/>
+            <x-arsenal.loadout-equipment category="companion" text="Companion"/>
         </div>
 
     </div>

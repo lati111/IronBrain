@@ -56,13 +56,13 @@
             {{-- Forma --}}
             <div class="flex items-center leading-none gap-0.5 hidden" data-show-if-true-name="has_forma">
                 <img src="{{asset('img/modules/arsenal/icon/forma.png')}}" alt="Forma" class="mini-icon active">
-                <span class="text-[0.7rem] font-bold text-gray-600 leading-none" data-name="forma"></span>
+                <span class="arsenal-indicator-count" data-name="forma"></span>
             </div>
 
             {{-- Shards --}}
             <div class="flex items-center leading-none gap-0.5 hidden" data-show-if-true-name="has_shards">
                 <img src="{{asset('img/modules/arsenal/icon/shard.png')}}" alt="Shards" class="mini-icon active">
-                <span class="text-[0.7rem] font-bold text-gray-600 leading-none" data-name="shards"></span>
+                <span class="arsenal-indicator-count" data-name="shards"></span>
             </div>
 
             {{-- Riven --}}

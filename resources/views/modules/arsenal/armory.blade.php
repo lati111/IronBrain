@@ -16,26 +16,14 @@
 
 @section('content')
     {{--| Top bar |--}}
-    <div class="flex justify-center">
-        <div id="top-bar-container" class="relative">
-            <a href="{{route('arsenal.home.show')}}" class="interactive absolute right-0 top-0">Loadouts</a>
-        </div>
-    </div>
-
-    <div class="mt-6 pb-4"></div>
+    <x-arsenal.topbar>
+        <a href="{{route('arsenal.home.show')}}" class="interactive absolute right-0 top-0">Loadouts</a>
+    </x-arsenal.topbar>
 
     {{--| Shared search bar |--}}
     <div class="flex justify-around mb-6">
         <div class="flex justify-center gap-3 mb-4 flex-wrap">
-            <x-datalist.filters.filter-group>
-                <x-datalist.filters.filter-item title="All" filter-group="itemType" value="all" :selected="true">{{asset('img/modules/arsenal/icon/all.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Warframe" filter-group="itemType" value="warframe">{{asset('img/modules/arsenal/icon/warframe.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Primary" filter-group="itemType" value="primary">{{asset('img/modules/arsenal/icon/primary_rifle.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Secondary" filter-group="itemType" value="secondary">{{asset('img/modules/arsenal/icon/secondary.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Melee" filter-group="itemType" value="melee">{{asset('img/modules/arsenal/icon/melee.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Companion" filter-group="itemType" value="companion">{{asset('img/modules/arsenal/icon/companion.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Archwing" filter-group="itemType" value="archwing">{{asset('img/modules/arsenal/icon/archwing.png')}}</x-datalist.filters.filter-item>
-            </x-datalist.filters.filter-group>
+            <x-arsenal.item-type-filters/>
         </div>
 
         <div class="flex flex-row justify-center pt-2">
@@ -46,17 +34,7 @@
         </div>
 
         <div class="flex justify-center gap-3 mb-4 flex-wrap">
-            <x-datalist.filters.filter-group>
-                <x-datalist.filters.filter-item title="All" filter-group="variant" value="all" :selected="true">{{asset('img/modules/arsenal/icon/all.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Prime" filter-group="variant" value="prime">{{asset('img/modules/arsenal/icon/prime.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Mundane" filter-group="variant" value="non-prime">{{asset('img/modules/arsenal/icon/mundane.png')}}</x-datalist.filters.filter-item>
-            </x-datalist.filters.filter-group>
-
-            <x-datalist.filters.filter-group>
-                <x-datalist.filters.filter-item title="All" filter-group="ownership" value="all" :selected="true">{{asset('img/modules/arsenal/icon/all.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Owned" filter-group="ownership" value="owned">{{asset('img/modules/arsenal/icon/owned.png')}}</x-datalist.filters.filter-item>
-                <x-datalist.filters.filter-item title="Unowned" filter-group="ownership" value="unowned">{{asset('img/modules/arsenal/icon/unowned.png')}}</x-datalist.filters.filter-item>
-            </x-datalist.filters.filter-group>
+            <x-arsenal.ownership-filters/>
         </div>
     </div>
 
@@ -67,16 +45,16 @@
 
     {{--| Cardlist collective |--}}
     @foreach([
-        ['warframe', 'Warframes'],
-        ['primary', 'Primary Weapons'],
-        ['secondary', 'Secondary Weapons'],
-        ['melee', 'Melee Weapons'],
-        ['companion', 'Companions'],
-        ['companion_weapon', 'Companion Weapons'],
-        ['archgun', 'Arch-Guns'],
-        ['archmelee', 'Arch-Melee'],
-    ] as [$category, $label])
-        <div id="section-{{$category}}" class="flex flex-col gap-2 justify-center max-w-screen-2xl mx-auto w-full mb-8">
+        'warframe',
+        'primary',
+        'secondary',
+        'melee',
+        'companion',
+        'companion_weapon',
+        'archgun',
+        'archmelee',
+    ] as $category)
+        <div id="section-{{$category}}" class="arsenal-section">
 
             {{--| Hidden per-page selector |--}}
             <div class="hidden">
@@ -130,14 +108,12 @@
             {{--| Owned form |--}}
             <div id="modal-form-content" class="hidden w-full flex flex-col gap-3">
 
-                <div id="modal-name-row" class="hidden flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Name</label>
+                <x-arsenal.modal-row id="modal-name-row" label="Name" :hidden="true">
                     <input type="text" id="modal-name" class="underlined text-sm text-right"
                            placeholder="Custom name...">
-                </div>
+                </x-arsenal.modal-row>
 
-                <div id="modal-school-row" class="hidden flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Focus School</label>
+                <x-arsenal.modal-row id="modal-school-row" label="Focus School" :hidden="true">
                     <select id="modal-school" class="underlined text-sm">
                         <option value="">None</option>
                         <option value="madurai">Madurai</option>
@@ -146,45 +122,38 @@
                         <option value="unairu">Unairu</option>
                         <option value="zenurik">Zenurik</option>
                     </select>
-                </div>
+                </x-arsenal.modal-row>
 
-
-                <div class="flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Forma</label>
+                <x-arsenal.modal-row label="Forma">
                     <input type="number" id="modal-forma" min="0" max="10" value="0"
                            class="underlined w-14 text-center text-sm">
-                </div>
+                </x-arsenal.modal-row>
 
-                <div id="modal-shards-row" class="hidden flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Shards</label>
+                <x-arsenal.modal-row id="modal-shards-row" label="Shards" :hidden="true">
                     <input type="number" id="modal-shards" min="0" max="5" value="0"
                            class="underlined w-14 text-center text-sm">
-                </div>
+                </x-arsenal.modal-row>
 
-                <div class="flex items-center justify-between gap-6">
-                    <label id="modal-potato-label" class="text-sm text-gray-600">Orokin Reactor</label>
+                <x-arsenal.modal-row label="Orokin Reactor" label-id="modal-potato-label">
                     <input type="checkbox" id="modal-potato" class="w-4 h-4">
-                </div>
+                </x-arsenal.modal-row>
 
-                <div id="modal-exilus-row" class="hidden flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Exilus Adapter</label>
+                <x-arsenal.modal-row id="modal-exilus-row" label="Exilus Adapter" :hidden="true">
                     <input type="checkbox" id="modal-exilus" class="w-4 h-4">
-                </div>
+                </x-arsenal.modal-row>
 
-                <div id="modal-fashioned-row" class="hidden flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Fashioned</label>
+                <x-arsenal.modal-row id="modal-fashioned-row" label="Fashioned" :hidden="true">
                     <input type="checkbox" id="modal-fashioned" class="w-4 h-4">
-                </div>
+                </x-arsenal.modal-row>
 
-                <div class="flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Built</label>
+                <x-arsenal.modal-row label="Built">
                     <input type="checkbox" id="modal-built" class="w-4 h-4">
-                </div>
+                </x-arsenal.modal-row>
 
-                <div id="modal-riven-row" class="hidden flex items-center justify-between gap-6">
-                    <label class="text-sm text-gray-600">Riven</label>
+                <x-arsenal.modal-row id="modal-riven-row" label="Riven" :hidden="true">
                     <input type="checkbox" id="modal-riven" class="w-4 h-4">
-                </div>
+                </x-arsenal.modal-row>
+
             </div>
         </div>
 
