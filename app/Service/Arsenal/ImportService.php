@@ -63,7 +63,7 @@ class ImportService
         // Update contents
         $warframe->name = $data['name'];
         $warframe->description = $data['description'] ?? '';
-        $warframe->wiki_url = $data['wikiUrl'] ?? null;
+        $warframe->wiki_url = $data['wikiaUrl'] ?? null;
         $warframe->prime = $data['isPrime'];
         $warframe->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'warframe') : null;
         $warframe->save();
@@ -128,7 +128,7 @@ class ImportService
         $weapon->description = $data['description'] ?? '';
         $weapon->type = $data['category'];
         $weapon->weapon_type = $data['type'];
-        $weapon->wiki_url = $data['wikiUrl'] ?? null;
+        $weapon->wiki_url = $data['wikiaUrl'] ?? null;
         $weapon->prime = $data['isPrime'] ?? false;
         $weapon->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'weapon') : null;
         $weapon->save();
@@ -186,7 +186,7 @@ class ImportService
         $companion->description = $data['description'] ?? '';
         $companion->type = $data['category'];
         $companion->pet_type = $data['productCategory'];
-        $companion->wiki_url = $data['wikiUrl'] ?? null;
+        $companion->wiki_url = $data['wikiaUrl'] ?? null;
         $companion->prime = $data['isPrime'];
         $companion->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'companion') : null;
         $companion->save();
