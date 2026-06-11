@@ -6,6 +6,7 @@ use App\Enum\PKSanc\PokemonTypes;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\Component;
 use App\Models\Arsenal\Interfaces\ArsenalDataModel;
+use App\Models\Arsenal\Relic;
 use App\Models\Arsenal\Warframe;
 use App\Models\Arsenal\Weapon;
 use App\Models\PKSanc\Ability;
@@ -270,7 +271,47 @@ class ImportService
         $component->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'component') : null;
         $component->save();
 
+        // Import relics
+        foreach ($data['drops'] ?? [] as $relic) {
+            $this->importRelic($relic, $component);
+        }
+
         return $updated ? true : $component->wasChanged();
+    }
+
+    /**
+     * Import a component from a blueprint
+     * @param array $data The component data
+     * @param Component $component The component this relic is sourced from
+     * @return bool Whether or not the component was updated
+     */
+    public function importRelic(array $data, Component $component): bool
+    {
+        $updated = false;
+
+        // Handle blacklist
+        if (!str_ends_with($data['location'], 'Relic')) {
+            return false;
+        }
+
+        $nameParts = explode(' ', $data['location']);
+        $relicName = $nameParts[0] . ' ' . $nameParts[1];
+        $relic = Relic::where('component_uuid', $component->uuid)->where('name', $relicName)->first();
+
+        // Create new
+        if ($relic === null) {
+            $relic = new Relic();
+            $relic->component_uuid = $component->uuid;
+            $relic->name = $relicName;
+            $updated = true;
+        }
+
+        $relic->grade = $nameParts[0];
+        $relic->key = $nameParts[1];
+        $relic->rarity = $data['rarity'];
+        $relic->save();
+
+        return $updated ? true : $relic->wasChanged();
     }
 
     /**

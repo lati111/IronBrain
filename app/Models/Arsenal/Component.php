@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * @inheritdoc
+ * @property string uuid
  * @property string blueprint_id The ID of the blueprint
  * @property string type The type of blueprint eg warframe, weapon etc
  * @property integer amount The amount required for the blueprint
