@@ -3,11 +3,17 @@
     <input type="hidden" name="blueprint_type">
     <input type="hidden" name="completion_pct">
     <input type="hidden" name="already_owned">
+    <input type="hidden" name="vaulted">
 
     {{--| Already-owned indicator |--}}
     <img src="{{asset('img/modules/arsenal/icon/owned.png')}}" alt="Already owned" title="Already owned"
          class="mini-icon owned absolute top-1.5 left-1.5 hidden"
          data-show-if-true-name="already_owned">
+
+    {{--| Vaulted indicator |--}}
+    <img src="{{asset('img/modules/arsenal/icon/vault.png')}}" alt="Vaulted" title="Vaulted"
+         class="mini-icon vaulted absolute top-1.5 right-1.5 hidden"
+         data-show-if-true-name="vaulted">
 
     {{--| Blueprint icon + name beside component slots, all on one row |--}}
     <div class="flex items-start gap-3">

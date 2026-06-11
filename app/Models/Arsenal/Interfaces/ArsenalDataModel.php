@@ -35,6 +35,7 @@ abstract class ArsenalDataModel extends AbstractModel
 
     /** @inheritdoc */
     protected $casts = [
-        'prime' => 'boolean',
+        'prime'   => 'boolean',
+        'vaulted' => 'boolean',
     ];
 }

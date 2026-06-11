@@ -19,6 +19,7 @@ class FoundryCardlist extends DataCardlist {
         if (activeFilters.variant   !== 'all') url.searchParams.set('variant',   activeFilters.variant);
         if (activeFilters.itemType  !== 'all') url.searchParams.set('item_type', activeFilters.itemType);
         if (activeFilters.ownership !== 'all') url.searchParams.set('ownership', activeFilters.ownership);
+        if (activeFilters.vault     !== 'all') url.searchParams.set('vault',     activeFilters.vault);
         return url;
     }
 
@@ -37,7 +38,7 @@ class FoundryCardlist extends DataCardlist {
 let foundryCardlist: FoundryCardlist;
 let pendingCraft: { card: HTMLElement; blueprintId: string; type: string } | null = null;
 
-const activeFilters: Record<string, string> = { variant: 'all', itemType: 'all', ownership: 'all' };
+const activeFilters: Record<string, string> = { variant: 'all', itemType: 'all', ownership: 'all', vault: 'all' };
 
 async function init(): Promise<void> {
     const contentDiv = document.getElementById('foundry-cardlist-content');

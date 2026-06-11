@@ -69,13 +69,14 @@ class ArsenalFoundryCardlist extends AbstractCardlist
         $variant   = $request->get('variant',        'all');
         $itemType  = $request->get('item_type',      'all');
         $ownership = $request->get('ownership',      'all');
+        $vault     = $request->get('vault',          'all');
 
         return FoundryResult::query()
-            ->fromSub($this->buildInnerQuery($user, $search, $variant, $itemType, $ownership), 'foundry')
+            ->fromSub($this->buildInnerQuery($user, $search, $variant, $itemType, $ownership, $vault), 'foundry')
             ->orderByRaw('completion_pct DESC, name ASC');
     }
 
-    private function buildInnerQuery(User $user, string $search, string $variant, string $itemType, string $ownership)
+    private function buildInnerQuery(User $user, string $search, string $variant, string $itemType, string $ownership, string $vault)
     {
         $q = DB::table(Component::TABLE_NAME . ' as c')
             ->leftJoin(Warframe::TABLE_NAME . ' as wf', function ($join) {
@@ -94,12 +95,13 @@ class ArsenalFoundryCardlist extends AbstractCardlist
                 $join->on('uc.id', '=', 'c.uuid')
                      ->where('uc.owner_uuid', '=', $user->uuid);
             })
-            ->groupBy('c.blueprint_id', 'c.type', DB::raw('COALESCE(wf.name, wp.name, comp.name)'), DB::raw('COALESCE(wf.icon, wp.icon, comp.icon)'))
+            ->groupBy('c.blueprint_id', 'c.type', DB::raw('COALESCE(wf.name, wp.name, comp.name)'), DB::raw('COALESCE(wf.icon, wp.icon, comp.icon)'), DB::raw('COALESCE(wf.vaulted, wp.vaulted, 0)'))
             ->selectRaw("
                 c.blueprint_id as blueprint_id,
                 c.type as blueprint_type,
                 COALESCE(wf.name, wp.name, comp.name) as name,
                 COALESCE(wf.icon, wp.icon, comp.icon) as icon,
+                COALESCE(wf.vaulted, wp.vaulted, 0) as vaulted,
                 ROUND(SUM(LEAST(COALESCE(uc.amount, 0), c.amount)) / SUM(c.amount) * 100) as completion_pct,
                 CASE
                     WHEN LOWER(c.type) = 'warframe'  THEN CASE WHEN EXISTS(SELECT 1 FROM " . UserWarframe::TABLE_NAME  . " WHERE id = c.blueprint_id AND owner_uuid = ?) THEN 1 ELSE 0 END
@@ -144,6 +146,12 @@ class ArsenalFoundryCardlist extends AbstractCardlist
             $q->havingRaw('already_owned = 1');
         } elseif ($ownership === 'unowned') {
             $q->havingRaw('already_owned = 0');
+        }
+
+        if ($vault === 'vaulted') {
+            $q->whereRaw('COALESCE(wf.vaulted, wp.vaulted, 0) = 1');
+        } elseif ($vault === 'unvaulted') {
+            $q->whereRaw('COALESCE(wf.vaulted, wp.vaulted, 0) = 0');
         }
 
         return $q;

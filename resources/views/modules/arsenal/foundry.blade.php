@@ -37,6 +37,11 @@
 
         <div class="flex justify-center gap-3 mb-4 flex-wrap">
             <x-arsenal.ownership-filters/>
+            <x-datalist.filters.filter-group>
+                <x-datalist.filters.filter-item title="All" filter-group="vault" value="all" :selected="true">{{asset('img/modules/arsenal/icon/all.png')}}</x-datalist.filters.filter-item>
+                <x-datalist.filters.filter-item title="Unvaulted" filter-group="vault" value="unvaulted">{{asset('img/modules/arsenal/icon/relic.png')}}</x-datalist.filters.filter-item>
+                <x-datalist.filters.filter-item title="Vaulted" filter-group="vault" value="vaulted">{{asset('img/modules/arsenal/icon/vault.png')}}</x-datalist.filters.filter-item>
+            </x-datalist.filters.filter-group>
         </div>
     </div>
 

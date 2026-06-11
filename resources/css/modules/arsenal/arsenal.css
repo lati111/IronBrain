@@ -31,6 +31,11 @@
     filter: brightness(0) saturate(100%) invert(21%) sepia(83%) saturate(2103%) hue-rotate(341deg) brightness(92%) contrast(98%);
 }
 
+.mini-icon.vaulted {
+    opacity: 100%;
+    filter: brightness(0) saturate(100%) invert(73%) sepia(52%) saturate(900%) hue-rotate(5deg) brightness(104%);
+}
+
 .arsenal-slot-name {
     overflow-wrap: break-word;
     hyphens: auto;

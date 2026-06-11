@@ -65,6 +65,7 @@ class ImportService
         $warframe->description = $data['description'] ?? '';
         $warframe->wiki_url = $data['wikiaUrl'] ?? null;
         $warframe->prime = $data['isPrime'];
+        $warframe->vaulted = $data['vaulted'] ?? false;
         $warframe->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'warframe') : null;
         $warframe->save();
 
@@ -140,6 +141,7 @@ class ImportService
         $weapon->weapon_type = $data['type'];
         $weapon->wiki_url = $data['wikiaUrl'] ?? null;
         $weapon->prime = $data['isPrime'] ?? false;
+        $weapon->vaulted = $data['vaulted'] ?? false;
         $weapon->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'weapon') : null;
         $weapon->save();
 
