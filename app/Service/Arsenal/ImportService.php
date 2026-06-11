@@ -290,7 +290,7 @@ class ImportService
         $updated = false;
 
         // Handle blacklist
-        if (!str_ends_with($data['location'], 'Relic')) {
+        if (!str_ends_with($data['location'], 'Relic') || str_starts_with($data['location'], 'Vanguard')) {
             return false;
         }
 
