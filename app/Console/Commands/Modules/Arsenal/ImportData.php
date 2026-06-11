@@ -36,7 +36,7 @@ class ImportData extends Command
         $this->newLine();
 
         $results = [];
-        $changedString = '%s imported';
+        $changedString = '%s changed';
         switch(strtolower($this->option('filter'))) {
             case 'warframe':
             case 'warframes':
@@ -76,10 +76,12 @@ class ImportData extends Command
     {
         $this->line('Importing warframes...');
 
+        $changedCount = 0;
         try {
-            $changedCount = 0;
+            $this->line('Fetching warframes from API...');
             $warframeCollection = $this->api->getWarframes();
 
+            $this->line('Fetch complete. Importing warframes...');
             $bar = $this->output->createProgressBar(count($warframeCollection));
             $bar->start();
 
@@ -110,10 +112,12 @@ class ImportData extends Command
     {
         $this->line('Importing weapons...');
 
+        $changedCount = 0;
         try {
-            $changedCount = 0;
+            $this->line('Fetching weapons from API...');
             $itemCollection = $this->api->getWeapons();
 
+            $this->line('Fetch complete. Importing weapons...');
             $bar = $this->output->createProgressBar(count($itemCollection));
             $bar->start();
 
@@ -144,10 +148,12 @@ class ImportData extends Command
     {
         $this->line('Importing companions...');
 
+        $changedCount = 0;
         try {
-            $changedCount = 0;
+            $this->line('Fetching companions from API...');
             $itemCollection = $this->api->getCompanions();
 
+            $this->line('Fetch complete. Importing companions...');
             $bar = $this->output->createProgressBar(count($itemCollection));
             $bar->start();
 

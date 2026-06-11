@@ -12,7 +12,10 @@ class WarframeApiService {
     protected const array headers = ['Content-Type: application/json', 'User-Agent: IronBrain'];
 
     public function __construct() {
-        $this->client = new Client([]);
+        $this->client = new Client([
+            'connect_timeout' => 10.0,
+            'timeout'         => 120.0,
+        ]);
     }
 
     //| Import query
@@ -116,6 +119,10 @@ class WarframeApiService {
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new ErrorException('Invalid JSON response: ' . json_last_error_msg());
+        }
+
+        if (!is_array($data)) {
+            throw new ErrorException('Unexpected API response: expected array, got ' . gettype($data));
         }
 
         return $data;
