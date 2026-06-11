@@ -123,10 +123,20 @@ class ImportService
             $updated = true;
         }
 
+        // Mutate data
+        if ($data['type'] === 'Companion Weapon') {
+            $data['category'] = 'Companion Weapon';
+        }
+
         // Update contents
         $weapon->name = $data['name'];
         $weapon->description = $data['description'] ?? '';
-        $weapon->type = $data['category'];
+        $weapon->type = match (strtolower($data['category'])) {
+            'arch-gun'         => 'archgun',
+            'arch-melee'       => 'archmelee',
+            'companion weapon' => 'companion_weapon',
+            default            => strtolower($data['category']),
+        };
         $weapon->weapon_type = $data['type'];
         $weapon->wiki_url = $data['wikiaUrl'] ?? null;
         $weapon->prime = $data['isPrime'] ?? false;
