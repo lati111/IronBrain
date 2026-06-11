@@ -36,6 +36,19 @@
     filter: brightness(0) saturate(100%) invert(73%) sepia(52%) saturate(900%) hue-rotate(5deg) brightness(104%);
 }
 
+.relic-popup {
+    position: fixed;
+    z-index: 9999;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    padding: 0.5rem;
+    min-width: 8rem;
+    max-width: 18rem;
+    pointer-events: none;
+}
+
 .arsenal-slot-name {
     overflow-wrap: break-word;
     hyphens: auto;

@@ -7,6 +7,7 @@ use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\Component;
 use App\Models\Arsenal\FoundryResult;
+use App\Models\Arsenal\Relic;
 use App\Models\Arsenal\UserCompanion;
 use App\Models\Arsenal\UserComponent;
 use App\Models\Arsenal\UserWarframe;
@@ -159,7 +160,7 @@ class ArsenalFoundryCardlist extends AbstractCardlist
 
     private function fetchComponents(User $user, array $blueprintIds): Collection
     {
-        return DB::table(Component::TABLE_NAME . ' as c')
+        $components = DB::table(Component::TABLE_NAME . ' as c')
             ->leftJoin(UserComponent::TABLE_NAME . ' as uc', function ($join) use ($user) {
                 $join->on('uc.id', '=', 'c.uuid')
                      ->where('uc.owner_uuid', '=', $user->uuid);
@@ -175,7 +176,20 @@ class ArsenalFoundryCardlist extends AbstractCardlist
             ])
             ->orderByRaw("CASE WHEN LOWER(c.name) LIKE '%blueprint%' THEN 0 ELSE 1 END ASC")
             ->orderBy('c.name')
+            ->get();
+
+        $relicsByComponent = DB::table(Relic::TABLE_NAME)
+            ->whereIn('component_uuid', $components->pluck('uuid')->toArray())
+            ->orderByRaw("FIELD(LOWER(grade), 'lith', 'meso', 'neo', 'axi')")
+            ->select(['component_uuid', 'grade', 'key', 'rarity'])
             ->get()
+            ->groupBy('component_uuid');
+
+        return $components
+            ->map(function ($comp) use ($relicsByComponent) {
+                $comp->relics = ($relicsByComponent->get($comp->uuid) ?? collect())->values()->toArray();
+                return $comp;
+            })
             ->groupBy('blueprint_id');
     }
 }

@@ -3,12 +3,19 @@ import {postData} from "../../main";
 import {openModal, init as initModals, closeModal} from "../../components/modal";
 import {initFilters} from "./utils";
 
+interface RelicData {
+    grade: string;
+    key: string;
+    rarity: string;
+}
+
 interface ComponentData {
     uuid: string;
     name: string;
     icon: string | null;
     amount: number;
     obtained: number;
+    relics: RelicData[];
 }
 
 class FoundryCardlist extends DataCardlist {
@@ -37,8 +44,87 @@ class FoundryCardlist extends DataCardlist {
 
 let foundryCardlist: FoundryCardlist;
 let pendingCraft: { card: HTMLElement; blueprintId: string; type: string } | null = null;
+let activePopup: HTMLElement | null = null;
 
 const activeFilters: Record<string, string> = { variant: 'all', itemType: 'all', ownership: 'all', vault: 'all' };
+
+function showRelicPopup(comp: ComponentData, anchor: HTMLElement): void {
+    hideRelicPopup();
+    if (!comp.relics || comp.relics.length === 0) return;
+    if (comp.obtained >= comp.amount) return;
+
+    const popup = document.createElement('div');
+    popup.className = 'relic-popup';
+
+    const title = document.createElement('div');
+    title.className = 'text-xs font-semibold text-gray-500 mb-1.5 pb-1 border-b border-gray-100 text-center';
+    title.textContent = comp.name;
+    popup.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'flex flex-wrap gap-2 justify-center';
+    for (const relic of comp.relics) {
+        list.appendChild(buildRelicEntry(relic));
+    }
+    popup.appendChild(list);
+
+    popup.style.visibility = 'hidden';
+    document.body.appendChild(popup);
+    activePopup = popup;
+
+    const rect = anchor.getBoundingClientRect();
+    const popupW = popup.offsetWidth;
+    const popupH = popup.offsetHeight;
+    let top  = rect.top - popupH - 8;
+    let left = rect.left + rect.width / 2 - popupW / 2;
+    if (top < 8) top = rect.bottom + 8;
+    left = Math.max(8, Math.min(left, window.innerWidth - popupW - 8));
+    popup.style.left = left + 'px';
+    popup.style.top  = top + 'px';
+    popup.style.visibility = 'visible';
+}
+
+function hideRelicPopup(): void {
+    activePopup?.remove();
+    activePopup = null;
+}
+
+function buildRelicEntry(relic: RelicData): HTMLElement {
+    const entry = document.createElement('div');
+    entry.className = 'flex flex-col items-center gap-0.5';
+
+    const iconWrapper = document.createElement('div');
+    iconWrapper.className = 'relative w-10 h-10 flex-shrink-0';
+
+    const img = document.createElement('img');
+    img.src       = `/img/modules/arsenal/icon/relic/${relic.grade.toLowerCase()}.png`;
+    img.alt       = relic.grade;
+    img.className = 'w-10 h-10 object-contain';
+    iconWrapper.appendChild(img);
+
+    const keyLabel = document.createElement('span');
+    keyLabel.className   = 'absolute inset-0 flex items-end justify-center pb-1 text-[0.6rem] font-black text-white leading-none';
+    keyLabel.style.textShadow = '0 0 3px rgba(0,0,0,1), 0 0 3px rgba(0,0,0,1), 0 1px 4px rgba(0,0,0,0.9)';
+    keyLabel.textContent = relic.key;
+    iconWrapper.appendChild(keyLabel);
+
+    entry.appendChild(iconWrapper);
+
+    const rarityEl = document.createElement('span');
+    rarityEl.className   = 'text-[0.6rem] leading-none capitalize ' + relicRarityClass(relic.rarity);
+    rarityEl.textContent = relic.rarity;
+    entry.appendChild(rarityEl);
+
+    return entry;
+}
+
+function relicRarityClass(rarity: string): string {
+    switch (rarity.toLowerCase()) {
+        case 'rare':     return 'text-amber-500';
+        case 'uncommon': return 'text-blue-400';
+        default:         return 'text-gray-400';
+    }
+}
 
 async function init(): Promise<void> {
     const contentDiv = document.getElementById('foundry-cardlist-content');
@@ -193,6 +279,11 @@ function buildComponentGroup(comp: ComponentData): HTMLElement {
     label.textContent = comp.name;
     group.appendChild(label);
 
+    if (comp.relics?.length > 0) {
+        group.addEventListener('mouseenter', () => showRelicPopup(comp, group));
+        group.addEventListener('mouseleave', hideRelicPopup);
+    }
+
     group.addEventListener('click', () => handleGroupClick(group));
     return group;
 }
@@ -271,6 +362,7 @@ function makeIconEl(comp: ComponentData, absolute: boolean): HTMLElement {
 }
 
 async function handleGroupClick(groupEl: HTMLElement): Promise<void> {
+    hideRelicPopup();
     const card        = groupEl.closest('[data-blueprint-item]') as HTMLElement;
     const blueprintId = (card.querySelector('input[name="blueprint_id"]') as HTMLInputElement)?.value ?? '';
     const uuid        = groupEl.dataset.componentUuid!;
