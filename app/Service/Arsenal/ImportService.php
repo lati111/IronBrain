@@ -78,6 +78,18 @@ class ImportService
             }
         }
 
+        // Link exalted weapons to this warframe
+        if (isset($data['exaltedWeapons'])) {
+            foreach ($data['exaltedWeapons'] as $exaltedWeaponId) {
+                $exaltedWeapon = Weapon::where('id', $exaltedWeaponId)->first();
+                if ($exaltedWeapon !== null && $exaltedWeapon->exalted_id !== $warframe->id) {
+                    $exaltedWeapon->exalted_id = $warframe->id;
+                    $exaltedWeapon->save();
+                    $updated = true;
+                }
+            }
+        }
+
         return $updated ? true : $warframe->wasChanged();
     }
 
@@ -117,7 +129,7 @@ class ImportService
         $weapon->type = $data['category'];
         $weapon->weapon_type = $data['type'];
         $weapon->wiki_url = $data['wikiUrl'] ?? null;
-        $weapon->prime = $data['isPrime'];
+        $weapon->prime = $data['isPrime'] ?? false;
         $weapon->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'weapon') : null;
         $weapon->save();
 

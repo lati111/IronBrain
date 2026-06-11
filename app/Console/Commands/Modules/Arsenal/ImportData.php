@@ -54,11 +54,11 @@ class ImportData extends Command
                 $results[] = ['Companions', sprintf($changedString, $changedCount)];
                 break;
             default:
-                $changedCount = $this->importWarframes();
-                $results[] = ['Warframes', sprintf($changedString, $changedCount)];
-
                 $changedCount = $this->importWeapons();
                 $results[] = ['Weapons', sprintf($changedString, $changedCount)];
+
+                $changedCount = $this->importWarframes();
+                $results[] = ['Warframes', sprintf($changedString, $changedCount)];
 
                 $changedCount = $this->importCompanions();
                 $results[] = ['Companions', sprintf($changedString, $changedCount)];

@@ -32,7 +32,8 @@ class WarframeApiService {
             'wikiaUrl',
             'isPrime',
             'components',
-            'productCategory'
+            'productCategory',
+            'exaltedWeapons',
         ]);
     }
 

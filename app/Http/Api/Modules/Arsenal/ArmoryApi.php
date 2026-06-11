@@ -125,6 +125,10 @@ class ArmoryApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, ucfirst($type) . ' not found');
         }
 
+        if ($type === 'weapon' && Weapon::where('id', $id)->whereNotNull('exalted_id')->exists()) {
+            return $this->respond(Response::HTTP_FORBIDDEN, 'Exalted weapons cannot be added manually');
+        }
+
         $existing = $userClass::where('id', $id)->where('owner_uuid', $ownerUuid)->first();
         if ($existing) {
             return $this->respond(Response::HTTP_ALREADY_REPORTED, 'Already in collection', $existing->uuid);
@@ -135,17 +139,34 @@ class ArmoryApi extends AbstractApi
         $item->owner_uuid = $ownerUuid;
         $item->save();
 
+        if ($type === 'warframe') {
+            foreach (Weapon::where('exalted_id', $id)->get() as $exaltedWeapon) {
+                $userWeapon             = new UserWeapon();
+                $userWeapon->id         = $exaltedWeapon->id;
+                $userWeapon->owner_uuid = $ownerUuid;
+                $userWeapon->save();
+            }
+        }
+
         return $this->respond(Response::HTTP_CREATED, 'Added to collection', $item->uuid);
     }
 
     private function deleteUserItem(string $type, string $ownerUuid, string $uuid): JsonResponse
     {
         [$userClass] = self::MODEL_MAP[$type];
-        $deleted = $userClass::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->delete();
+        $item = $userClass::where('uuid', $uuid)->where('owner_uuid', $ownerUuid)->first();
 
-        if (!$deleted) {
+        if (!$item) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
+
+        if ($type === 'warframe') {
+            UserWeapon::whereIn('id', Weapon::where('exalted_id', $item->id)->pluck('id'))
+                ->where('owner_uuid', $ownerUuid)
+                ->delete();
+        }
+
+        $item->delete();
 
         return $this->respond(Response::HTTP_OK, 'Removed from collection', true);
     }
@@ -163,6 +184,15 @@ class ArmoryApi extends AbstractApi
         $copy->id         = $source->id;
         $copy->owner_uuid = $ownerUuid;
         $copy->save();
+
+        if ($type === 'warframe') {
+            foreach (Weapon::where('exalted_id', $copy->id)->get() as $exaltedWeapon) {
+                $userWeapon             = new UserWeapon();
+                $userWeapon->id         = $exaltedWeapon->id;
+                $userWeapon->owner_uuid = $ownerUuid;
+                $userWeapon->save();
+            }
+        }
 
         return $this->respond(Response::HTTP_CREATED, 'Duplicate added', $copy->uuid);
     }
