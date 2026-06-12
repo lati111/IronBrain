@@ -33,7 +33,7 @@ class AuthSeeder extends Seeder
     {
         $this->user_table->insert([
             'uuid' => Str::uuid(),
-            'name' => "Tester",
+            'username' => "Tester",
             'email' => "test@test.nl",
             'password' => Hash::make("Password123"),
             'role_id' => $this->role_table->where('name', 'Tester')->first()->id,
@@ -44,7 +44,7 @@ class AuthSeeder extends Seeder
 
         $this->user_table->insert([
             'uuid' => Str::uuid(),
-            'name' => "Admin",
+            'username' => "Admin",
             'email' => "admin@test.nl",
             'password' => Hash::make("Password123"),
             'role_id' => Role::where('name', 'Admin')->first()->id,
