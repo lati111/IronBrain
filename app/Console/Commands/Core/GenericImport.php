@@ -35,5 +35,6 @@ class GenericImport extends Command
         $this->call('import:modules');
 
         $this->call('import:pksanc');
+        $this->call('import:arsenal');
     }
 }
