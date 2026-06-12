@@ -66,3 +66,22 @@ Route::prefix('/pksanc/data')
         Route::dataprovider('/owned-species/dataselect', 'data.pksanc.owned-species.dataselect',
             \App\Http\Dataproviders\Modules\PKSanc\Data\OwnedPokemonSpeciesSelect::class);
     });
+
+
+//| Arsenal
+
+Route::prefix('/arsenal/data')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::dataprovider('/loadouts', 'data.arsenal.loadouts',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalLoadoutCardlist::class);
+
+        Route::dataprovider('/armory', 'data.arsenal.armory',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalArmoryCardlist::class);
+
+        Route::dataprovider('/owned-slot', 'data.arsenal.owned-slot',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalOwnedSlotCardlist::class);
+
+        Route::dataprovider('/foundry', 'data.arsenal.foundry',
+            \App\Http\Dataproviders\Modules\Arsenal\ArsenalFoundryCardlist::class);
+    });

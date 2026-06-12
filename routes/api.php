@@ -44,7 +44,39 @@ Route::prefix('/config')
     });
 
 
-//| PKsanc
+//| Arsenal
+
+Route::prefix('/arsenal')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::post('/armory/add', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'addItem'])
+            ->name('api.arsenal.armory.add');
+        Route::get('/armory/item', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'getItem'])
+            ->name('api.arsenal.armory.item.get');
+        Route::post('/armory/update', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'updateItem'])
+            ->name('api.arsenal.armory.item.update');
+        Route::post('/armory/remove', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'removeItem'])
+            ->name('api.arsenal.armory.item.remove');
+        Route::post('/armory/duplicate', [\App\Http\Api\Modules\Arsenal\ArmoryApi::class, 'duplicateItem'])
+            ->name('api.arsenal.armory.item.duplicate');
+
+        Route::post('/loadout/create', [\App\Http\Api\Modules\Arsenal\LoadoutApi::class, 'createLoadout'])
+            ->name('api.arsenal.loadout.create');
+        Route::post('/loadout/slot/assign', [\App\Http\Api\Modules\Arsenal\LoadoutApi::class, 'assignSlot'])
+            ->name('api.arsenal.loadout.slot.assign');
+        Route::post('/loadout/slot/clear', [\App\Http\Api\Modules\Arsenal\LoadoutApi::class, 'clearSlot'])
+            ->name('api.arsenal.loadout.slot.clear');
+        Route::post('/loadout/rename', [\App\Http\Api\Modules\Arsenal\LoadoutApi::class, 'renameLoadout'])
+            ->name('api.arsenal.loadout.rename');
+
+        Route::post('/foundry/component/set', [\App\Http\Api\Modules\Arsenal\FoundryApi::class, 'setComponentAmount'])
+            ->name('api.arsenal.foundry.component.set');
+        Route::post('/foundry/blueprint/craft', [\App\Http\Api\Modules\Arsenal\FoundryApi::class, 'craftBlueprint'])
+            ->name('api.arsenal.foundry.blueprint.craft');
+    });
+
+
+//| PKSanc
 
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
@@ -64,13 +96,11 @@ Route::prefix('/pksanc')
         Route::post('/romhacks/add', [\App\Http\Api\Modules\PKSanc\ContributionApi::class, 'addRomhack'])
             ->name('pksanc.games.romhacks.add');
 
-        Route::prefix('/pokedex')
-            ->middleware('auth:sanctum')
-            ->group(function() {
-                Route::post('/mark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'setPokedexMarking'])
-                    ->name('pksanc.pokedex.mark');
+        Route::prefix('/pokedex')->group(function() {
+            Route::post('/mark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'setPokedexMarking'])
+                ->name('pksanc.pokedex.mark');
 
-                Route::post('/unmark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'removePokedexMarking'])
-                    ->name('pksanc.pokedex.unmark');
-            });
+            Route::post('/unmark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'removePokedexMarking'])
+                ->name('pksanc.pokedex.unmark');
+        });
     });

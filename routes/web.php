@@ -51,7 +51,6 @@ Route::prefix('/config')
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
     ->group(function() {
-    // pages
     Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');
 
@@ -74,3 +73,18 @@ Route::prefix('/pksanc')
         });
     });
 });
+
+//| arsenal
+Route::prefix('/arsenal')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::get('/', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showOverview'])
+            ->name('arsenal.home.show');
+
+        Route::get('/armory', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showArmory'])
+            ->name('arsenal.armory.show');
+
+        Route::get('/foundry', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showFoundry'])
+            ->name('arsenal.foundry.show');
+    });
+
