@@ -22,7 +22,7 @@ Route::prefix('/config')
         Route::prefix('/user')
             ->middleware(['auth.permission:config.user.view'])
             ->group(function() {
-                Route::post('/{user_uuid}/set_role/{permission_id}', [\App\Http\Api\Config\UserConfigApi::class, 'changeRole'])
+                Route::post('/{user_uuid}/set_role/{role_id}', [\App\Http\Api\Config\UserConfigApi::class, 'changeRole'])
                     ->middleware('auth.permission:config.user.edit,config.user.role')
                     ->name('api.config.users.change-role');
             });
@@ -84,23 +84,23 @@ Route::prefix('/pksanc')
         Route::prefix('/deposit')->group(function() {
             Route::prefix('/staging')->group(function() {
                 Route::post('/', [\App\Http\Api\Modules\PKSanc\DepositApi::class, 'stageDepositAttempt'])
-                    ->name('pksanc.deposit.stage.attempt');
+                    ->name('api.pksanc.deposit.stage.attempt');
 
                 Route::prefix('/{staging_uuid}')->group(function() {
                     Route::post('/confirm', [\App\Http\Api\Modules\PKSanc\DepositApi::class, 'confirmDeposit'])
-                        ->name('pksanc.deposit.stage.confirm');
+                        ->name('api.pksanc.deposit.stage.confirm');
                 });
             });
         });
 
         Route::post('/romhacks/add', [\App\Http\Api\Modules\PKSanc\ContributionApi::class, 'addRomhack'])
-            ->name('pksanc.games.romhacks.add');
+            ->name('api.pksanc.games.romhacks.add');
 
         Route::prefix('/pokedex')->group(function() {
             Route::post('/mark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'setPokedexMarking'])
-                ->name('pksanc.pokedex.mark');
+                ->name('api.pksanc.pokedex.mark');
 
             Route::post('/unmark', [\App\Http\Api\Modules\PKSanc\PokedexApi::class, 'removePokedexMarking'])
-                ->name('pksanc.pokedex.unmark');
+                ->name('api.pksanc.pokedex.unmark');
         });
     });

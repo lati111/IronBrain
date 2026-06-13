@@ -24,6 +24,9 @@ class Game extends AbstractModel
     protected $keyType = 'string';
 
     /** { @inheritdoc } */
+    public $incrementing = false;
+
+    /** { @inheritdoc } */
     protected $casts = [
         'is_romhack' => 'boolean',
     ];

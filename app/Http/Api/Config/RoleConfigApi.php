@@ -61,8 +61,7 @@ class RoleConfigApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, PermissionEnum::NOT_FOUND);
         }
 
-        $link = RolePermission::where('role_id', $role->id)->where('permission_id', $permission->id)->first();
-        $link?->delete();
+        RolePermission::where('role_id', $role->id)->where('permission_id', $permission->id)->delete();
 
         return $this->respond(Response::HTTP_OK, RoleEnum::PERMISSION_REVOKED, true);
     }

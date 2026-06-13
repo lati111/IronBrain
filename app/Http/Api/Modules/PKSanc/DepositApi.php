@@ -90,7 +90,7 @@ class DepositApi extends AbstractApi
         ]);
 
         if ($validator->fails()) {
-            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
         $csv = ImportCsv::where('uuid', $staging_uuid)

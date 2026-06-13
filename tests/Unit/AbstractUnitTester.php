@@ -83,6 +83,9 @@ abstract class AbstractUnitTester extends Testcase
             case User::class:
                 $qb->where('email', '!=', 'admin@test.nl');
                 break;
+            case \App\Models\Auth\Role::class:
+                $qb->where('is_admin', false);
+                break;
         }
 
         return $qb->first();

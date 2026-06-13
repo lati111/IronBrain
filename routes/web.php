@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Config\RoleController;
+use App\Http\Controllers\Config\UserController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;
@@ -33,16 +35,30 @@ Route::prefix('/config')
         Route::prefix('/user')
             ->middleware('auth.permission:config.user.view')
             ->group(function() {
-                Route::get('/', [\App\Http\Controllers\Config\UserController::class, 'overview'])
+                Route::get('/', [UserController::class, 'overview'])
                     ->name("config.user.overview");
+                Route::post('/{uuid}/deactivate', [UserController::class, 'deactivate'])
+                    ->name("config.user.delete");
+                Route::post('/{uuid}/role/set', [UserController::class, 'setRole'])
+                    ->name("config.user.role.set");
             });
 
         //| role
         Route::prefix('/role')
             ->middleware('auth.permission:config.role.view')
             ->group(function() {
-                Route::get('/', [\App\Http\Controllers\Config\RoleController::class, 'overview'])
+                Route::get('/', [RoleController::class, 'overview'])
                     ->name("config.role.overview");
+                Route::get('/new', [RoleController::class, 'new'])
+                    ->name("config.role.new");
+                Route::get('/{id}/modify', [RoleController::class, 'modify'])
+                    ->name("config.role.modify");
+                Route::post('/save', [RoleController::class, 'save'])
+                    ->name("config.role.save");
+                Route::post('/{id}/delete', [RoleController::class, 'delete'])
+                    ->name("config.role.delete");
+                Route::post('/{role_id}/permission/{permission_id}/toggle', [RoleController::class, 'togglePermission'])
+                    ->name("config.role.permission.toggle");
             });
     });
 

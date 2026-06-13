@@ -1,6 +1,6 @@
 <?php
 
-namespace Service\Modules\PKSanc;
+namespace Tests\Unit\Service\Modules\PKSanc;
 
 use App\Exceptions\Modules\PKSanc\ImportException;
 use App\Models\PKSanc\ImportCsv;
@@ -9,10 +9,18 @@ use App\Service\PKSanc\DepositService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Mockery;
+use Tests\Traits\PKSanc\PKSancTestHelper;
 use Tests\Unit\Service\AbstractServiceTester as ServiceAbstractServiceTester;
 
 class DepositServiceTest extends ServiceAbstractServiceTester
 {
+    use PKSancTestHelper;
+
+    public function setUp(): void
+    {
+        parent::setUp();
+        $this->createTestGame('X');
+    }
     /**
      * Tests the importing of a v1 csv
      * @return void
@@ -32,7 +40,7 @@ class DepositServiceTest extends ServiceAbstractServiceTester
         $csv->uploader_uuid = $user->uuid;
         $csv->save();
 
-        $mock = Mockery::mock('App\Models\PKSanc\ImportCsv');
+        $mock = Mockery::mock('App\Models\PKSanc\ImportCsv')->shouldIgnoreMissing();
         $mock->shouldReceive('getAttribute')
             ->with('uuid')
             ->andReturn($csv->uuid);
@@ -162,7 +170,7 @@ class DepositServiceTest extends ServiceAbstractServiceTester
         $csv->uploader_uuid = $user->uuid;
         $csv->save();
 
-        $mock = Mockery::mock('App\Models\PKSanc\ImportCsv');
+        $mock = Mockery::mock('App\Models\PKSanc\ImportCsv')->shouldIgnoreMissing();
         $mock->shouldReceive('getAttribute')
             ->with('uuid')
             ->andReturn($csv->uuid);
@@ -208,7 +216,7 @@ class DepositServiceTest extends ServiceAbstractServiceTester
         $csv->uploader_uuid = $user->uuid;
         $csv->save();
 
-        $mock = Mockery::mock('App\Models\PKSanc\ImportCsv');
+        $mock = Mockery::mock('App\Models\PKSanc\ImportCsv')->shouldIgnoreMissing();
         $mock->shouldReceive('getAttribute')
             ->with('uuid')
             ->andReturn($csv->uuid);

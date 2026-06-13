@@ -1,19 +1,23 @@
 <?php
 
-namespace Controller\Modules\PKSanc;
+namespace Tests\Unit\Controller\Modules\PKSanc;
 
 use App\Models\PKSanc\Game;
 use App\Models\PKSanc\ImportCsv;
 use App\Service\PKSanc\DepositService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
+use Tests\Traits\PKSanc\PKSancTestHelper;
 use Tests\Unit\Controller\AbstractControllerUnitTester;
 use Mockery;
 use Mockery\MockInterface;
 
 class PKSancDepositControllerTest extends AbstractControllerUnitTester
 {
+    use PKSancTestHelper;
+
     //| show deposit test
     /**
      * Test if controller returns proper view
@@ -38,7 +42,7 @@ class PKSancDepositControllerTest extends AbstractControllerUnitTester
         $route = route('pksanc.deposit.stage.attempt');
 
         /** @var Game $game */
-        $game = $this->getRandomEntity(Game::class);
+        $game = $this->createTestGame();
 
         //valid
         $this
@@ -72,7 +76,7 @@ class PKSancDepositControllerTest extends AbstractControllerUnitTester
         $route = route('pksanc.deposit.stage.attempt');
 
         /** @var Game $game */
-        $game = $this->getRandomEntity(Game::class);
+        $game = $this->createTestGame();
 
         $user = $this->getAdminUser();
         $name = $this->faker->regexify('[A-Za-z0-9]{124}');
@@ -186,7 +190,7 @@ class PKSancDepositControllerTest extends AbstractControllerUnitTester
         $route = route('pksanc.deposit.stage.attempt');
 
         /** @var Game $game */
-        $game = $this->getRandomEntity(Game::class);
+        $game = $this->createTestGame();
 
         //valid
         $this
@@ -210,5 +214,62 @@ class PKSancDepositControllerTest extends AbstractControllerUnitTester
     }
 
 
+    //| show staged deposit attempt test
+    /**
+     * Test if controller returns the stage deposit view for a valid import uuid
+     * @return void
+     */
+    public function testShowDepositAttempt(): void
+    {
+        $user = $this->getAdminUser();
+        $game = $this->createTestGame();
+        $csv = $this->createTestImportCsv($user->uuid, $game->game);
 
+        $response = $this
+            ->actingAs($user)
+            ->get(route('pksanc.deposit.stage.show', $csv->uuid));
+        $this->assertView($response, 'modules.pksanc.stage-deposit', ['importUuid']);
+    }
+
+    /**
+     * Test that a non-existent import uuid returns a 404
+     * @return void
+     */
+    public function testShowDepositAttemptNotFound(): void
+    {
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('pksanc.deposit.stage.show', Str::uuid()));
+        $response->assertNotFound();
+    }
+
+
+    //| cancel deposit test
+    /**
+     * Test if cancelling a deposit redirects to pksanc home
+     * @return void
+     */
+    public function testDepositCancel(): void
+    {
+        $user = $this->getAdminUser();
+        $game = $this->createTestGame();
+        $csv = $this->createTestImportCsv($user->uuid, $game->game);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('pksanc.deposit.stage.cancel', $csv->uuid));
+        $this->assertRedirect($response, 'pksanc.home.show');
+    }
+
+    /**
+     * Test that cancelling with a non-existent import uuid returns a 404
+     * @return void
+     */
+    public function testDepositCancelNotFound(): void
+    {
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('pksanc.deposit.stage.cancel', Str::uuid()));
+        $response->assertNotFound();
+    }
 }
