@@ -7,6 +7,7 @@ use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
 use App\Models\Auth\RolePermission;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -80,6 +81,26 @@ class Module extends AbstractModel
         }
 
         return $query;
+    }
+
+    /**
+     * Scope the query to modules the current user has the required permission for
+     * @param Builder $query The query to scope
+     * @return Builder The scoped query
+     */
+    public function scopeAccessible(Builder $query): Builder
+    {
+        $role = Auth::user()?->role()->first();
+        if ($role?->is_admin) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $query) use ($role) {
+            $query->whereNull('permission_id');
+            if ($role !== null) {
+                $query->orWhereIn('permission_id', RolePermission::select('permission_id')->where('role_id', $role->id));
+            }
+        });
     }
 
     /**

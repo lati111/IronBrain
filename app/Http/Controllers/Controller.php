@@ -34,6 +34,7 @@ class Controller extends BaseController
 
         $modules = Module::orderBy('order')
             ->where('in_nav', true)
+            ->accessible()
             ->with('submodules');
 
         if ($user === null) {

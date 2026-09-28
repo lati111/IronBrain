@@ -26,6 +26,19 @@
         "submodules": []
     },
     {
+        "code": "dnd_restaurant",
+        "name": "DnD Restaurant Simulator",
+        "description": "A simulator for running a restaurant within your Dungeons & Dragons campaign.",
+        "thumbnail": null,
+        "route": "dnd_restaurant.home.show",
+        "permission": "dnd_restaurant.access",
+        "order": 3,
+        "in_overview": true,
+        "in_nav": true,
+        "requires_login": true,
+        "submodules": []
+    },
+    {
         "code": "config",
         "name": "Config",
         "description": "The wrapper for the various configs used to configure the website",

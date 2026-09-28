@@ -43,6 +43,7 @@ class ModuleOverviewCardlist extends AbstractCardlist
         /** @var Builder $modules */
         $modules = Module::select()
             ->where('in_overview', true)
+            ->accessible()
             ->orderBy('updated_at', 'desc');
 
         return $modules;

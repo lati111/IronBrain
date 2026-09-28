@@ -32,5 +32,12 @@
             "name": "Assign Role Permissions",
             "description": "Allows the user to assign permissions to a role."
         }
+    ],
+    "dnd_restaurant": [
+        {
+            "permission": "dnd_restaurant.access",
+            "name": "Access DnD Restaurant Simulator",
+            "description": "Allows the user to access the DnD restaurant simulator module."
+        }
     ]
 }
