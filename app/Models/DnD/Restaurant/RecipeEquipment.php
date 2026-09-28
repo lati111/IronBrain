@@ -1,0 +1,70 @@
+<?php
+
+namespace App\Models\DnD\Restaurant;
+
+use App\Models\DnD\Restaurant\Interfaces\DndRestaurantModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\Concerns\AsPivot;
+
+/**
+ * @inheritdoc
+ * @property string recipe_uuid The uuid of the recipe
+ * @property string equipment_uuid The uuid of the equipment
+ * @property integer amount How much of the equipment the recipe requires
+ */
+class RecipeEquipment extends DndRestaurantModel
+{
+    use AsPivot;
+
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__restaurant_recipe_equipment';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
+
+    /** @inheritdoc */
+    protected $casts = [
+        'amount' => 'integer',
+    ];
+
+    //| Relationships
+
+    /**
+     * The relationship for the recipe
+     * @return BelongsTo
+     */
+    public function Recipe(): BelongsTo {
+        return $this->belongsTo(Recipe::class, 'recipe_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the equipment
+     * @return BelongsTo
+     */
+    public function Equipment(): BelongsTo {
+        return $this->belongsTo(Equipment::class, 'equipment_uuid', 'uuid');
+    }
+
+    //| Getters
+
+    /**
+     * Get the recipe
+     * @return Recipe
+     */
+    public function getRecipe(): Recipe
+    {
+        /** @var Recipe $recipe */
+        $recipe = $this->Recipe()->first();
+        return $recipe;
+    }
+
+    /**
+     * Get the equipment
+     * @return Equipment
+     */
+    public function getEquipment(): Equipment
+    {
+        /** @var Equipment $equipment */
+        $equipment = $this->Equipment()->first();
+        return $equipment;
+    }
+}
