@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Modules\Arsenal;
 
+use App\Console\Commands\Traits\PromptsForMissingImages;
 use App\Service\Arsenal\ImportService;
 use App\Service\Arsenal\WarframeApiService;
 use GuzzleHttp\Exception\GuzzleException;
@@ -9,6 +10,8 @@ use Illuminate\Console\Command;
 
 class ImportData extends Command
 {
+    use PromptsForMissingImages;
+
     private readonly WarframeApiService $api;
     private readonly ImportService $importer;
 
@@ -31,6 +34,8 @@ class ImportData extends Command
         if (($connection = $this->option('database')) !== null) {
             $this->importer->setConnection($connection);
         }
+
+        $this->importer->onMissingImage($this->missingImagePrompt());
 
         $this->line('Importing arsenal data...');
         $this->newLine();

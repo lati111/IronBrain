@@ -10,10 +10,13 @@ use App\Models\PKSanc\Nature;
 use App\Models\PKSanc\Pokeball;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\Type;
+use App\Service\Traits\DownloadsImages;
 use Illuminate\Support\Facades\Storage;
 
 class ImportService
 {
+    use DownloadsImages;
+
     /**
      * Sets the database connection used by the importer
      * @param string $connection The name of the connection
@@ -328,25 +331,19 @@ class ImportService
      */
     private function importSprite(?string $spriteString, string $spriteType, ?string $fileName = null): ?string
     {
+        if ($spriteString === null) {
+            return null;
+        }
+
         if ($fileName === null) {
             $arr = explode('/', $spriteString);
             $fileName = end($arr);
         }
 
-        if ($spriteString !== null) {
-            $spriteUrl = str_replace('/media/', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/', $spriteString);
-            $spritePath = sprintf('modules/pksanc/%s/%s', $spriteType, $fileName);
-            if (Storage::missing($spritePath)) {
-                $contents = file_get_contents($spriteUrl);
-                if (getimagesizefromstring($contents) !== false) {
-                    Storage::put($spritePath, $contents);
-                }
-            }
+        $spriteUrl = str_replace('/media/', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/', $spriteString);
+        $spritePath = sprintf('modules/pksanc/%s/%s', $spriteType, $fileName);
 
-            return $fileName;
-        }
-
-        return null;
+        return $this->downloadImage($spriteUrl, $spritePath) ? $fileName : null;
     }
 
     /**

@@ -16,10 +16,13 @@ use App\Models\PKSanc\Nature;
 use App\Models\PKSanc\Pokeball;
 use App\Models\PKSanc\Pokemon;
 use App\Models\PKSanc\Type;
+use App\Service\Traits\DownloadsImages;
 use Illuminate\Support\Facades\Storage;
 
 class ImportService
 {
+    use DownloadsImages;
+
     private const string imageUrl = 'https://raw.githubusercontent.com/WFCD/warframe-items/refs/heads/master/data/img';
 
     /**
@@ -318,19 +321,13 @@ class ImportService
      * Import an asset if it does not exist yet
      * @param string $assetName The name of the asset
      * @param string $category The asset category
-     * @return string
+     * @return ?string Returns the storage path of the asset, or null if it could not be imported
      */
-    protected function importAsset(string $assetName, string $category): string {
+    protected function importAsset(string $assetName, string $category): ?string {
         $imgUrl = sprintf('%s/%s', self::imageUrl, $assetName);
         $imgPath = sprintf('modules/arsenal/%s/%s', $category, $assetName);
-        if (Storage::missing($imgPath)) {
-            $contents = file_get_contents($imgUrl);
-            if (getimagesizefromstring($contents) !== false) {
-                Storage::put($imgPath, $contents);
-            }
-        }
 
-        return $imgPath;
+        return $this->downloadImage($imgUrl, $imgPath) ? $imgPath : null;
     }
 
     /**
@@ -613,25 +610,19 @@ class ImportService
      */
     private function importSprite(?string $spriteString, string $spriteType, ?string $fileName = null): ?string
     {
+        if ($spriteString === null) {
+            return null;
+        }
+
         if ($fileName === null) {
             $arr = explode('/', $spriteString);
             $fileName = end($arr);
         }
 
-        if ($spriteString !== null) {
-            $spriteUrl = str_replace('/media/', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/', $spriteString);
-            $spritePath = sprintf('modules/pksanc/%s/%s', $spriteType, $fileName);
-            if (Storage::missing($spritePath)) {
-                $contents = file_get_contents($spriteUrl);
-                if (getimagesizefromstring($contents) !== false) {
-                    Storage::put($spritePath, $contents);
-                }
-            }
+        $spriteUrl = str_replace('/media/', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/', $spriteString);
+        $spritePath = sprintf('modules/pksanc/%s/%s', $spriteType, $fileName);
 
-            return $fileName;
-        }
-
-        return null;
+        return $this->downloadImage($spriteUrl, $spritePath) ? $fileName : null;
     }
 
     /**

@@ -2,12 +2,15 @@
 
 namespace App\Console\Commands\Modules\PKSanc;
 
+use App\Console\Commands\Traits\PromptsForMissingImages;
 use App\Service\PKSanc\ImportService;
 use App\Service\PKSanc\PokeApiService;
 use Illuminate\Console\Command;
 
 class ImportData extends Command
 {
+    use PromptsForMissingImages;
+
     private readonly PokeApiService $api;
     private readonly ImportService $importer;
 
@@ -30,6 +33,8 @@ class ImportData extends Command
         if (($connection = $this->option('database')) !== null) {
             $this->importer->setConnection($connection);
         }
+
+        $this->importer->onMissingImage($this->missingImagePrompt());
 
         $this->line('Importing PKSanc data...');
         $this->newLine();
