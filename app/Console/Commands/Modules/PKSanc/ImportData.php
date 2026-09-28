@@ -3,284 +3,159 @@
 namespace App\Console\Commands\Modules\PKSanc;
 
 use App\Console\Commands\Traits\PromptsForMissingImages;
+use App\Console\Commands\Traits\RunsImports;
 use App\Service\PKSanc\ImportService;
 use App\Service\PKSanc\PokeApiService;
 use Illuminate\Console\Command;
 
 class ImportData extends Command
 {
-    use PromptsForMissingImages;
+    use PromptsForMissingImages, RunsImports;
 
     private readonly PokeApiService $api;
-    private readonly ImportService $importer;
+    private ImportService $importer;
 
-    public function __construct(ImportService $importService, PokeApiService $api)
+    public function __construct(PokeApiService $api)
     {
-        $this->importer = $importService;
         $this->api = $api;
 
         parent::__construct();
     }
 
     /** {@inheritdoc} */
-    protected $signature = 'import:pksanc {--filter=} {--database=}';
+    protected $signature = 'import:pksanc {--filter=} {--database=} {--refresh-images : Download all sprites again, even if they already exist}';
 
     /** {@inheritdoc} */
     protected $description = 'Imports PKSanc data from PokeApi';
 
-    public function handle(): void
+    public function handle(ImportService $importer): int
     {
+        // The importer keeps track of what it imported, so a fresh one is used for every run
+        $this->importer = $importer;
+
         if (($connection = $this->option('database')) !== null) {
             $this->importer->setConnection($connection);
         }
 
         $this->importer->onMissingImage($this->missingImagePrompt());
+        $this->importer->setRefreshImages((bool) $this->option('refresh-images'));
 
         $this->line('Importing PKSanc data...');
         $this->newLine();
 
-        $results = [];
-        $changedString = '%s imported';
-        switch(strtolower($this->option('filter'))) {
-            case 'type':
-                $typesChangedCount = $this->importTypes();
-                $results[] = ['Type', sprintf($changedString, $typesChangedCount)];
-                break;
-            case 'nature':
-                $naturesChangedCount = $this->importNatures();
-                $results[] = ['Nature', sprintf($changedString, $naturesChangedCount)];
-                break;
-            case 'move':
-                $movesChangedCount = $this->importMoves();
-                $results[] = ['Moves', sprintf($changedString, $movesChangedCount)];
-                break;
-            case 'ability':
-                $abilitiesChangedCount = $this->importAbilities();
-                $results[] = ['Abilities', sprintf($changedString, $abilitiesChangedCount)];
-                break;
-            case 'pokeball':
-                $pokeballsChangedCount = $this->importPokeballs();
-                $results[] = ['Pokeballs', sprintf($changedString, $pokeballsChangedCount)];
-                break;
-            case 'pokemon':
-                $pokemonChangedCount = $this->importPokemon();
-                $results[] = ['Pokemon', sprintf($changedString, $pokemonChangedCount)];
-                break;
-            case 'game':
-                $gameChangedCount = $this->importGames();
-                $results[] = ['Games', sprintf($changedString, $gameChangedCount)];
-                break;
-            default:
-                $typesChangedCount = $this->importTypes();
-                $results[] = ['Type', sprintf($changedString, $typesChangedCount)];
+        $imports = [
+            'type' => fn () => $this->importTypes(),
+            'nature' => fn () => $this->importNatures(),
+            'move' => fn () => $this->importMoves(),
+            'ability' => fn () => $this->importAbilities(),
+            'pokeball' => fn () => $this->importPokeballs(),
+            'pokemon' => fn () => $this->importPokemon(),
+            'game' => fn () => $this->importGames(),
+        ];
 
-                $naturesChangedCount = $this->importNatures();
-                $results[] = ['Nature', sprintf($changedString, $naturesChangedCount)];
-
-                $movesChangedCount = $this->importMoves();
-                $results[] = ['Moves', sprintf($changedString, $movesChangedCount)];
-
-                $abilitiesChangedCount = $this->importAbilities();
-                $results[] = ['Abilities', sprintf($changedString, $abilitiesChangedCount)];
-
-                $pokeballsChangedCount = $this->importPokeballs();
-                $results[] = ['Pokeballs', sprintf($changedString, $pokeballsChangedCount)];
-
-                $pokemonChangedCount = $this->importPokemon();
-                $results[] = ['Pokemon', sprintf($changedString, $pokemonChangedCount)];
-
-                $gameChangedCount = $this->importGames();
-                $results[] = ['Games', sprintf($changedString, $gameChangedCount)];
+        $aliases = ['types' => 'type', 'natures' => 'nature', 'moves' => 'move', 'abilities' => 'ability', 'pokeballs' => 'pokeball', 'games' => 'game'];
+        $filter = strtolower($this->option('filter') ?? '');
+        $filter = $aliases[$filter] ?? $filter;
+        if ($filter !== '' && !isset($imports[$filter])) {
+            $this->error(sprintf('Unknown filter "%s". Valid filters are: %s', $filter, implode(', ', array_keys($imports))));
+            return self::INVALID;
         }
 
-        $this->info('Import successful!');
-        $this->table(['', ''], $results);
+        foreach ($imports as $name => $import) {
+            if ($filter === '' || $filter === $name) {
+                $import();
+            }
+        }
+
+        return $this->finishImport('PKSanc');
     }
 
     /**
      * Gets a list of all types from PokeAPI and imports them to the database
-     * @return int Returns a count of the amount of types changed
      */
-    private function importTypes(): int
+    private function importTypes(): void
     {
-        $this->line('Importing types...');
-
-        $changedCount = 0;
-        $typeCollection = $this->api->getTypes();
-
-        $bar = $this->output->createProgressBar(count($typeCollection));
-        $bar->start();
-
-        foreach ($typeCollection as $typeData) {
-            $wasChanged = $this->importer->importType($typeData);
-            $bar->advance();
-            if ($wasChanged) {
-                $changedCount++;
-            }
-        }
-
-        $bar->finish();
-        $this->newLine();
-        return $changedCount;
+        $this->runImport('types',
+            fn () => $this->api->getTypes(),
+            fn (array $data) => $this->importer->importType($data),
+        );
     }
 
     /**
      * Gets a list of all natures from PokeAPI and imports them to the database
-     * @return int Returns a count of the amount of natures changed
      */
-    private function importNatures(): int
+    private function importNatures(): void
     {
-        $this->line('Importing natures...');
-
-        $changedCount = 0;
-        $natureCollection = $this->api->getNatures();
-
-        $bar = $this->output->createProgressBar(count($natureCollection));
-        $bar->start();
-
-        foreach ($natureCollection as $data) {
-            $wasChanged = $this->importer->importNature($data);
-            $bar->advance();
-            if ($wasChanged) {
-                $changedCount++;
-            }
-        }
-
-        $bar->finish();
-        $this->newLine();
-        return $changedCount;
+        $this->runImport('natures',
+            fn () => $this->api->getNatures(),
+            fn (array $data) => $this->importer->importNature($data),
+        );
     }
 
     /**
      * Gets a list of all moves from PokeAPI and imports them to the database
-     * @return int Returns a count of the amount of moves changed
      */
-    private function importMoves(): int
+    private function importMoves(): void
     {
-        $this->line('Importing moves...');
-
-        $changedCount = 0;
-        $moveCollection = $this->api->getMoves();
-
-        $bar = $this->output->createProgressBar(count($moveCollection));
-        $bar->start();
-
-        foreach ($moveCollection as $data) {
-            $wasChanged = $this->importer->importMove($data);
-            $bar->advance();
-            if ($wasChanged) {
-                $changedCount++;
-            }
-        }
-
-        $bar->finish();
-        $this->newLine();
-        return $changedCount;
+        $this->runImport('moves',
+            fn () => $this->api->getMoves(),
+            fn (array $data) => $this->importer->importMove($data),
+        );
     }
 
     /**
      * Gets a list of all abilities from PokeAPI and imports them to the database
-     * @return int Returns a count of the amount of abilities changed
      */
-    private function importAbilities(): int
+    private function importAbilities(): void
     {
-        $this->line('Importing abilities...');
-
-        $changedCount = 0;
-        $abilityCollection = $this->api->getAbilities();
-
-        $bar = $this->output->createProgressBar(count($abilityCollection));
-        $bar->start();
-
-        foreach ($abilityCollection as $data) {
-            $wasChanged = $this->importer->importAbility($data);
-            $bar->advance();
-            if ($wasChanged) {
-                $changedCount++;
-            }
-        }
-
-        $bar->finish();
-        $this->newLine();
-        return $changedCount;
+        $this->runImport('abilities',
+            fn () => $this->api->getAbilities(),
+            fn (array $data) => $this->importer->importAbility($data),
+        );
     }
 
     /**
      * Gets a list of all pokeballs from PokeAPI and imports them to the database
-     * @return int Returns a count of the amount of pokeballs changed
      */
-    private function importPokeballs(): int
+    private function importPokeballs(): void
     {
-        $this->line('Importing pokeballs...');
-
-        $changedCount = 0;
-        $pokeballCollection = $this->api->getPokeballs();
-
-        $bar = $this->output->createProgressBar(count($pokeballCollection));
-        $bar->start();
-
-        foreach ($pokeballCollection as $data) {
-            $wasChanged = $this->importer->importPokeball($data);
-            $bar->advance();
-            if ($wasChanged) {
-                $changedCount++;
-            }
-        }
-
-        $bar->finish();
-        $this->newLine();
-        return $changedCount;
+        $this->runImport('pokeballs',
+            function () {
+                $pokeballs = $this->api->getPokeballs();
+                $this->importer->prefetchPokeballSprites($pokeballs, $this->downloadProgress('pokeball sprites'));
+                return $pokeballs;
+            },
+            fn (array $data) => $this->importer->importPokeball($data),
+            describe: fn (array $data) => $data['pokeball'],
+        );
     }
 
     /**
      * Gets a list of all pokemon from PokeAPI and imports them to the database
-     * @return int Returns a count of the amount of pokemon changed
      */
-    private function importPokemon(): int
+    private function importPokemon(): void
     {
-        $this->line('Importing pokemon...');
-
-        $changedCount = 0;
-        $pokemonCollection = $this->api->getPokemon();
-
-        $bar = $this->output->createProgressBar(count($pokemonCollection));
-        $bar->start();
-
-        foreach ($pokemonCollection as $data) {
-            $wasChanged = $this->importer->importPokemon($data);
-            $bar->advance();
-            if ($wasChanged) {
-                $changedCount++;
-            }
-        }
-
-        $bar->finish();
-        $this->newLine();
-        return $changedCount;
+        $this->runImport('pokemon',
+            function () {
+                $this->line('Fetching pokemon from PokeAPI...');
+                $pokemon = $this->api->getPokemon();
+                $this->importer->prefetchPokemonSprites($pokemon, $this->downloadProgress('pokemon sprites'));
+                return $pokemon;
+            },
+            fn (array $data) => $this->importer->importPokemon($data),
+            fn () => $this->importer->prunePokemon(),
+            fn (array $data) => $data['pokemon'],
+        );
     }
 
     /**
-     * Gets a list of all types from the config JSON and imports them to the database
-     * @return int Returns a count of the amount of games changed
+     * Gets a list of all games from the config JSON and imports them to the database
      */
-    private function importGames(): int {
-        $this->line('Importing pokemon...');
-
-        $changedCount = 0;
-        $json = $this->importer->getGamesJson();
-        $bar = $this->output->createProgressBar(count($json));
-        $bar->start();
-
-        foreach ($json as $name => $code) {
-            $wasChanged = $this->importer->importGame($name, $code);
-            $bar->advance();
-            if ($wasChanged) {
-                $changedCount++;
-            }
-        }
-
-        $bar->finish();
-        $this->newLine();
-        return $changedCount;
+    private function importGames(): void
+    {
+        $this->runImport('games',
+            fn () => $this->importer->getGamesJson(),
+            fn (string $code, string $name) => $this->importer->importGame($name, $code),
+        );
     }
 }

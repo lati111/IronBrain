@@ -3,181 +3,121 @@
 namespace App\Console\Commands\Modules\Arsenal;
 
 use App\Console\Commands\Traits\PromptsForMissingImages;
+use App\Console\Commands\Traits\RunsImports;
 use App\Service\Arsenal\ImportService;
 use App\Service\Arsenal\WarframeApiService;
-use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Console\Command;
 
 class ImportData extends Command
 {
-    use PromptsForMissingImages;
+    use PromptsForMissingImages, RunsImports;
 
     private readonly WarframeApiService $api;
-    private readonly ImportService $importer;
+    private ImportService $importer;
 
-    public function __construct(ImportService $importService, WarframeApiService $api)
+    public function __construct(WarframeApiService $api)
     {
-        $this->importer = $importService;
         $this->api = $api;
 
         parent::__construct();
     }
 
     /** {@inheritdoc} */
-    protected $signature = 'import:arsenal {--filter=} {--database=}';
+    protected $signature = 'import:arsenal {--filter=} {--database=} {--refresh-images : Download all images again, even if they already exist}';
 
     /** {@inheritdoc} */
     protected $description = 'Imports arsenal data from the WarframeApi';
 
-    public function handle(): void
+    public function handle(ImportService $importer): int
     {
+        // The importer keeps track of what it imported, so a fresh one is used for every run
+        $this->importer = $importer;
+
         if (($connection = $this->option('database')) !== null) {
             $this->importer->setConnection($connection);
         }
 
         $this->importer->onMissingImage($this->missingImagePrompt());
+        $this->importer->setRefreshImages((bool) $this->option('refresh-images'));
 
         $this->line('Importing arsenal data...');
         $this->newLine();
 
-        $results = [];
-        $changedString = '%s changed';
-        switch(strtolower($this->option('filter'))) {
-            case 'warframe':
-            case 'warframes':
-                $changedCount = $this->importWarframes();
-                $results[] = ['Warframes', sprintf($changedString, $changedCount)];
-                break;
-            case 'weapon':
-            case 'weapons':
-                $changedCount = $this->importWeapons();
-                $results[] = ['Weapons', sprintf($changedString, $changedCount)];
-                break;
-            case 'companion':
-            case 'companions':
-                $changedCount = $this->importCompanions();
-                $results[] = ['Companions', sprintf($changedString, $changedCount)];
-                break;
-            default:
-                $changedCount = $this->importWeapons();
-                $results[] = ['Weapons', sprintf($changedString, $changedCount)];
+        // Weapons are imported first, so warframes can link their exalted weapons
+        $imports = [
+            'weapon' => fn () => $this->importWeapons(),
+            'warframe' => fn () => $this->importWarframes(),
+            'companion' => fn () => $this->importCompanions(),
+        ];
 
-                $changedCount = $this->importWarframes();
-                $results[] = ['Warframes', sprintf($changedString, $changedCount)];
-
-                $changedCount = $this->importCompanions();
-                $results[] = ['Companions', sprintf($changedString, $changedCount)];
+        $filter = rtrim(strtolower($this->option('filter') ?? ''), 's');
+        if ($filter !== '' && !isset($imports[$filter])) {
+            $this->error(sprintf('Unknown filter "%s". Valid filters are: %s', $this->option('filter'), implode(', ', array_keys($imports))));
+            return self::INVALID;
         }
 
-        $this->info('Import successful!');
-        $this->table(['', ''], $results);
+        foreach ($imports as $name => $import) {
+            if ($filter === '' || $filter === $name) {
+                $import();
+            }
+        }
+
+        return $this->finishImport('Arsenal');
     }
 
     /**
      * Gets a list of all warframes and import them
-     * @return int Returns a count of the amount of warframes changed
      */
-    private function importWarframes(): int
+    private function importWarframes(): void
     {
-        $this->line('Importing warframes...');
-
-        $changedCount = 0;
-        try {
-            $this->line('Fetching warframes from API...');
-            $warframeCollection = $this->api->getWarframes();
-
-            $this->line('Fetch complete. Importing warframes...');
-            $bar = $this->output->createProgressBar(count($warframeCollection));
-            $bar->start();
-
-            foreach ($warframeCollection as $typeData) {
-                $wasChanged = $this->importer->importWarframe($typeData);
-                $bar->advance();
-                if ($wasChanged) {
-                    $changedCount++;
-                }
-            }
-
-            $bar->finish();
-        } catch (\ErrorException|GuzzleException $e) {
-            $this->error($e->getMessage());
-            $this->line('Skipping warframe import');
-        } finally {
-            $this->newLine();
-        }
-
-        return $changedCount;
+        $this->runImport('warframes',
+            fn () => $this->fetch('warframes', fn () => $this->api->getWarframes(), 'warframe'),
+            fn (array $data) => $this->importer->importWarframe($data),
+            fn () => $this->importer->pruneWarframes(),
+            fn (array $data) => $data['name'] ?? '',
+        );
     }
 
     /**
      * Gets a list of all weapons and import them
-     * @return int Returns a count of the amount of weapons changed
      */
-    private function importWeapons(): int
+    private function importWeapons(): void
     {
-        $this->line('Importing weapons...');
-
-        $changedCount = 0;
-        try {
-            $this->line('Fetching weapons from API...');
-            $itemCollection = $this->api->getWeapons();
-
-            $this->line('Fetch complete. Importing weapons...');
-            $bar = $this->output->createProgressBar(count($itemCollection));
-            $bar->start();
-
-            foreach ($itemCollection as $data) {
-                $wasChanged = $this->importer->importWeapon($data);
-                $bar->advance();
-                if ($wasChanged) {
-                    $changedCount++;
-                }
-            }
-
-            $bar->finish();
-        } catch (\ErrorException|GuzzleException $e) {
-            $this->error($e->getMessage());
-            $this->line('Skipping weapon import');
-        } finally {
-            $this->newLine();
-        }
-
-        return $changedCount;
+        $this->runImport('weapons',
+            fn () => $this->fetch('weapons', fn () => $this->api->getWeapons(), 'weapon'),
+            fn (array $data) => $this->importer->importWeapon($data),
+            fn () => $this->importer->pruneWeapons(),
+            fn (array $data) => $data['name'] ?? '',
+        );
     }
 
     /**
-     * Gets a list of all weapons and import them
-     * @return int Returns a count of the amount of weapons changed
+     * Gets a list of all companions and import them
      */
-    private function importCompanions(): int
+    private function importCompanions(): void
     {
-        $this->line('Importing companions...');
+        $this->runImport('companions',
+            fn () => $this->fetch('companions', fn () => $this->api->getCompanions(), 'companion'),
+            fn (array $data) => $this->importer->importCompanion($data),
+            fn () => $this->importer->pruneCompanions(),
+            fn (array $data) => $data['name'] ?? '',
+        );
+    }
 
-        $changedCount = 0;
-        try {
-            $this->line('Fetching companions from API...');
-            $itemCollection = $this->api->getCompanions();
+    /**
+     * Fetches items from the API and downloads their images
+     * @param string $label The plural name of the items
+     * @param \Closure(): array $fetch Fetches the items
+     * @param string $category The asset category of the items
+     * @return array Returns the items
+     */
+    private function fetch(string $label, \Closure $fetch, string $category): array
+    {
+        $this->line(sprintf('Fetching %s from API...', $label));
+        $items = $fetch();
 
-            $this->line('Fetch complete. Importing companions...');
-            $bar = $this->output->createProgressBar(count($itemCollection));
-            $bar->start();
+        $this->importer->prefetchAssets($items, $category, $this->downloadProgress(sprintf('%s images', rtrim($label, 's'))));
 
-            foreach ($itemCollection as $data) {
-                $wasChanged = $this->importer->importCompanion($data);
-                $bar->advance();
-                if ($wasChanged) {
-                    $changedCount++;
-                }
-            }
-
-            $bar->finish();
-        } catch (\ErrorException|GuzzleException $e) {
-            $this->error($e->getMessage());
-            $this->line('Skipping companion import');
-        } finally {
-            $this->newLine();
-        }
-
-        return $changedCount;
+        return $items;
     }
 }

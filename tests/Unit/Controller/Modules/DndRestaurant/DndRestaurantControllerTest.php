@@ -15,12 +15,8 @@ class DndRestaurantControllerTest extends AbstractControllerUnitTester
     {
         parent::setUp();
 
-        $this->permission = new Permission();
-        $this->permission->permission = 'dnd_restaurant.access';
-        $this->permission->name = 'Access DnD Restaurant Simulator';
-        $this->permission->description = 'Allows the user to access the DnD restaurant simulator module.';
-        $this->permission->group = 'dnd_restaurant';
-        $this->permission->save();
+        // Imported from permissions.json during setup
+        $this->permission = Permission::where('permission', 'dnd_restaurant.access')->firstOrFail();
     }
 
     private function getTestUser(): User

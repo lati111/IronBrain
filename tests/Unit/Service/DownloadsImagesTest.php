@@ -35,6 +35,16 @@ class DownloadsImagesTest extends AbstractServiceTester
             {
                 return $this->downloadImage($url, $path);
             }
+
+            public function downloadFirst(array $urls, string $path, bool $resolveMissing = true): ?string
+            {
+                return $this->downloadFirstImage($urls, $path, $resolveMissing);
+            }
+
+            public function prefetch(array $urls, ?\Closure $onProgress = null): void
+            {
+                $this->prefetchImages($urls, $onProgress);
+            }
         };
     }
 
@@ -75,6 +85,125 @@ class DownloadsImagesTest extends AbstractServiceTester
 
         $this->assertFalse($this->downloader->download(self::missingUrl, self::path));
         Storage::assertMissing(self::path);
+    }
+
+    public function testDownloadFirstUsesFallbackUrl(): void
+    {
+        $resolverCalled = false;
+        $this->downloader->onMissingImage(function () use (&$resolverCalled) {
+            $resolverCalled = true;
+            return null;
+        });
+
+        $url = $this->downloader->downloadFirst([null, self::missingUrl, self::invalidUrl, self::validUrl], self::path);
+        $this->assertEquals(self::validUrl, $url);
+        $this->assertFalse($resolverCalled);
+        Storage::assertExists(self::path);
+    }
+
+    public function testDownloadFirstPromptsOnceAllUrlsFail(): void
+    {
+        $failedUrls = [];
+        $this->downloader->onMissingImage(function (string $failedUrl) use (&$failedUrls) {
+            $failedUrls[] = $failedUrl;
+            return self::validUrl;
+        });
+
+        $url = $this->downloader->downloadFirst([self::missingUrl, self::invalidUrl], self::path);
+        $this->assertEquals(self::validUrl, $url);
+        $this->assertEquals([self::invalidUrl], $failedUrls);
+    }
+
+    public function testDownloadFirstWithoutResolving(): void
+    {
+        $resolverCalled = false;
+        $this->downloader->onMissingImage(function () use (&$resolverCalled) {
+            $resolverCalled = true;
+            return self::validUrl;
+        });
+
+        $this->assertNull($this->downloader->downloadFirst([self::missingUrl], self::path, false));
+        $this->assertFalse($resolverCalled);
+        Storage::assertMissing(self::path);
+    }
+
+    public function testDownloadFirstWithoutUrls(): void
+    {
+        $this->assertNull($this->downloader->downloadFirst([null, null], self::path));
+        Http::assertNothingSent();
+    }
+
+    public function testPrefetchDownloadsValidImages(): void
+    {
+        $this->downloader->prefetch([
+            'modules/test/valid.png' => self::validUrl,
+            'modules/test/missing.png' => self::missingUrl,
+            'modules/test/none.png' => null,
+        ]);
+
+        Storage::assertExists('modules/test/valid.png');
+        Storage::assertMissing('modules/test/missing.png');
+        Storage::assertMissing('modules/test/none.png');
+    }
+
+    public function testPrefetchReportsProgress(): void
+    {
+        // More images than fit in a single batch
+        $urls = [];
+        for ($i = 0; $i < 100; $i++) {
+            $urls[sprintf('modules/test/%d.png', $i)] = self::validUrl;
+        }
+        Storage::put('modules/test/0.png', 'existing');
+
+        $progress = [];
+        $this->downloader->prefetch($urls, function (int $done, int $total) use (&$progress) {
+            $progress[] = [$done, $total];
+        });
+
+        // Existing images are not counted
+        $this->assertEquals([[0, 99], [64, 99], [99, 99]], $progress);
+    }
+
+    public function testPrefetchReportsProgressWhenNothingToDownload(): void
+    {
+        Storage::put(self::path, 'existing');
+
+        $progress = [];
+        $this->downloader->prefetch([self::path => self::validUrl], function (int $done, int $total) use (&$progress) {
+            $progress[] = [$done, $total];
+        });
+
+        $this->assertEquals([[0, 0]], $progress);
+        Http::assertNothingSent();
+    }
+
+    public function testPrefetchedImageIsNotDownloadedAgain(): void
+    {
+        $this->downloader->setRefreshImages(true);
+        $this->downloader->prefetch([self::path => self::validUrl]);
+        Http::assertSentCount(1);
+
+        $this->assertTrue($this->downloader->download(self::validUrl, self::path));
+        Http::assertSentCount(1);
+    }
+
+    public function testRefreshReplacesExistingImage(): void
+    {
+        Storage::put(self::path, 'existing');
+        $this->downloader->setRefreshImages(true);
+
+        $this->assertTrue($this->downloader->download(self::validUrl, self::path));
+        $this->assertNotEquals('existing', Storage::get(self::path));
+    }
+
+    public function testFailedRefreshKeepsExistingImage(): void
+    {
+        Storage::put(self::path, 'existing');
+        $this->downloader->setRefreshImages(true);
+        $this->downloader->onMissingImage(fn () => $this->fail('Should not prompt when an image already exists'));
+
+        $this->assertTrue($this->downloader->download(self::missingUrl, self::path));
+        $this->assertEquals('existing', Storage::get(self::path));
     }
 
     public function testDownloadSkipsExistingImage(): void

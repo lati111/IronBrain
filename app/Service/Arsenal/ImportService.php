@@ -2,28 +2,31 @@
 
 namespace App\Service\Arsenal;
 
-use App\Enum\PKSanc\PokemonTypes;
 use App\Models\Arsenal\Companion;
 use App\Models\Arsenal\Component;
 use App\Models\Arsenal\Interfaces\ArsenalDataModel;
 use App\Models\Arsenal\Relic;
+use App\Models\Arsenal\UserCompanion;
+use App\Models\Arsenal\UserComponent;
+use App\Models\Arsenal\UserWarframe;
+use App\Models\Arsenal\UserWeapon;
 use App\Models\Arsenal\Warframe;
 use App\Models\Arsenal\Weapon;
-use App\Models\PKSanc\Ability;
-use App\Models\PKSanc\Game;
-use App\Models\PKSanc\Move;
-use App\Models\PKSanc\Nature;
-use App\Models\PKSanc\Pokeball;
-use App\Models\PKSanc\Pokemon;
-use App\Models\PKSanc\Type;
 use App\Service\Traits\DownloadsImages;
-use Illuminate\Support\Facades\Storage;
+use App\Service\Traits\PreloadsModels;
+use Closure;
 
 class ImportService
 {
-    use DownloadsImages;
+    use DownloadsImages, PreloadsModels;
 
     private const string imageUrl = 'https://raw.githubusercontent.com/WFCD/warframe-items/refs/heads/master/data/img';
+
+    /** @var array<class-string<ArsenalDataModel>, array<string, true>> The ids of the items imported during this run, per model */
+    private array $importedItems = [];
+
+    /** @var array<string, array<string, true>> The uuids of the components imported during this run, per blueprint id */
+    private array $importedComponents = [];
 
     /**
      * Sets the database connection used by the importer
@@ -32,6 +35,7 @@ class ImportService
     public function setConnection(string $connection): void {
         \Config::set('database.connections.mysql.database', $connection);
         \DB::purge('mysql');
+        $this->clearPreloaded();
     }
 
     /**
@@ -41,28 +45,23 @@ class ImportService
      */
     public function importWarframe(array $data): bool
     {
-        $updated = false;
-        $warframe = Warframe::where('id', $data['uniqueName'])->first();
+        $warframe = $this->preloaded(Warframe::class, 'id')->get($data['uniqueName']);
 
         // Handle blacklist
         if (
             ($data['productCategory'] ?? 'none') === 'MechSuits' ||
             $data['uniqueName'] === '/Lotus/Powersuits/PowersuitAbilities/Helminth'
         ) {
-            if ($warframe === null) {
-                return false;
-            }
-
-            $warframe->delete();
-            return true;
+            return $warframe !== null && $this->removeItem($warframe);
         }
 
         // Create new
         if ($warframe === null) {
             $warframe = new Warframe();
             $warframe->id = $data['uniqueName'];
-            $updated = true;
+            $this->preloaded(Warframe::class, 'id')->put($warframe->id, $warframe);
         }
+        $this->importedItems[Warframe::class][$warframe->id] = true;
 
         // Update contents
         $warframe->name = $data['name'];
@@ -72,30 +71,22 @@ class ImportService
         $warframe->vaulted = $data['vaulted'] ?? false;
         $warframe->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'warframe') : null;
         $warframe->save();
+        $updated = $warframe->wasRecentlyCreated || $warframe->wasChanged();
 
         // Update components
-        if (isset($data['components'])) {
-            $occurrences = [];
-            foreach ($data['components'] as $component) {
-                $occurrences[$component['uniqueName']] = ($occurrences[$component['uniqueName']] ?? 0) + 1;
-                $componentUpdated = $this->importComponent($component, $warframe, 'warframe', $occurrences[$component['uniqueName']]);
-                $updated = $updated || $componentUpdated;
-            }
-        }
+        $updated = $this->importComponents($data['components'] ?? [], $warframe, 'warframe', false) || $updated;
 
         // Link exalted weapons to this warframe
-        if (isset($data['exaltedWeapons'])) {
-            foreach ($data['exaltedWeapons'] as $exaltedWeaponId) {
-                $exaltedWeapon = Weapon::where('id', $exaltedWeaponId)->first();
-                if ($exaltedWeapon !== null && $exaltedWeapon->exalted_id !== $warframe->id) {
-                    $exaltedWeapon->exalted_id = $warframe->id;
-                    $exaltedWeapon->save();
-                    $updated = true;
-                }
+        foreach ($data['exaltedWeapons'] ?? [] as $exaltedWeaponId) {
+            $exaltedWeapon = $this->preloaded(Weapon::class, 'id')->get($exaltedWeaponId);
+            if ($exaltedWeapon !== null && $exaltedWeapon->exalted_id !== $warframe->id) {
+                $exaltedWeapon->exalted_id = $warframe->id;
+                $exaltedWeapon->save();
+                $updated = true;
             }
         }
 
-        return $updated ? true : $warframe->wasChanged();
+        return $updated;
     }
 
     /**
@@ -105,28 +96,23 @@ class ImportService
      */
     public function importWeapon(array $data): bool
     {
-        $updated = false;
-        $weapon = Weapon::where('id', $data['uniqueName'])->first();
+        $weapon = $this->preloaded(Weapon::class, 'id')->get($data['uniqueName']);
 
         // Handle blacklist
         if (
             ($data['type'] ?? 'none') === 'Zaw Component' && !str_contains($data['uniqueName'], '/Tip/') ||
             ($data['type'] ?? 'none') === 'Zaw Component' && str_contains($data['uniqueName'], '/PvPVariant')
         ) {
-            if ($weapon === null) {
-                return false;
-            }
-
-            $weapon->delete();
-            return true;
+            return $weapon !== null && $this->removeItem($weapon);
         }
 
         // Create new
         if ($weapon === null) {
             $weapon = new Weapon();
             $weapon->id = $data['uniqueName'];
-            $updated = true;
+            $this->preloaded(Weapon::class, 'id')->put($weapon->id, $weapon);
         }
+        $this->importedItems[Weapon::class][$weapon->id] = true;
 
         // Mutate data
         if ($data['type'] === 'Companion Weapon') {
@@ -148,26 +134,10 @@ class ImportService
         $weapon->vaulted = $data['vaulted'] ?? false;
         $weapon->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'weapon') : null;
         $weapon->save();
+        $updated = $weapon->wasRecentlyCreated || $weapon->wasChanged();
 
         // Update components
-        if (isset($data['components'])) {
-            $componentsUpdates = false;
-            $occurrences = [];
-            foreach ($data['components'] as $component) {
-                $occurrences[$component['uniqueName']] = ($occurrences[$component['uniqueName']] ?? 0) + 1;
-                $componentUpdated = $this->importComponent($component, $weapon, 'weapon', $occurrences[$component['uniqueName']]);
-                $componentsUpdates = $updated || $componentUpdated;
-            }
-
-            // Delete if the blueprint only has 1 component
-            if (Component::where('blueprint_id', $weapon->id)->count() === 1) {
-                Component::where('blueprint_id', $weapon->id)->delete();
-            } else {
-                $updated = $updated || $componentsUpdates;
-            }
-        }
-
-        return $updated ? true : $weapon->wasChanged();
+        return $this->importComponents($data['components'] ?? [], $weapon, 'weapon', true) || $updated;
     }
 
     /**
@@ -177,25 +147,20 @@ class ImportService
      */
     public function importCompanion(array $data): bool
     {
-        $updated = false;
-        $companion = Companion::where('id', $data['uniqueName'])->first();
+        $companion = $this->preloaded(Companion::class, 'id')->get($data['uniqueName']);
 
         // Handle blacklist
         if (($data['productCategory'] ?? 'none') === 'Pistols') {
-            if ($companion === null) {
-                return false;
-            }
-
-            $companion->delete();
-            return true;
+            return $companion !== null && $this->removeItem($companion);
         }
 
         // Create new
         if ($companion === null) {
             $companion = new Companion();
             $companion->id = $data['uniqueName'];
-            $updated = true;
+            $this->preloaded(Companion::class, 'id')->put($companion->id, $companion);
         }
+        $this->importedItems[Companion::class][$companion->id] = true;
 
         // Update contents
         $companion->name = $data['name'];
@@ -206,26 +171,45 @@ class ImportService
         $companion->prime = $data['isPrime'];
         $companion->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'companion') : null;
         $companion->save();
+        $updated = $companion->wasRecentlyCreated || $companion->wasChanged();
 
         // Update components
-        if (isset($data['components'])) {
-            $componentsUpdates = false;
-            $occurrences = [];
-            foreach ($data['components'] as $component) {
-                $occurrences[$component['uniqueName']] = ($occurrences[$component['uniqueName']] ?? 0) + 1;
-                $componentUpdated = $this->importComponent($component, $companion, 'companion', $occurrences[$component['uniqueName']]);
-                $componentsUpdates = $updated || $componentUpdated;
-            }
+        return $this->importComponents($data['components'] ?? [], $companion, 'companion', true) || $updated;
+    }
 
-            // Delete if the blueprint only has 1 component
-            if (Component::where('blueprint_id', $companion->id)->count() === 1) {
-                Component::where('blueprint_id', $companion->id)->delete();
-            } else {
-                $updated = $updated || $componentsUpdates;
+    /**
+     * Imports the components of a blueprint, and removes the components the blueprint no longer has
+     * @param array $components The component data
+     * @param ArsenalDataModel $blueprint The blueprint
+     * @param string $type The type of blueprint
+     * @param bool $dropSingleComponent Whether to remove the component if the blueprint only has one, as it is then the item itself
+     * @return bool Whether any of the components were updated
+     */
+    private function importComponents(array $components, ArsenalDataModel $blueprint, string $type, bool $dropSingleComponent): bool
+    {
+        $updated = false;
+        $occurrences = [];
+        foreach ($components as $component) {
+            $occurrences[$component['uniqueName']] = ($occurrences[$component['uniqueName']] ?? 0) + 1;
+            $updated = $this->importComponent($component, $blueprint, $type, $occurrences[$component['uniqueName']]) || $updated;
+        }
+
+        // Remove the components this blueprint no longer has
+        $imported = $this->importedComponents[$blueprint->id] ?? [];
+        $remaining = $this->getComponents($blueprint);
+        foreach ($remaining as $key => $component) {
+            if (!isset($imported[$component->uuid]) && $this->removeItem($component)) {
+                $remaining->forget($key);
+                $updated = true;
             }
         }
 
-        return $updated ? true : $companion->wasChanged();
+        if ($dropSingleComponent && $remaining->count() === 1) {
+            $this->removeItem($remaining->first());
+            return false;
+        }
+
+        return $updated;
     }
 
     /**
@@ -233,30 +217,18 @@ class ImportService
      * @param array $data The component data
      * @param ArsenalDataModel $blueprint The blueprint
      * @param string $type The type of blueprint
+     * @param int $occurrence How many times this component has occurred in the blueprint so far
      * @return bool Whether or not the component was updated
      */
     public function importComponent(array $data, ArsenalDataModel $blueprint, string $type, int $occurrence = 1): bool
     {
-        $updated = false;
         $effectiveId = $data['uniqueName'] . ($occurrence > 1 ? '-' . $occurrence : '');
-        $component = Component::where('id', $effectiveId)->where('blueprint_id', $blueprint->id)->first();
+        $key = $this->componentKey($blueprint->id, $effectiveId);
+        $component = $this->preloaded(Component::class, fn (Component $c) => $this->componentKey($c->blueprint_id, $c->id))->get($key);
 
         // Handle blacklist
-        if (
-            ($data['type'] ?? 'none') === 'Resource' ||
-            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/Gems/') ||
-            str_starts_with($data['uniqueName'], '/Lotus/Types/Gameplay/') ||
-            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/MiscItems/') ||
-            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/RailjackMiscItems/') ||
-            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/Research/') ||
-            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/Fish')
-        ) {
-            if ($component === null) {
-                return false;
-            }
-
-            $component->delete();
-            return true;
+        if ($this->isBlacklistedComponent($data)) {
+            return $component !== null && $this->removeItem($component);
         }
 
         // Create new
@@ -265,7 +237,6 @@ class ImportService
             $component->id = $effectiveId;
             $component->blueprint_id = $blueprint->id;
             $component->type = $type;
-            $updated = true;
         }
 
         // Update content
@@ -273,25 +244,27 @@ class ImportService
         $component->amount = $data['itemCount'];
         $component->icon = isset($data['imageName']) ? $this->importAsset($data['imageName'], 'component') : null;
         $component->save();
+        $updated = $component->wasRecentlyCreated || $component->wasChanged();
+
+        $this->preloaded(Component::class, fn (Component $c) => $this->componentKey($c->blueprint_id, $c->id))->put($key, $component);
+        $this->importedComponents[$blueprint->id][$component->uuid] = true;
 
         // Import relics
         foreach ($data['drops'] ?? [] as $relic) {
-            $this->importRelic($relic, $component);
+            $updated = $this->importRelic($relic, $component) || $updated;
         }
 
-        return $updated ? true : $component->wasChanged();
+        return $updated;
     }
 
     /**
-     * Import a component from a blueprint
-     * @param array $data The component data
+     * Import a relic a component drops from
+     * @param array $data The drop data
      * @param Component $component The component this relic is sourced from
-     * @return bool Whether or not the component was updated
+     * @return bool Whether or not the relic was updated
      */
     public function importRelic(array $data, Component $component): bool
     {
-        $updated = false;
-
         // Handle blacklist
         if (!str_ends_with($data['location'], 'Relic') || str_starts_with($data['location'], 'Vanguard')) {
             return false;
@@ -299,14 +272,15 @@ class ImportService
 
         $nameParts = explode(' ', $data['location']);
         $relicName = $nameParts[0] . ' ' . $nameParts[1];
-        $relic = Relic::where('component_uuid', $component->uuid)->where('name', $relicName)->first();
+        $key = $component->uuid . '|' . $relicName;
+        $relic = $this->preloaded(Relic::class, fn (Relic $r) => $r->component_uuid . '|' . $r->name)->get($key);
 
         // Create new
         if ($relic === null) {
             $relic = new Relic();
             $relic->component_uuid = $component->uuid;
             $relic->name = $relicName;
-            $updated = true;
+            $this->preloaded(Relic::class, fn (Relic $r) => $r->component_uuid . '|' . $r->name)->put($key, $relic);
         }
 
         $relic->grade = $nameParts[0];
@@ -314,7 +288,58 @@ class ImportService
         $relic->rarity = $data['rarity'];
         $relic->save();
 
-        return $updated ? true : $relic->wasChanged();
+        return $relic->wasRecentlyCreated || $relic->wasChanged();
+    }
+
+    /**
+     * Removes the warframes that were not part of this import, unless they are in use
+     * @return int Returns the amount of warframes removed
+     */
+    public function pruneWarframes(): int
+    {
+        return $this->pruneItems(Warframe::class);
+    }
+
+    /**
+     * Removes the weapons that were not part of this import, unless they are in use
+     * @return int Returns the amount of weapons removed
+     */
+    public function pruneWeapons(): int
+    {
+        return $this->pruneItems(Weapon::class);
+    }
+
+    /**
+     * Removes the companions that were not part of this import, unless they are in use
+     * @return int Returns the amount of companions removed
+     */
+    public function pruneCompanions(): int
+    {
+        return $this->pruneItems(Companion::class);
+    }
+
+    /**
+     * Downloads the icons of a list of items and their components in parallel, to speed up importing them
+     * @param array $items The items as returned by the API
+     * @param string $category The asset category of the items
+     * @param ?Closure(int $done, int $total): void $onProgress Called as the images are downloaded
+     */
+    public function prefetchAssets(array $items, string $category, ?Closure $onProgress = null): void
+    {
+        $urls = [];
+        foreach ($items as $item) {
+            if (isset($item['imageName'])) {
+                $urls[$this->assetPath($item['imageName'], $category)] = $this->assetUrl($item['imageName']);
+            }
+
+            foreach ($item['components'] ?? [] as $component) {
+                if (isset($component['imageName']) && !$this->isBlacklistedComponent($component)) {
+                    $urls[$this->assetPath($component['imageName'], 'component')] = $this->assetUrl($component['imageName']);
+                }
+            }
+        }
+
+        $this->prefetchImages($urls, $onProgress);
     }
 
     /**
@@ -324,326 +349,157 @@ class ImportService
      * @return ?string Returns the storage path of the asset, or null if it could not be imported
      */
     protected function importAsset(string $assetName, string $category): ?string {
-        $imgUrl = sprintf('%s/%s', self::imageUrl, $assetName);
-        $imgPath = sprintf('modules/arsenal/%s/%s', $category, $assetName);
-
-        return $this->downloadImage($imgUrl, $imgPath) ? $imgPath : null;
+        $imgPath = $this->assetPath($assetName, $category);
+        return $this->downloadImage($this->assetUrl($assetName), $imgPath) ? $imgPath : null;
     }
 
     /**
-     * Parses the data from an array and saves them to the database as a nature
-     * @param array $natureData An array containing the data of the nature
-     * @return bool Returns whether the nature was changed/saved or not
+     * Removes the items of a model that were not part of this import, unless they are in use
+     * @param class-string<ArsenalDataModel> $model The model to prune
+     * @return int Returns the amount of items removed
      */
-    public function importNature(array $natureData): bool
+    private function pruneItems(string $model): int
     {
-        $new = false;
-        $nature = Nature::where('nature', $natureData['nature'])->first();
-        if ($nature === null) {
-            $nature = new Nature;
-            $nature->nature = $natureData['nature'];
-            $new = true;
+        // Never prune when nothing was imported, as that would remove every item
+        $imported = $this->importedItems[$model] ?? [];
+        if ($imported === []) {
+            return 0;
         }
 
-        $nature->name = $natureData['name'][0]['name'];
-
-        $atk = 1.00;
-        if ($natureData['increased_stat'] === 2) {
-            $atk = 1.10;
-        } else if ($natureData['decreased_stat'] === 2) {
-            $atk = 0.90;
+        $removed = 0;
+        foreach ($this->preloaded($model, 'id')->values() as $item) {
+            if (!isset($imported[$item->id]) && $this->removeItem($item)) {
+                $removed++;
+            }
         }
 
-        if ($nature->atk_modifier != $atk) {
-            $nature->atk_modifier = $atk;
-        }
-
-        $def = 1.00;
-        if ($natureData['increased_stat'] === 3) {
-            $def = 1.10;
-        } else if ($natureData['decreased_stat'] === 3) {
-            $def = 0.90;
-        }
-
-        if ($nature->def_modifier != $def) {
-            $nature->def_modifier = $def;
-        }
-
-        $spa = 1.00;
-        if ($natureData['increased_stat'] === 4) {
-            $spa = 1.10;
-        } else if ($natureData['decreased_stat'] === 4) {
-            $spa = 0.90;
-        }
-
-        if ($nature->spa_modifier != $spa) {
-            $nature->spa_modifier = $spa;
-        }
-
-        $spd = 1.00;
-        if ($natureData['increased_stat'] === 5) {
-            $spd = 1.10;
-        } else if ($natureData['decreased_stat'] === 5) {
-            $spd = 0.90;
-        }
-
-        if ($nature->spd_modifier != $spd) {
-            $nature->spd_modifier = $spd;
-        }
-
-        $spe = 1.00;
-        if ($natureData['increased_stat'] === 6) {
-            $spe = 1.10;
-        } else if ($natureData['decreased_stat'] === 6) {
-            $spe = 0.90;
-        }
-
-        if ($nature->spe_modifier != $spe) {
-            $nature->spe_modifier = $spe;
-        }
-
-        $nature->save();
-
-        if ($new === true) {
-            return true;
-        }
-
-        return $nature->wasChanged();
+        return $removed;
     }
 
     /**
-     * Parses the data from an array and saves them to the database as a move
-     * @param array $moveData An array containing the data of the move
-     * @return bool Returns whether the move was changed/saved or not
+     * Deletes an item along with its components, unless a user owns the item or one of its components.
+     * Deleting items cascades to user data, so items that are in use are always kept.
+     * @param ArsenalDataModel $item The item to remove
+     * @return bool Returns whether the item was removed
      */
-    public function importMove(array $moveData): bool
+    private function removeItem(ArsenalDataModel $item): bool
     {
-        $new = false;
-        $code = $this->formatCode($moveData['move']);
-        $move = Move::where('move', $code)->first();
-        if ($move === null) {
-            $move = new Move;
-            $move->move = $code;
-            $new = true;
-        }
-
-        $move->name = $moveData['name'][0]['name'];
-        $move->power = $moveData['power'];
-        $move->accuracy = $moveData['accuracy'];
-        $move->priority = $moveData['priority'];
-        $move->type = $moveData['type']['type'];
-        $move->move_type = $moveData['move_type']['move_type'];
-        $move->description = ($moveData['description'] === null) ? $moveData['description'][0]['description'] : "";
-        $move->save();
-
-        if ($new === true) {
-            return true;
-        }
-
-        return $move->wasChanged();
-    }
-
-    /**
-     * Parses the data from an array and saves them to the database as a ability
-     * @param array $abilityData An array containing the data of the ability
-     * @return bool Returns whether the ability was changed/saved or not
-     */
-    public function importAbility(array $abilityData): bool
-    {
-        $new = false;
-        $code = $this->formatCode($abilityData['ability']);
-        $ability = Ability::where('ability', $code)->first();
-        if ($ability === null) {
-            $ability = new Ability;
-            $ability->ability = $code;
-            $new = true;
-        }
-
-        $ability->name = $abilityData['name'][0]['name'];
-        $ability->description = ($abilityData['description'] !== []) ? $abilityData['description'][0]['description'] : "";
-        $ability->save();
-
-        if ($new === true) {
-            return true;
-        }
-
-        return $ability->wasChanged();
-    }
-
-    /**
-     * Parses the data from an array and saves them to the database as a pokeball
-     * @param array $pokeballData An array containing the data of the pokeball
-     * @return bool Returns whether the pokeball changed/saved or not
-     */
-    public function importPokeball(array $pokeballData): bool
-    {
-        $new = false;
-        $code = str_replace('-ball', '', $pokeballData['pokeball']);
-        $code = $this->formatCode($code) . '-ball';
-
-        $pokeball = Pokeball::where('pokeball', $code)->first();
-        if ($pokeball === null) {
-            $pokeball = new Pokeball;
-            $pokeball->pokeball = $code;
-            $new = true;
-        }
-
-        $pokeball->sprite = $this->importSprite(
-            $pokeballData['sprite_string'][0]['sprite_string']['default'],
-            'pokeball',
-        );
-
-        $pokeball->name = $pokeballData['name'][0]['name'];
-        $pokeball->save();
-
-        if ($new === true) {
-            return true;
-        }
-
-        return $pokeball->wasChanged();
-    }
-
-    /**
-     * Parses the data from an array and saves them to the database as a pokemon
-     * @param array $pokemonData An array containing the data of the pokemon
-     * @return bool Returns whether the pokemon changed/saved or not
-     */
-    public function importPokemon(array $pokemonData): bool
-    {
-        $new = false;
-        $code = $this->formatCode($pokemonData['pokemon']);
-        $pokemon = Pokemon::where('pokemon', $code)->first();
-        if ($pokemon === null) {
-            $pokemon = new Pokemon;
-            $pokemon->pokemon = $code;
-            $new = true;
-        }
-
-        $pokemon->form_index = $pokemonData['form_index'] - 1;
-        $pokemon->form = ($pokemonData['form_name'] !== "") ? $pokemonData['form_name'] : null;
-        $pokemon->form_name = ($pokemon->form !== null) ? $this->formatText($pokemonData['form_name']) : null;
-        $pokemon->species = $pokemonData['details']['species']['species'];
-        $pokemon->species_name = ($pokemonData['details']['species']['name'][0]['name'] !== "") ? $pokemonData['details']['species']['name'][0]['name'] : null;
-
-        $pokemon->primary_type = $pokemonData['details']['types'][0]['type']['type'];
-        $pokemon->secondary_type = (isset($pokemonData['details']['types'][1])) ? $pokemonData['details']['types'][1]['type']['type'] : $pokemon->primary_type;
-        $pokemon->base_hp = $pokemonData['details']['stats'][0]['value'];
-        $pokemon->base_atk = $pokemonData['details']['stats'][1]['value'];
-        $pokemon->base_def = $pokemonData['details']['stats'][2]['value'];
-        $pokemon->base_spa = $pokemonData['details']['stats'][3]['value'];
-        $pokemon->base_spd = $pokemonData['details']['stats'][4]['value'];
-        $pokemon->base_spe = $pokemonData['details']['stats'][5]['value'];
-
-        $sprites = $pokemonData['sprites'][0]['sprites'];
-
-        $pokemon->sprite = $this->importSprite(
-            $sprites['front_default'],
-            'pokemon',
-            sprintf('%s_default.png', $pokemon->pokemon)
-        );
-
-        $pokemon->sprite_shiny = $this->importSprite(
-            $sprites['front_shiny'],
-            'pokemon',
-            sprintf('%s_shiny.png', $pokemon->pokemon)
-        );
-
-        $pokemon->sprite_female = $this->importSprite(
-            $sprites['front_female'],
-            'pokemon',
-            sprintf('%s_female.png', $pokemon->pokemon)
-        );
-
-        $pokemon->sprite_female_shiny = $this->importSprite(
-            $sprites['front_shiny_female'],
-            'pokemon',
-            sprintf('%s_shiny_female.png', $pokemon->pokemon)
-        );
-
-        $pokemon->pokedex_id = $pokemonData['pokedex_id'];
-        $pokemon->generation = (isset($pokemonData['generation'][0])) ? $pokemonData['generation'][0]['generation'] : $pokemonData['generation_backup']['generation'];
-        $pokemon->pokemon_type = PokemonTypes::FORM;
-        $pokemon->save();
-
-        if ($new === true) {
-            return true;
-        }
-
-        return $pokemon->wasChanged();
-    }
-
-    /**
-     * Gets the config JSON containing a list of games
-     * @return array Returns an array containing the games
-     */
-    public function getGamesJson(): array {
-        return Storage::json('/config/PKSanc/games.json');
-    }
-
-    /**
-     * Saves a game to the database
-     * @param string $name The display name of the game
-     * @param string $code The internal code used by PKSaveExtractor for the game
-     * @return bool Returns whether the pokemon changed/saved or not
-     */
-    public function importGame(string $name, string $code): bool {
-        $code = strtolower($code);
-        $game = Game::where('game', $code)->first();
-        if ($game !== null) {
+        if ($this->isInUse($item)) {
             return false;
         }
 
-        $game = new Game();
-        $game->game = $code;
-        $game->name = $name;
-        $game->save();
+        if ($item instanceof Component) {
+            $this->preloaded(Component::class, fn (Component $c) => $this->componentKey($c->blueprint_id, $c->id))
+                ->forget($this->componentKey($item->blueprint_id, $item->id));
+            $item->delete();
+            return true;
+        }
 
+        // Exalted weapons are deleted along with their warframe
+        if ($item instanceof Warframe) {
+            foreach (Weapon::where('exalted_id', $item->id)->get() as $exaltedWeapon) {
+                $this->removeItem($exaltedWeapon);
+            }
+        }
+
+        foreach ($this->getComponents($item) as $component) {
+            $this->removeItem($component);
+        }
+
+        $this->preloaded($item::class, 'id')->forget($item->id);
+        $item->delete();
         return true;
     }
 
     /**
-     * Downloads a sprite from the PokeAPI github and saves it
-     * @param ?string $spriteString The path to the sprite on the PokeAPI github. When null means the sprite does not exist.
-     * @param string $spriteType What kind of sprite it is, eg. pokeball or pokemon
-     * @param ?string $fileName The filename the file should be saved with, if null then the original name is used
-     * @return ?string Returns the relative path to the sprite, if any
+     * Checks whether a user owns an item, or one of its components
+     * @param ArsenalDataModel $item The item to check
+     * @return bool Returns whether the item is in use
      */
-    private function importSprite(?string $spriteString, string $spriteType, ?string $fileName = null): ?string
+    private function isInUse(ArsenalDataModel $item): bool
     {
-        if ($spriteString === null) {
-            return null;
+        if ($item instanceof Component) {
+            return UserComponent::where('id', $item->uuid)->exists();
         }
 
-        if ($fileName === null) {
-            $arr = explode('/', $spriteString);
-            $fileName = end($arr);
+        $userModel = match ($item::class) {
+            Warframe::class => UserWarframe::class,
+            Weapon::class => UserWeapon::class,
+            Companion::class => UserCompanion::class,
+        };
+
+        if ($userModel::where('id', $item->id)->exists()) {
+            return true;
         }
 
-        $spriteUrl = str_replace('/media/', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/', $spriteString);
-        $spritePath = sprintf('modules/pksanc/%s/%s', $spriteType, $fileName);
+        if (UserComponent::whereIn('id', Component::select('uuid')->where('blueprint_id', $item->id))->exists()) {
+            return true;
+        }
 
-        return $this->downloadImage($spriteUrl, $spritePath) ? $fileName : null;
+        if ($item instanceof Warframe) {
+            return Weapon::where('exalted_id', $item->id)->get()->contains(fn (Weapon $weapon) => $this->isInUse($weapon));
+        }
+
+        return false;
     }
 
     /**
-     * Formats the text in a display format
-     * @param string $oldText Text to be formatted
-     * @return string The formatted string
+     * Gets the components of a blueprint
+     * @param ArsenalDataModel $blueprint The blueprint
+     * @return \Illuminate\Support\Collection<Component> Returns the components
      */
-    private function formatText(string $oldText): string
+    private function getComponents(ArsenalDataModel $blueprint): \Illuminate\Support\Collection
     {
-        $text = str_replace('-', ' ', $oldText);
-        return ucfirst($text);
+        return $this->preloaded(Component::class, fn (Component $c) => $this->componentKey($c->blueprint_id, $c->id))
+            ->filter(fn (Component $component) => $component->blueprint_id === $blueprint->id)
+            ->toBase();
     }
 
     /**
-     * Formats the text in as an internal code
-     * @param string $oldCode Text to be formatted
-     * @return string The formatted string
+     * Checks whether a component should not be imported, eg. because it is a resource
+     * @param array $data The component data
+     * @return bool Returns whether the component is blacklisted
      */
-    private function formatCode(string $oldCode): string
+    private function isBlacklistedComponent(array $data): bool
     {
-        $code = str_replace('-', '', $oldCode);
-        return strtolower($code);
+        return ($data['type'] ?? 'none') === 'Resource' ||
+            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/Gems/') ||
+            str_starts_with($data['uniqueName'], '/Lotus/Types/Gameplay/') ||
+            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/MiscItems/') ||
+            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/RailjackMiscItems/') ||
+            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/Research/') ||
+            str_starts_with($data['uniqueName'], '/Lotus/Types/Items/Fish');
+    }
+
+    /**
+     * Gets the key used to look up a preloaded component
+     * @param string $blueprintId The id of the blueprint
+     * @param string $componentId The id of the component
+     * @return string Returns the key
+     */
+    private function componentKey(string $blueprintId, string $componentId): string
+    {
+        return $blueprintId . '|' . $componentId;
+    }
+
+    /**
+     * Gets the storage path of an asset
+     * @param string $assetName The name of the asset
+     * @param string $category The asset category
+     * @return string Returns the storage path
+     */
+    private function assetPath(string $assetName, string $category): string
+    {
+        return sprintf('modules/arsenal/%s/%s', $category, $assetName);
+    }
+
+    /**
+     * Gets the url of an asset
+     * @param string $assetName The name of the asset
+     * @return string Returns the url
+     */
+    private function assetUrl(string $assetName): string
+    {
+        return sprintf('%s/%s', self::imageUrl, $assetName);
     }
 }
