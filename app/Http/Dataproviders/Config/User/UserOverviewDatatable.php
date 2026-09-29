@@ -2,8 +2,7 @@
 
 namespace App\Http\Dataproviders\Config\User;
 
-use App\Enum\GenericStringEnum;
-use App\Http\Api\AbstractApi;
+use App\Http\Dataproviders\AbstractDatalist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Auth\Role;
 use App\Models\Auth\User;
@@ -14,9 +13,8 @@ use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
 use Lati111\LaravelDataproviders\Traits\Sortable;
-use Symfony\Component\HttpFoundation\Response;
 
-class UserOverviewDatatable extends AbstractApi
+class UserOverviewDatatable extends AbstractDatalist
 {
     use Dataprovider, Paginatable, HasPages, Searchable, Sortable;
 
@@ -36,7 +34,7 @@ class UserOverviewDatatable extends AbstractApi
         $data = $this->getData($request)
             ->get();
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */
@@ -59,7 +57,7 @@ class UserOverviewDatatable extends AbstractApi
     function getSearchFields(): array
     {
         return [
-            sprintf('%s.name', User::getTableName()),
+            sprintf('%s.username', User::getTableName()),
             'email'
         ];
     }
@@ -68,7 +66,7 @@ class UserOverviewDatatable extends AbstractApi
     function getAllowedSortColumns(): array
     {
         return [
-            sprintf('%s.name', User::getTableName()),
+            'username',
             'email',
             'role_id'
         ];

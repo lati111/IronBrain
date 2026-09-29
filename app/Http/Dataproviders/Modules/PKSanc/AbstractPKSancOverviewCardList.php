@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Dataproviders\Modules\PKSanc;
 
-use App\Enum\GenericStringEnum;
 use App\Exceptions\IronBrainException;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Filters\PKSanc\StoredPokemonTypeSelectFilter;
@@ -35,7 +34,6 @@ use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Filterable;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Symfony\Component\HttpFoundation\Response;
 
 abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implements FilterableDataproviderInterface
 {
@@ -58,7 +56,7 @@ abstract class AbstractPKSancOverviewCardList extends AbstractCardlist implement
             return $this->respond($e->getCode(), $e->publicMessage);
         }
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /**

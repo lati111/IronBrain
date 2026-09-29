@@ -21,6 +21,9 @@ class RestaurantUser extends DndRestaurantModel
     /** @inheritdoc */
     protected $table = self::TABLE_NAME;
 
+    /** Pivot attributes such as amount are filled on attach, so nothing is guarded, as with Laravel's Pivot class */
+    protected $guarded = [];
+
     //| Relationships
 
     /**

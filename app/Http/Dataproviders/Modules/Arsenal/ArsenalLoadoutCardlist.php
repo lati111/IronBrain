@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Dataproviders\Modules\Arsenal;
 
-use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Arsenal\Companion;
@@ -19,7 +18,6 @@ use Illuminate\Support\Facades\Auth;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Symfony\Component\HttpFoundation\Response;
 
 class ArsenalLoadoutCardlist extends AbstractCardlist
 {
@@ -42,7 +40,7 @@ class ArsenalLoadoutCardlist extends AbstractCardlist
                 return $loadout;
             });
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */

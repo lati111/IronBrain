@@ -219,7 +219,7 @@ Dataproviders serve paginated, searchable, sortable, and filterable data to fron
 ```php
 Route::dataprovider('/example', 'data.example', ExampleDataprovider::class);
 // GET /data/example         → ExampleDataprovider@data    — paginated records
-// GET /data/example/pages   → ExampleDataprovider@count   — total record count
+// GET /data/example/pages   → ExampleDataprovider@count   — page count (legacy, unused by datalists v3)
 // GET /data/example/filters → ExampleDataprovider@filters — available filter options (if method exists)
 ```
 
@@ -228,10 +228,19 @@ Route::dataprovider('/example', 'data.example', ExampleDataprovider::class);
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `page` | integer | Page number (1-indexed) |
-| `per_page` | integer | Records per page |
+| `perpage` | integer | Records per page |
+| `offset` | integer | Record offset, used instead of `page` by dataselects |
 | `search` | string | Full-text search applied to configured fields |
-| `sort` | JSON array | e.g. `[{"column":"name","direction":"asc"}]` |
-| `filters` | JSON object | e.g. `{"type":"fire"}` |
+| `sort` | JSON object | e.g. `{"username":"asc"}`, columns must be whitelisted in `getAllowedSortColumns()` |
+| `filters` | JSON array | e.g. `[{"filter":"generation","operator":"=","value":"1"}]` |
+
+**Response format:** the `data` of the response is a schema v3 envelope, as expected by `@lati111/laravel_datatables` v3. The `pagination` key is only present for dataproviders using `Paginatable`.
+
+```json
+{"code": 200, "message": "...", "data": {"items": [...], "pagination": {"page": 1, "perpage": 10, "pages": 4}}, "errors": null}
+```
+
+Invalid query parameters (such as an unknown filter or a non-whitelisted sort column) respond with a `400` and the reason in `message`.
 
 **Creating a new dataprovider:**
 
@@ -239,8 +248,9 @@ Route::dataprovider('/example', 'data.example', ExampleDataprovider::class);
 2. Extend `AbstractCardlist` or `AbstractDatalist`.
 3. Add traits from `lati111/laravel_dataproviders` as needed: `Dataprovider`, `Paginatable`, `Searchable`, `Sortable`, `Filterable`, `HasPages`, `HasFilters`.
 4. Implement `getContent(Request $request, bool $dataQuery): Builder` — return the base Eloquent query.
-5. Implement `getSearchFields(): array` if using `Searchable`.
-6. Register a route in `routes/dataprovider.php`.
+5. Implement `getSearchFields(): array` if using `Searchable`, and `getAllowedSortColumns(): array` if using `Sortable`.
+6. Implement `data(Request $request)`, returning the retrieved items through `$this->respondWithItems($request, $items)`.
+7. Register a route in `routes/dataprovider.php`.
 
 ---
 
@@ -467,7 +477,7 @@ Remove a Pokédex marking for the authenticated user.
 
 ## Dataprovider Endpoints
 
-All endpoints support `page`, `per_page`, `search`, `sort`, and `filters` query parameters. Each listed route also has a `/pages` variant that returns the total record count for pagination.
+All endpoints support the query parameters and return the response format described under [Dataprovider System](#dataprovider-system). Each listed route also has a legacy `/pages` variant that returns the page count.
 
 ### Home
 

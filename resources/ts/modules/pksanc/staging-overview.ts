@@ -27,8 +27,9 @@ async function confirmDeposit(uuid: string) {
     });
 
     const response = await postData(`/api/pksanc/deposit/staging/${uuid}/confirm`, json);
-    if (response?.ok) {
-        window.location = response.headers.get('Location');
+    const location = response?.ok ? response.headers.get('Location') : null;
+    if (location !== null) {
+        window.location.href = location;
         return;
     }
 

@@ -8,6 +8,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Lati111\LaravelDataproviders\Exceptions\DataproviderException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -36,5 +37,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Dataprovider exceptions are caused by invalid query parameters, so respond with their client error code
+        $exceptions->render(function (DataproviderException $e) {
+            $code = $e->getCode() >= 400 && $e->getCode() < 500 ? $e->getCode() : 400;
+
+            return response()->json([
+                'code' => $code,
+                'message' => $e->getMessage(),
+                'data' => null,
+                'errors' => null,
+            ], $code);
+        });
     })->create();

@@ -80,7 +80,8 @@ return new class extends Migration
             $table->integer('amount')->default(1);
             $table->timestamps();
 
-            $table->unique(['recipe_uuid', 'ingredient_uuid']);
+            // Explicit index names, as the generated ones exceed MySQL's 64 character limit
+            $table->unique(['recipe_uuid', 'ingredient_uuid'], 'dnd__restaurant_recipe_ingredient_unique');
             $table->foreign('recipe_uuid')->references('uuid')->on('dnd__restaurant_recipe')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('ingredient_uuid')->references('uuid')->on('dnd__restaurant_ingredient')->onDelete('cascade')->onUpdate('no action');
         });
@@ -114,7 +115,7 @@ return new class extends Migration
             $table->integer('amount')->default(1);
             $table->timestamps();
 
-            $table->unique(['recipe_uuid', 'equipment_uuid']);
+            $table->unique(['recipe_uuid', 'equipment_uuid'], 'dnd__restaurant_recipe_equipment_unique');
             $table->foreign('recipe_uuid')->references('uuid')->on('dnd__restaurant_recipe')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('equipment_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
         });
@@ -126,7 +127,7 @@ return new class extends Migration
             $table->integer('amount')->default(1);
             $table->timestamps();
 
-            $table->unique(['restaurant_uuid', 'equipment_uuid']);
+            $table->unique(['restaurant_uuid', 'equipment_uuid'], 'dnd__restaurant_owned_equipment_unique');
             $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('equipment_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
         });
@@ -153,7 +154,7 @@ return new class extends Migration
             $table->integer('amount')->default(1);
             $table->timestamps();
 
-            $table->unique(['storage_uuid', 'ingredient_uuid']);
+            $table->unique(['storage_uuid', 'ingredient_uuid'], 'dnd__restaurant_storage_ingredient_unique');
             $table->foreign('storage_uuid')->references('uuid')->on('dnd__restaurant_storage')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('ingredient_uuid')->references('uuid')->on('dnd__restaurant_ingredient')->onDelete('cascade')->onUpdate('no action');
         });

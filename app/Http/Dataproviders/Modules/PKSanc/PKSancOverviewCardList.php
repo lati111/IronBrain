@@ -12,7 +12,7 @@ class PKSancOverviewCardList extends AbstractPKSancOverviewCardList
     protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         /** @var Builder $pokemonCollection */
-        $pokemonCollection = StoredPokemon::select()
+        $pokemonCollection = StoredPokemon::query()
             ->where('validated_at', '!=', null)
             ->where(StoredPokemon::getTableName().'.owner_uuid', Auth::user()->uuid);
 

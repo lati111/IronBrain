@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Dataproviders\Modules\PKSanc\Data;
 
-use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\PKSanc\Pokemon;
@@ -13,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Symfony\Component\HttpFoundation\Response;
 
 class OwnedPokemonSpeciesSelect extends AbstractCardlist
 {
@@ -29,7 +27,7 @@ class OwnedPokemonSpeciesSelect extends AbstractCardlist
         $data = $this->getData($request)
             ->get();
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */

@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Dataproviders\Config\Module;
 
-use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Config\Module;
@@ -12,7 +11,6 @@ use Illuminate\Http\Request;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Symfony\Component\HttpFoundation\Response;
 
 class ModuleOverviewCardlist extends AbstractCardlist
 {
@@ -34,7 +32,7 @@ class ModuleOverviewCardlist extends AbstractCardlist
                 return $module;
             });
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */

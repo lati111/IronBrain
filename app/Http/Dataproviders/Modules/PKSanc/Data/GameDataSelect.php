@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Dataproviders\Modules\PKSanc\Data;
 
-use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\PKSanc\Game;
@@ -10,7 +9,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Symfony\Component\HttpFoundation\Response;
 
 class GameDataSelect extends AbstractCardlist
 {
@@ -33,7 +31,7 @@ class GameDataSelect extends AbstractCardlist
                 return $game;
             });
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */
