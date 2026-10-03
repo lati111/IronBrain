@@ -102,6 +102,20 @@ class CreateRecipeTest extends AbstractApiFeatureTester implements PostOperation
         $this->assertEquals([['uuid' => $peel->uuid, 'amount' => 2]], $response->json('data.inventory.recipes.0.byproducts'));
     }
 
+    public function test_cookers_cannot_be_part_of_a_recipe(): void
+    {
+        $stove = $this->createTestCooker($this->restaurant);
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters([
+                'equipment' => [['uuid' => $stove->uuid, 'amount' => 1]],
+            ]));
+
+        $response->assertBadRequest();
+        $this->assertApiMessage('Cookers can\'t be part of a recipe', $response);
+        $this->assertFalse(Recipe::where('restaurant_uuid', $this->restaurant->uuid)->exists());
+    }
+
     public function test_byproduct_of_another_restaurant_is_not_found(): void
     {
         $otherIngredient = $this->createTestIngredient($this->createTestRestaurant($this->getAdminUser(), 'Other'));

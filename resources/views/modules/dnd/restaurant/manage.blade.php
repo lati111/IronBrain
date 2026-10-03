@@ -36,6 +36,7 @@
                     <div class="inventory-sidebar-body flex flex-1">
                         <button class="inventory-tab active flex-1 py-2" data-tab="table" onclick="switchTab('table')">Tables</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="employee" onclick="switchTab('employee')">Employees</button>
                     </div>
                 </div>
 
@@ -130,7 +131,7 @@
         <h3 class="title py-1">New Room</h3>
         <form id="room-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createRoom()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Common Room" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Background image (optional)">
                 <x-form.input.file_uploader name="background_image" accepts="image/*"/>
@@ -160,7 +161,7 @@
         <h3 id="table-modal-title" class="title py-1">New Table</h3>
         <form id="table-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveTable()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Corner Booth" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Capacity (seats)">
                 <input type="number" name="capacity" class="underlined" min="1" value="4" required/>
@@ -179,7 +180,7 @@
         <h3 id="customer-modal-title" class="title py-1">New Customer</h3>
         <form id="customer-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveCustomer()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Bilbo Baggins" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Description (optional)">
                 <textarea name="description" class="underlined" rows="3"></textarea>
@@ -193,7 +194,34 @@
         </x-slot:buttons>
     </x-modal>
 
-    {{--| Delete table / customer modal |--}}
+    {{--| Create / edit employee modal |--}}
+    <x-modal id="employee-modal">
+        <h3 id="employee-modal-title" class="title py-1">New Employee</h3>
+        <form id="employee-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveEmployee()">
+            <x-form.input-wrapper label_text="Name">
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
+            </x-form.input-wrapper>
+            <div class="flex gap-3">
+                <x-form.input-wrapper label_text="Prep speed" cls="flex-1">
+                    <input type="number" name="prep_speed" class="underlined" min="0" max="100" step="0.01" value="1" required/>
+                </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Cleaning speed" cls="flex-1">
+                    <input type="number" name="cleaning_speed" class="underlined" min="0" max="100" step="0.01" value="1" required/>
+                </x-form.input-wrapper>
+            </div>
+            <x-form.input-wrapper label_text="Icon (optional)">
+                <x-form.input.file_uploader name="icon" accepts="image/*"/>
+            </x-form.input-wrapper>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button id="employee-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteModal('employee')">Delete</button>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('employee-modal')">Cancel</button>
+            <button id="employee-modal-submit" class="interactive px-5 py-2.5" onclick="saveEmployee()">Create</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Delete table / customer / employee modal |--}}
     <x-modal id="type-delete-modal">
         <h3 id="type-delete-title" class="title py-1"></h3>
         <p class="text-center">

@@ -4,8 +4,10 @@ namespace Tests\Traits\DnD;
 
 use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Enum\DnD\Restaurant\EquipmentStage;
+use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Customer;
+use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Meal;
@@ -74,6 +76,18 @@ trait RestaurantTestHelper
         $customer->name = $name;
         $customer->save();
         return $customer;
+    }
+
+    protected function createTestEmployee(Restaurant $restaurant, ?WorkStation $station = null, string $name = 'Test Employee', float $prepSpeed = 1, float $cleaningSpeed = 1): Employee
+    {
+        $employee = new Employee();
+        $employee->restaurant_uuid = $restaurant->uuid;
+        $employee->name = $name;
+        $employee->prep_speed = $prepSpeed;
+        $employee->cleaning_speed = $cleaningSpeed;
+        $employee->station = $station;
+        $employee->save();
+        return $employee;
     }
 
     protected function createTestStorage(Restaurant $restaurant, int $capacity = 100, int $order = 0, string $name = 'Test Storage'): Storage

@@ -112,6 +112,21 @@ class Restaurant extends DndRestaurantModel
         return $this->ServiceHistory()->whereNull('ended_at')->latest('started_at')->first();
     }
 
+    /**
+     * Gets the prices of the recipes on sale during the ongoing service
+     * @return array<string, float> The sale prices, keyed by recipe uuid
+     */
+    public function getSalePrices(): array
+    {
+        $service = $this->getCurrentService();
+        if ($service === null) {
+            return [];
+        }
+
+        return Sale::where('service_uuid', $service->uuid)->pluck('price', 'recipe_uuid')
+            ->map(fn ($price) => (float) $price)->all();
+    }
+
     //| Money
 
     /** The coins below gold, from the smallest up. Each is worth ten of the previous, and gold takes everything above */

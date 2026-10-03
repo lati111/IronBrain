@@ -1,24 +1,30 @@
 <?php
 namespace App\Http\Api\Modules\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\WorkStation;
 use App\Enum\ErrorEnum;
 use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
 use App\Models\DnD\Restaurant\Customer;
+use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
+use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Meal;
 use App\Models\DnD\Restaurant\Order;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\ServedMeal;
 use App\Models\DnD\Restaurant\Table;
+use App\Service\DnD\Restaurant\InventoryService;
 use App\Service\DnD\Restaurant\KitchenService;
 use App\Service\DnD\Restaurant\OrderService;
 use App\Service\DnD\Restaurant\ShiftService;
+use App\Service\DnD\Restaurant\WorkService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,6 +39,8 @@ class ServiceApi extends AbstractApi
         private readonly KitchenService $kitchenService,
         private readonly OrderService $orderService,
         private readonly ShiftService $shiftService,
+        private readonly WorkService $workService,
+        private readonly InventoryService $inventoryService,
     )
     {
     }
@@ -53,7 +61,8 @@ class ServiceApi extends AbstractApi
     }
 
     /**
-     * Changes the restaurant's current time, either by moving it forward a number of minutes or by setting it
+     * Changes the restaurant's current time, either by moving it forward a number of minutes or by setting it. The
+     * work areas get work done while it moves forward
      * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant
      * @return JsonResponse The updated service state in JSON format
@@ -75,9 +84,9 @@ class ServiceApi extends AbstractApi
         }
 
         if ($request->filled('advance')) {
-            $this->kitchenService->advanceTime($restaurant, (int) $request->get('advance'));
+            $this->workService->advanceTime($restaurant, (int) $request->get('advance'));
         } else {
-            $this->kitchenService->setTime($restaurant, $request->get('time'));
+            $this->workService->setTime($restaurant, $request->get('time'));
         }
 
         return $this->respond(Response::HTTP_OK, 'Time updated', $this->getState($restaurant));
@@ -113,15 +122,15 @@ class ServiceApi extends AbstractApi
     }
 
     /**
-     * Prepares a planned meal, which passes the recipe's prep time
+     * Queues a planned meal to be prepped in the prep area
      * @param string $restaurant_uuid The uuid of the restaurant
      * @param string $meal_uuid The uuid of the meal
      * @return JsonResponse The updated service state in JSON format
      */
     public function prepareMeal(string $restaurant_uuid, string $meal_uuid): JsonResponse
     {
-        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Meal prepared',
-            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->prepareMeal($restaurant, $meal));
+        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Queued for prep',
+            fn (Restaurant $restaurant, Meal $meal) => $this->workService->queuePrep($restaurant, $meal));
     }
 
     /**
@@ -162,7 +171,7 @@ class ServiceApi extends AbstractApi
     public function skipMeal(string $restaurant_uuid, string $meal_uuid): JsonResponse
     {
         return $this->withMeal($restaurant_uuid, $meal_uuid, 'Skipped until the meal is done',
-            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->skipUntilDone($restaurant, $meal));
+            fn (Restaurant $restaurant, Meal $meal) => $this->workService->skipUntilDone($restaurant, $meal));
     }
 
     /**
@@ -201,7 +210,7 @@ class ServiceApi extends AbstractApi
     }
 
     /**
-     * Cleans dirty pieces of a piece of equipment, which passes its cleaning time for each piece
+     * Queues dirty pieces of a piece of equipment to be cleaned in the cleaning area
      * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant
      * @param string $equipment_uuid The uuid of the equipment
@@ -228,12 +237,12 @@ class ServiceApi extends AbstractApi
         }
 
         $amount = (int) $request->get('amount');
-        return $this->attempt($restaurant, sprintf('Cleaned %d %s', $amount, $equipment->name),
-            fn () => $this->kitchenService->cleanEquipment($restaurant, $equipment, $amount));
+        return $this->attempt($restaurant, sprintf('Queued %d %s for cleaning', $amount, $equipment->name),
+            fn () => $this->workService->queueCleaning($restaurant, $equipment, $amount));
     }
 
     /**
-     * Cleans every dirty piece of equipment, which passes the cleaning time of each piece
+     * Queues every dirty piece of equipment that isn't queued yet to be cleaned in the cleaning area
      * @param string $restaurant_uuid The uuid of the restaurant
      * @return JsonResponse The updated service state in JSON format
      */
@@ -244,7 +253,141 @@ class ServiceApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
         }
 
-        return $this->attempt($restaurant, 'Cleaned all equipment', fn () => $this->kitchenService->cleanAllEquipment($restaurant));
+        return $this->attempt($restaurant, 'Queued all dirty equipment for cleaning', fn () => $this->workService->queueAllCleaning($restaurant));
+    }
+
+    //| Ingredients
+
+    /**
+     * Adds an ingredient brought in during service to the pile, where it waits to be sorted into the storage spaces
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $ingredient_uuid The uuid of the ingredient
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function addIngredient(Request $request, string $restaurant_uuid, string $ingredient_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => 'required|numeric|gt:0|max:999999',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $ingredient = Ingredient::where('uuid', $ingredient_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($ingredient === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Ingredient not found');
+        }
+
+        $amount = round((float) $request->get('amount'), 2);
+        $this->inventoryService->addToPile($restaurant, $ingredient, $amount);
+
+        return $this->respond(Response::HTTP_OK, sprintf('Added %s %s', $amount + 0, $ingredient->name), $this->getState($restaurant));
+    }
+
+    //| Sales
+
+    /**
+     * Puts a recipe on sale for the ongoing service, at a price that replaces its usual one until the service ends
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $recipe_uuid The uuid of the recipe
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function setSale(Request $request, string $restaurant_uuid, string $recipe_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'price' => 'required|numeric|min:0|max:99999999',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        return $this->withRecipe($restaurant_uuid, $recipe_uuid, fn (Restaurant $restaurant, Recipe $recipe) => $this->attempt(
+            $restaurant, $recipe->name . ' is on sale',
+            fn () => $this->orderService->setSale($restaurant, $recipe, (float) $request->get('price'))
+        ));
+    }
+
+    /**
+     * Takes a recipe off sale, so it is ordered at its usual price again
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $recipe_uuid The uuid of the recipe
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function removeSale(string $restaurant_uuid, string $recipe_uuid): JsonResponse
+    {
+        return $this->withRecipe($restaurant_uuid, $recipe_uuid, fn (Restaurant $restaurant, Recipe $recipe) => $this->attempt(
+            $restaurant, $recipe->name . ' is no longer on sale',
+            fn () => $this->orderService->removeSale($restaurant, $recipe)
+        ));
+    }
+
+    /**
+     * Resolves the restaurant and one of its recipes, then responds with what the action gives
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $recipe_uuid The uuid of the recipe
+     * @param Closure $action The action, given the restaurant and recipe, returning the response
+     * @return JsonResponse The response, or an error, in JSON format
+     */
+    private function withRecipe(string $restaurant_uuid, string $recipe_uuid, Closure $action): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $recipe = Recipe::where('uuid', $recipe_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($recipe === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
+        }
+
+        return $action($restaurant, $recipe);
+    }
+
+    //| Staff
+
+    /**
+     * Puts an employee to work in a work area, or takes them out of it when no work area is given
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $employee_uuid The uuid of the employee
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function assignEmployee(Request $request, string $restaurant_uuid, string $employee_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'station' => ['nullable', 'string', Rule::in(WorkStation::values())],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $employee = Employee::where('uuid', $employee_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($employee === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Employee not found');
+        }
+
+        $station = $request->filled('station') ? WorkStation::from($request->get('station')) : null;
+        $this->workService->assignEmployee($employee, $station);
+
+        $message = $station !== null
+            ? sprintf('%s is working at %s', $employee->name, strtolower($station->label()))
+            : $employee->name . ' stopped working';
+        return $this->respond(Response::HTTP_OK, $message, $this->getState($restaurant));
     }
 
     //| Plates & orders
@@ -430,13 +573,15 @@ class ServiceApi extends AbstractApi
     //| Helpers
 
     /**
-     * Gets the full service state: the kitchen along with the orders being served
+     * Gets the full service state: the kitchen, its staff and work areas, and the orders being served
      * @param Restaurant $restaurant The restaurant
      * @return array The service state
      */
     private function getState(Restaurant $restaurant): array
     {
-        return $this->kitchenService->getState($restaurant) + ['orders' => $this->orderService->describeOrders($restaurant)];
+        return $this->kitchenService->getState($restaurant)
+            + $this->workService->describe($restaurant)
+            + ['orders' => $this->orderService->describeOrders($restaurant)];
     }
 
     /**

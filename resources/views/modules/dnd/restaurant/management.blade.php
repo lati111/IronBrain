@@ -58,8 +58,16 @@
             {{--| Storage area |--}}
             <div class="flex-1 flex flex-col gap-4 min-w-0">
 
-                {{--| General storage |--}}
-                <section id="general-storage" class="inventory-storage inventory-general" data-drop-target="general">
+                {{--| Ingredients brought in during service, saved until they are sorted into a storage space |--}}
+                <section id="pile-storage" class="inventory-storage inventory-pile hidden">
+                    <div class="inventory-storage-header">
+                        <span class="font-semibold">Unsorted</span>
+                    </div>
+                    <div class="inventory-storage-items" data-items></div>
+                </section>
+
+                {{--| General storage. Hidden while empty, which is always the case when the page loads |--}}
+                <section id="general-storage" class="inventory-storage inventory-general empty" data-drop-target="general">
                     <div class="inventory-storage-header">
                         <span class="font-semibold">General Storage</span>
                     </div>
@@ -146,7 +154,7 @@
         <h3 class="title py-1">New Storage Space</h3>
         <form id="storage-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createStorage()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Cellar" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Capacity">
                 <input type="number" name="capacity" class="underlined" min="1" value="100" required/>
@@ -170,7 +178,7 @@
         <h3 id="ingredient-modal-title" class="title py-1">New Ingredient</h3>
         <form id="ingredient-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createIngredient()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Potato" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Expires in (days)">
                 <input type="number" name="expires_in" class="underlined" min="0" value="7" required/>
@@ -195,7 +203,7 @@
         <h3 id="equipment-modal-title" class="title py-1">New Equipment</h3>
         <form id="equipment-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createEquipment()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Cooking Pot" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Category">
                 <select name="category" class="underlined" required>
@@ -243,7 +251,7 @@
         @php($recipeComponentTabs = ['ingredient' => 'Ingredients', 'equipment' => 'Equipment', 'byproduct' => 'Byproducts'])
         <form id="recipe-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveRecipe()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Potato Stew" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
 
             {{--| Tabs |--}}

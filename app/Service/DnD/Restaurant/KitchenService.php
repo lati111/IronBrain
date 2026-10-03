@@ -7,6 +7,7 @@ use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Meal;
+use App\Models\DnD\Restaurant\PileIngredient;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\RecipeEquipment;
 use App\Models\DnD\Restaurant\Restaurant;
@@ -37,6 +38,7 @@ class KitchenService
         $now = $restaurant->getNow();
         $equipment = Equipment::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
         $meals = Meal::where('restaurant_uuid', $restaurant->uuid)->with('Recipe')->orderBy('created_at')->get();
+        $sales = $restaurant->getSalePrices();
 
         return [
             'clock' => [
@@ -46,11 +48,15 @@ class KitchenService
                 'closing_time' => substr($restaurant->closing_time, 0, 5),
                 'shift_total' => $restaurant->shift_total,
             ],
+            'ingredients' => $this->describeIngredients($restaurant),
             'recipes' => Recipe::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get()
                 ->map(fn (Recipe $recipe) => [
                     'uuid' => $recipe->uuid,
                     'name' => $recipe->name,
-                    'price' => $recipe->price,
+                    // What it is ordered at, which is its sale price while it is on sale
+                    'price' => $sales[$recipe->uuid] ?? $recipe->price,
+                    'base_price' => $recipe->price,
+                    'on_sale' => isset($sales[$recipe->uuid]),
                     'prep_time' => $recipe->prep_time,
                     'cooking_time' => $recipe->cooking_time,
                 ])->values()->all(),
@@ -177,8 +183,8 @@ class KitchenService
     //| Meals
 
     /**
-     * Plans a meal of a recipe, taking its ingredients out of the restaurant's storage spaces in their order, and
-     * putting the equipment used for prepping it in use
+     * Plans a meal of a recipe, taking its ingredients out of the restaurant's storage spaces in their order, then
+     * out of the pile of ingredients brought in during service, and putting the equipment used for prepping it in use
      * @param Restaurant $restaurant The restaurant
      * @param Recipe $recipe The recipe to make
      * @return Meal The planned meal
@@ -209,7 +215,12 @@ class KitchenService
                     ->lockForUpdate()
                     ->get();
 
-                $stored = round($links->sum('amount'), 2);
+                $pile = PileIngredient::where('restaurant_uuid', $restaurant->uuid)
+                    ->where('ingredient_uuid', $requirement->ingredient_uuid)
+                    ->lockForUpdate()
+                    ->first();
+
+                $stored = round($links->sum('amount') + ($pile->amount ?? 0), 2);
                 if ($stored < $needed) {
                     throw new InvalidArgumentException(sprintf(
                         'Not enough %s stored: %s needed, %s stored', $requirement->Ingredient->name, $needed + 0, $stored + 0
@@ -227,6 +238,13 @@ class KitchenService
 
                     $needed = round($needed - $taken, 2);
                     $consumed[] = ['storage_uuid' => $link->storage_uuid, 'ingredient_uuid' => $link->ingredient_uuid, 'amount' => $taken];
+                }
+
+                // Whatever the storage spaces don't have comes from the pile, which is known to hold enough
+                if ($needed > 0) {
+                    $pile->amount = round($pile->amount - $needed, 2);
+                    $pile->amount == 0 ? $pile->delete() : $pile->save();
+                    $consumed[] = ['storage_uuid' => null, 'pile' => true, 'ingredient_uuid' => $requirement->ingredient_uuid, 'amount' => $needed];
                 }
             }
 
@@ -265,25 +283,23 @@ class KitchenService
     }
 
     /**
-     * Prepares a planned meal, which passes the recipe's prep time
+     * Finishes prepping a planned meal, once the prep area has worked through it. The prep equipment becomes dirty,
+     * except containers, which hold the prepped meal until it cooks
      * @param Restaurant $restaurant The restaurant
      * @param Meal $meal The meal
      * @throws InvalidArgumentException Thrown when the meal isn't planned
      */
-    public function prepareMeal(Restaurant $restaurant, Meal $meal): void
+    public function finishPrep(Restaurant $restaurant, Meal $meal): void
     {
         if ($meal->status !== Meal::STATUS_PLANNED) {
-            throw new InvalidArgumentException('Only planned meals can be prepared');
+            throw new InvalidArgumentException('Only planned meals can be prepped');
         }
 
         DB::transaction(function () use ($restaurant, $meal) {
-            // Prep equipment is dirty once used, except containers, which hold the prepped meal until it cooks
             $this->releaseEquipment($restaurant, $this->filterEquipment($meal, EquipmentStage::PREP, container: false), dirty: true);
 
             $meal->status = Meal::STATUS_PREPPED;
             $meal->save();
-
-            $this->advanceTime($restaurant, $meal->getRecipe()->prep_time);
         });
     }
 
@@ -338,19 +354,20 @@ class KitchenService
     }
 
     /**
-     * Passes time until a cooking meal is done
+     * Gets how many minutes are left until a cooking meal is done
      * @param Restaurant $restaurant The restaurant
      * @param Meal $meal The meal
+     * @return int The minutes left, rounded up
      * @throws InvalidArgumentException Thrown when the meal isn't cooking
      */
-    public function skipUntilDone(Restaurant $restaurant, Meal $meal): void
+    public function getMinutesUntilDone(Restaurant $restaurant, Meal $meal): int
     {
-        if ($meal->getStatusAt($restaurant->getNow()) !== Meal::STATUS_COOKING) {
+        $now = $restaurant->getNow();
+        if ($meal->getStatusAt($now) !== Meal::STATUS_COOKING) {
             throw new InvalidArgumentException('Only meals that are still cooking can be skipped');
         }
 
-        $restaurant->setNow($meal->cooking_ends_at->copy());
-        $restaurant->save();
+        return $this->minutesUntil($now, $meal->cooking_ends_at);
     }
 
     /**
@@ -378,59 +395,6 @@ class KitchenService
         $meal->cooker_slot = null;
         $meal->expires_at = $meal->expires_at !== null && $meal->expires_at->lt($freshUntil) ? $meal->expires_at : $freshUntil;
         $meal->save();
-    }
-
-    //| Cleaning
-
-    /**
-     * Cleans dirty pieces of a piece of equipment, which passes its cleaning time for each piece cleaned
-     * @param Restaurant $restaurant The restaurant
-     * @param Equipment $equipment The equipment
-     * @param int $amount How many pieces to clean
-     * @throws InvalidArgumentException Thrown when fewer pieces are dirty
-     */
-    public function cleanEquipment(Restaurant $restaurant, Equipment $equipment, int $amount): void
-    {
-        DB::transaction(function () use ($restaurant, $equipment, $amount) {
-            $equipment = Equipment::where('uuid', $equipment->uuid)->lockForUpdate()->first();
-            if ($amount < 1 || $amount > $equipment->amount_dirty) {
-                throw new InvalidArgumentException(sprintf('Only %d %s %s dirty', $equipment->amount_dirty, $equipment->name, $equipment->amount_dirty === 1 ? 'is' : 'are'));
-            }
-
-            $equipment->amount_dirty -= $amount;
-            $equipment->save();
-
-            $this->advanceTime($restaurant, $equipment->cleaning_time * $amount);
-        });
-    }
-
-    /**
-     * Cleans every dirty piece of equipment in the restaurant, which passes the cleaning time of each piece
-     * @param Restaurant $restaurant The restaurant
-     * @return int How many pieces were cleaned
-     * @throws InvalidArgumentException Thrown when nothing is dirty
-     */
-    public function cleanAllEquipment(Restaurant $restaurant): int
-    {
-        return DB::transaction(function () use ($restaurant) {
-            $dirty = Equipment::where('restaurant_uuid', $restaurant->uuid)->where('amount_dirty', '>', 0)->lockForUpdate()->get();
-            if ($dirty->isEmpty()) {
-                throw new InvalidArgumentException('Nothing is dirty');
-            }
-
-            $minutes = 0;
-            $pieces = 0;
-            foreach ($dirty as $equipment) {
-                $minutes += $equipment->cleaning_time * $equipment->amount_dirty;
-                $pieces += $equipment->amount_dirty;
-
-                $equipment->amount_dirty = 0;
-                $equipment->save();
-            }
-
-            $this->advanceTime($restaurant, $minutes);
-            return $pieces;
-        });
     }
 
     //| Equipment
@@ -583,10 +547,51 @@ class KitchenService
             'cooker_uuid' => $meal->cooker_uuid,
             'cooker_slot' => $meal->cooker_slot,
             'cooking_minutes_left' => $status === Meal::STATUS_COOKING ? $this->minutesUntil($now, $meal->cooking_ends_at) : null,
+            'cooking_progress' => $status === Meal::STATUS_COOKING ? $this->getCookingProgress($meal, $now) : null,
             'expires_in_minutes' => $meal->expires_at !== null ? $this->minutesUntil($now, $meal->expires_at) : null,
             'spoiled' => $meal->isSpoiledAt($now),
             'portions_left' => $meal->portions_left,
         ];
+    }
+
+    /**
+     * Gets how far along a cooking meal is, from 0 when it went in to 1 when it is done
+     */
+    private function getCookingProgress(Meal $meal, Carbon $now): float
+    {
+        $total = $meal->Recipe->cooking_time * 60;
+        if ($total <= 0) {
+            return 1.0;
+        }
+
+        $left = max(0, $meal->cooking_ends_at->getTimestamp() - $now->getTimestamp());
+        return round(min(1, max(0, ($total - $left) / $total)), 4);
+    }
+
+    /**
+     * Describes the restaurant's ingredients for the service panel: how much of each is in the storage spaces, and
+     * how much is in the pile of ingredients brought in during service
+     * @param Restaurant $restaurant The restaurant
+     * @return array The ingredients
+     */
+    private function describeIngredients(Restaurant $restaurant): array
+    {
+        $stored = StorageIngredient::query()
+            ->join(Storage::TABLE_NAME, Storage::TABLE_NAME . '.uuid', '=', StorageIngredient::TABLE_NAME . '.storage_uuid')
+            ->where(Storage::TABLE_NAME . '.restaurant_uuid', $restaurant->uuid)
+            ->groupBy(StorageIngredient::TABLE_NAME . '.ingredient_uuid')
+            ->selectRaw(StorageIngredient::TABLE_NAME . '.ingredient_uuid, SUM(' . StorageIngredient::TABLE_NAME . '.amount) as amount')
+            ->pluck('amount', 'ingredient_uuid');
+        $pile = PileIngredient::where('restaurant_uuid', $restaurant->uuid)->pluck('amount', 'ingredient_uuid');
+
+        return Ingredient::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get()
+            ->map(fn (Ingredient $ingredient) => [
+                'uuid' => $ingredient->uuid,
+                'name' => $ingredient->name,
+                'icon' => $ingredient->icon !== null ? asset('img/' . $ingredient->icon) : null,
+                'stored' => round((float) ($stored[$ingredient->uuid] ?? 0), 2),
+                'pile' => round((float) ($pile[$ingredient->uuid] ?? 0), 2),
+            ])->values()->all();
     }
 
     /**
@@ -598,8 +603,8 @@ class KitchenService
     }
 
     /**
-     * Puts consumed ingredients back into the storage spaces they were taken from. When such a space no longer
-     * exists, they go into the restaurant's first storage space instead. Capacity is ignored, as they fit before
+     * Puts consumed ingredients back where they were taken from: the storage spaces, or the pile. When such a space no
+     * longer exists, they go into the restaurant's first storage space instead. Capacity is ignored, as they fit before
      * @param Restaurant $restaurant The restaurant
      * @param array $consumed The consumed ingredients, as storage_uuid, ingredient_uuid and amount
      */
@@ -608,7 +613,13 @@ class KitchenService
         $fallback = Storage::where('restaurant_uuid', $restaurant->uuid)->orderBy('order')->first();
 
         foreach ($consumed as $entry) {
-            if (Ingredient::where('uuid', $entry['ingredient_uuid'])->exists() === false) {
+            $ingredient = Ingredient::where('uuid', $entry['ingredient_uuid'])->first();
+            if ($ingredient === null) {
+                continue;
+            }
+
+            if ($entry['pile'] ?? false) {
+                $this->inventoryService->addToPile($restaurant, $ingredient, $entry['amount']);
                 continue;
             }
 

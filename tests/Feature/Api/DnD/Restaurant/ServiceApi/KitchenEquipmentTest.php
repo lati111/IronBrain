@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\DnD\Restaurant\ServiceApi;
 
 use App\Enum\DnD\Restaurant\EquipmentStage;
+use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Meal;
 use App\Models\DnD\Restaurant\Recipe;
@@ -13,7 +14,8 @@ use Tests\Traits\DnD\RestaurantTestHelper;
 
 /**
  * Covers equipment going in use, becoming dirty and being cleaned as meals go through the kitchen. The test recipe
- * takes 10 minutes to prep and 20 to cook, and test equipment takes 5 minutes to clean per piece
+ * takes 10 minutes to prep and 20 to cook, and test equipment takes 5 minutes to clean per piece. One employee works
+ * at prep and one at cleaning, both at normal speed
  */
 class KitchenEquipmentTest extends AbstractFeatureTester
 {
@@ -32,6 +34,9 @@ class KitchenEquipmentTest extends AbstractFeatureTester
 
         $this->recipe = $this->createTestRecipe($this->restaurant, 'Stew');
         $this->stove = $this->createTestCooker($this->restaurant);
+
+        $this->createTestEmployee($this->restaurant, WorkStation::PREP, 'Cook');
+        $this->createTestEmployee($this->restaurant, WorkStation::CLEANING, 'Dishwasher');
     }
 
     /** Creates equipment that doesn't need storage, with a number of pieces owned */
@@ -58,6 +63,13 @@ class KitchenEquipmentTest extends AbstractFeatureTester
     private function mealAction(string $action, Meal $meal, array $parameters = []): TestResponse
     {
         return $this->callService('meal.' . $action, $parameters, ['meal_uuid' => $meal->uuid]);
+    }
+
+    /** Queues a meal for prep, and waits until the prep employee is done with it */
+    private function prep(Meal $meal): void
+    {
+        $this->mealAction('prepare', $meal)->assertOk();
+        $this->advance(10);
     }
 
     private function cook(Meal $meal): TestResponse
@@ -111,7 +123,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $this->addRecipeEquipment($this->recipe, $knife, 1);
         $this->addRecipeEquipment($this->recipe, $bowl, 1, EquipmentStage::PREP, true);
 
-        $this->mealAction('prepare', $this->plan())->assertOk();
+        $this->prep($this->plan());
 
         $this->assertUsage($knife, 0, 1);
         $this->assertUsage($bowl, 1, 0);
@@ -122,7 +134,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $bowl = $this->createOwnedEquipment('Bowl', 1);
         $this->addRecipeEquipment($this->recipe, $bowl, 1, EquipmentStage::PREP, true);
         $meal = $this->plan();
-        $this->mealAction('prepare', $meal)->assertOk();
+        $this->prep($meal);
 
         $this->cook($meal)->assertOk();
 
@@ -137,7 +149,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $this->addRecipeEquipment($this->recipe, $pot, 1, EquipmentStage::COOKING);
         $meal = $this->plan();
         $this->assertUsage($pot, 0, 0);
-        $this->mealAction('prepare', $meal)->assertOk();
+        $this->prep($meal);
 
         $this->cook($meal)->assertOk();
         $this->assertUsage($pot, 1, 0);
@@ -151,7 +163,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $pot = $this->createOwnedEquipment('Pot', 1);
         $this->addRecipeEquipment($this->recipe, $pot, 1, EquipmentStage::COOKING);
         $meal = $this->plan();
-        $this->mealAction('prepare', $meal)->assertOk();
+        $this->prep($meal);
         $pot->amount_dirty = 1;
         $pot->save();
 
@@ -167,7 +179,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $pot = $this->createOwnedEquipment('Pot', 1);
         $this->addRecipeEquipment($this->recipe, $pot, 1, EquipmentStage::COOKING, true);
         $meal = $this->plan();
-        $this->mealAction('prepare', $meal)->assertOk();
+        $this->prep($meal);
         $this->cook($meal)->assertOk();
 
         $this->advance(20);
@@ -195,7 +207,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $bowl = $this->createOwnedEquipment('Bowl', 1);
         $this->addRecipeEquipment($this->recipe, $bowl, 1, EquipmentStage::PREP, true);
         $meal = $this->plan();
-        $this->mealAction('prepare', $meal)->assertOk();
+        $this->prep($meal);
 
         $this->mealAction('cancel', $meal)->assertOk();
 
@@ -204,7 +216,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
 
     //| cleaning
 
-    public function test_cleaning_passes_time_per_piece(): void
+    public function test_cleaning_is_queued_and_done_by_the_cleaning_staff(): void
     {
         $cup = $this->createOwnedEquipment('Cup', 4);
         $cup->amount_dirty = 3;
@@ -213,21 +225,28 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $response = $this->callService('equipment.clean', ['amount' => 2], ['equipment_uuid' => $cup->uuid]);
 
         $response->assertOk();
-        $this->assertEquals('08:10', $response->json('data.clock.time'));
+        $this->assertEquals('08:00', $response->json('data.clock.time'));
+        $this->assertUsage($cup, 0, 3);
+        $this->assertEquals(10, $response->json('data.stations.cleaning.jobs.0.minutes_left'));
+
+        $this->advance(10);
         $this->assertUsage($cup, 0, 1);
-        $this->assertEquals(3, collect($response->json('data.equipment'))->firstWhere('name', 'Cup')['clean']);
     }
 
-    public function test_only_dirty_pieces_can_be_cleaned(): void
+    public function test_only_dirty_pieces_not_yet_queued_can_be_cleaned(): void
     {
         $cup = $this->createOwnedEquipment('Cup', 4);
-        $cup->amount_dirty = 1;
+        $cup->amount_dirty = 2;
         $cup->save();
 
-        $response = $this->callService('equipment.clean', ['amount' => 2], ['equipment_uuid' => $cup->uuid]);
-
+        $response = $this->callService('equipment.clean', ['amount' => 3], ['equipment_uuid' => $cup->uuid]);
         $response->assertBadRequest();
-        $this->assertEquals('Only 1 Cup is dirty', $response->json('message'));
+        $this->assertEquals('Only 2 Cup left to clean', $response->json('message'));
+
+        $this->callService('equipment.clean', ['amount' => 2], ['equipment_uuid' => $cup->uuid])->assertOk();
+        $response = $this->callService('equipment.clean', ['amount' => 1], ['equipment_uuid' => $cup->uuid]);
+        $response->assertBadRequest();
+        $this->assertEquals('Only 0 Cup left to clean', $response->json('message'));
     }
 
     public function test_cleaning_everything(): void
@@ -242,16 +261,19 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $response = $this->callService('equipment.clean-all');
 
         $response->assertOk();
-        $this->assertEquals('08:15', $response->json('data.clock.time'));
+        $this->assertEquals('08:00', $response->json('data.clock.time'));
+        $this->assertCount(2, $response->json('data.stations.cleaning.jobs'));
+
+        $this->advance(15);
         $this->assertUsage($cup, 0, 0);
         $this->assertUsage($knife, 0, 0);
     }
 
-    public function test_cleaning_everything_needs_something_dirty(): void
+    public function test_cleaning_everything_needs_something_left_to_clean(): void
     {
         $response = $this->callService('equipment.clean-all');
 
         $response->assertBadRequest();
-        $this->assertEquals('Nothing is dirty', $response->json('message'));
+        $this->assertEquals('Nothing left to clean', $response->json('message'));
     }
 }

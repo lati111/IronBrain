@@ -203,6 +203,19 @@ return new class extends Migration
             $table->foreign('equipment_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
         });
 
+        // Ingredients brought in during service, waiting in a pile to be sorted into the storage spaces
+        Schema::create('dnd__restaurant_pile_ingredient', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+            $table->foreignUuid('ingredient_uuid');
+            $table->decimal('amount', 10, 2)->default(1);
+            $table->timestamps();
+
+            $table->unique(['restaurant_uuid', 'ingredient_uuid'], 'dnd__restaurant_pile_ingredient_unique');
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('ingredient_uuid')->references('uuid')->on('dnd__restaurant_ingredient')->onDelete('cascade')->onUpdate('no action');
+        });
+
         //| Floor
         Schema::create('dnd__restaurant_room', function (Blueprint $table) {
             $table->uuid('uuid')->primary();
@@ -249,6 +262,25 @@ return new class extends Migration
             $table->foreign('table_uuid')->references('uuid')->on('dnd__restaurant_table')->nullOnDelete()->onUpdate('no action');
         });
 
+        //| Staff
+        Schema::create('dnd__restaurant_employee', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+
+            $table->string('name', 64);
+            $table->text('icon')->nullable();
+            // How much faster than normal the employee works, so 2 works twice as fast
+            $table->decimal('cleaning_speed', 8, 2)->default(1);
+            $table->decimal('prep_speed', 8, 2)->default(1);
+
+            // The work area the employee works in during service, prep or cleaning, or null while idle
+            $table->string('station', 16)->nullable();
+
+            $table->timestamps();
+
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+        });
+
         //| Kitchen
         Schema::create('dnd__restaurant_meal', function (Blueprint $table) {
             $table->uuid('uuid')->primary();
@@ -282,6 +314,31 @@ return new class extends Migration
             $table->foreign('cooker_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
         });
 
+        // Prep and cleaning queued in a work area, done in order by the employees working there
+        Schema::create('dnd__restaurant_work', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+
+            // prep or cleaning
+            $table->string('station', 16);
+            // The meal being prepped, or the equipment being cleaned along with how many pieces
+            $table->foreignUuid('meal_uuid')->nullable();
+            $table->foreignUuid('equipment_uuid')->nullable();
+            $table->integer('amount')->default(1);
+
+            // In minutes at normal speed: how much the job takes in total, and how much of it has been done
+            $table->decimal('work', 10, 2)->default(0);
+            $table->decimal('progress', 10, 2)->default(0);
+            // The place in the queue of its work area
+            $table->integer('order')->default(0);
+
+            $table->timestamps();
+
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('meal_uuid')->references('uuid')->on('dnd__restaurant_meal')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('equipment_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
+        });
+
         //| Service
         // A log of each service, opened when it starts and completed when it ends
         Schema::create('dnd__restaurant_service_history', function (Blueprint $table) {
@@ -298,6 +355,19 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+        });
+
+        // A recipe sold at another price during one service only
+        Schema::create('dnd__restaurant_sale', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('service_uuid');
+            $table->foreignUuid('recipe_uuid');
+            $table->decimal('price', 10, 2)->default(0);
+            $table->timestamps();
+
+            $table->unique(['service_uuid', 'recipe_uuid'], 'dnd__restaurant_sale_unique');
+            $table->foreign('service_uuid')->references('uuid')->on('dnd__restaurant_service_history')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('recipe_uuid')->references('uuid')->on('dnd__restaurant_recipe')->onDelete('cascade')->onUpdate('no action');
         });
 
         Schema::create('dnd__restaurant_order', function (Blueprint $table) {
@@ -369,11 +439,15 @@ return new class extends Migration
         Schema::dropIfExists('dnd__restaurant_served_meal');
         Schema::dropIfExists('dnd__restaurant_order_item');
         Schema::dropIfExists('dnd__restaurant_order');
+        Schema::dropIfExists('dnd__restaurant_sale');
         Schema::dropIfExists('dnd__restaurant_service_history');
+        Schema::dropIfExists('dnd__restaurant_work');
         Schema::dropIfExists('dnd__restaurant_meal');
+        Schema::dropIfExists('dnd__restaurant_employee');
         Schema::dropIfExists('dnd__restaurant_customer');
         Schema::dropIfExists('dnd__restaurant_table');
         Schema::dropIfExists('dnd__restaurant_room');
+        Schema::dropIfExists('dnd__restaurant_pile_ingredient');
         Schema::dropIfExists('dnd__restaurant_storage_equipment');
         Schema::dropIfExists('dnd__restaurant_storage_ingredient');
         Schema::dropIfExists('dnd__restaurant_storage');

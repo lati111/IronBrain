@@ -88,8 +88,9 @@ class InventoryApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
         }
 
-        $from = $fromUuid !== null ? $this->getStorage($restaurant, $fromUuid) : null;
-        $to = $toUuid !== null ? $this->getStorage($restaurant, $toUuid) : null;
+        // The pile of ingredients brought in during service can be moved from and to as well
+        $from = $fromUuid === InventoryService::PILE ? InventoryService::PILE : ($fromUuid !== null ? $this->getStorage($restaurant, $fromUuid) : null);
+        $to = $toUuid === InventoryService::PILE ? InventoryService::PILE : ($toUuid !== null ? $this->getStorage($restaurant, $toUuid) : null);
         if (($fromUuid !== null && $from === null) || ($toUuid !== null && $to === null)) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Storage not found');
         }

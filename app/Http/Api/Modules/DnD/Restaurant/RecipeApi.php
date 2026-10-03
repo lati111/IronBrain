@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Api\Modules\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Enum\ErrorEnum;
 use App\Http\Api\AbstractApi;
@@ -223,9 +224,14 @@ class RecipeApi extends AbstractApi
             }
 
             $components[$kind] = $this->recipeService->resolveComponents($restaurant, $kind, $request->get($kind) ?? []);
+            $isEquipment = $this->recipeService->getComponentModel($kind) === Equipment::class;
             if ($components[$kind] === null) {
-                $isEquipment = $this->recipeService->getComponentModel($kind) === Equipment::class;
                 return $this->respond(Response::HTTP_NOT_FOUND, $isEquipment ? 'Equipment not found' : 'Ingredient not found');
+            }
+
+            // Cookers are where meals are cooked rather than what a recipe takes, so they can't be part of one
+            if ($isEquipment && Equipment::whereIn('uuid', array_keys($components[$kind]))->where('category', EquipmentCategory::COOKER->value)->exists()) {
+                return $this->respond(Response::HTTP_BAD_REQUEST, 'Cookers can\'t be part of a recipe');
             }
         }
 

@@ -7,6 +7,7 @@ use App\Models\DnD\Restaurant\Order;
 use App\Models\DnD\Restaurant\OrderItem;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\Restaurant;
+use App\Models\DnD\Restaurant\Sale;
 use App\Models\DnD\Restaurant\ServedMeal;
 use App\Models\DnD\Restaurant\Table;
 use Carbon\Carbon;
@@ -56,8 +57,8 @@ class OrderService
 
     /**
      * Places an order at a table. Each item is a single portion of a recipe, for one customer seated at the table or
-     * for the table as a whole, and becomes an entry of its own. The order's price is added to the restaurant's
-     * shift total
+     * for the table as a whole, and becomes an entry of its own, at the recipe's sale price when it is on sale. The
+     * order's price is added to the restaurant's shift total
      * @param Restaurant $restaurant The restaurant
      * @param Table $table The table ordering
      * @param array $items The items, each with a recipe and the customer it is for, or null for the table
@@ -70,7 +71,9 @@ class OrderService
             throw new InvalidArgumentException('Nothing was ordered');
         }
 
-        return DB::transaction(function () use ($restaurant, $table, $items) {
+        $sales = $restaurant->getSalePrices();
+
+        return DB::transaction(function () use ($restaurant, $table, $items, $sales) {
             $order = new Order();
             $order->restaurant_uuid = $restaurant->uuid;
             $order->table_uuid = $table->uuid;
@@ -92,11 +95,12 @@ class OrderService
                 $item->order_uuid = $order->uuid;
                 $item->recipe_uuid = $recipe->uuid;
                 $item->customer_uuid = $customer?->uuid;
+                $price = $sales[$recipe->uuid] ?? $recipe->price;
                 $item->name = $recipe->name;
-                $item->price = $recipe->price;
+                $item->price = $price;
                 $item->save();
 
-                $total += $recipe->price;
+                $total += $price;
             }
 
             $order->total_price = round($total, 2);
@@ -178,6 +182,42 @@ class OrderService
             $order->status = Order::STATUS_FINISHED;
             $order->save();
         });
+    }
+
+    //| Sales
+
+    /**
+     * Puts a recipe on sale for the ongoing service, at a price that replaces its usual one until the service ends
+     * @param Restaurant $restaurant The restaurant
+     * @param Recipe $recipe The recipe
+     * @param float $price The price during the service
+     * @throws InvalidArgumentException Thrown when no service is ongoing
+     */
+    public function setSale(Restaurant $restaurant, Recipe $recipe, float $price): void
+    {
+        $service = $restaurant->getCurrentService();
+        if ($service === null) {
+            throw new InvalidArgumentException('No service is ongoing');
+        }
+
+        $sale = Sale::where('service_uuid', $service->uuid)->where('recipe_uuid', $recipe->uuid)->first() ?? new Sale();
+        $sale->service_uuid = $service->uuid;
+        $sale->recipe_uuid = $recipe->uuid;
+        $sale->price = round($price, 2);
+        $sale->save();
+    }
+
+    /**
+     * Takes a recipe off sale, so it is ordered at its usual price again
+     * @param Restaurant $restaurant The restaurant
+     * @param Recipe $recipe The recipe
+     */
+    public function removeSale(Restaurant $restaurant, Recipe $recipe): void
+    {
+        $service = $restaurant->getCurrentService();
+        if ($service !== null) {
+            Sale::where('service_uuid', $service->uuid)->where('recipe_uuid', $recipe->uuid)->delete();
+        }
     }
 
     /**

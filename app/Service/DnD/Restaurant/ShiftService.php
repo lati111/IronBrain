@@ -2,12 +2,15 @@
 
 namespace App\Service\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Order;
 use App\Models\DnD\Restaurant\OrderItem;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\ServedMeal;
 use App\Models\DnD\Restaurant\ServiceHistory;
+use App\Models\DnD\Restaurant\Work;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -82,8 +85,8 @@ class ShiftService
 
     /**
      * Ends the ongoing service. Its profit is added to the restaurant's money and logged in the service history,
-     * orders that are still going are finished, all dirty equipment is cleaned, and the restaurant's current time is
-     * cleared
+     * orders that are still going are finished, all dirty equipment is cleaned, the employees stop working, and the
+     * restaurant's current time is cleared
      * @param Restaurant $restaurant The restaurant
      * @return array The summary of the service, as given by getSummary
      * @throws InvalidArgumentException Thrown when no service is ongoing
@@ -115,6 +118,10 @@ class ShiftService
 
             // Everything is washed up after closing, which takes no time off the clock as the service is over
             Equipment::where('restaurant_uuid', $restaurant->uuid)->update(['amount_dirty' => 0]);
+            Work::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::CLEANING->value)->delete();
+
+            // The staff goes home, while prep that is still queued waits for the next service
+            Employee::where('restaurant_uuid', $restaurant->uuid)->update(['station' => null]);
 
             $restaurant->addMoney($restaurant->shift_total);
             $restaurant->shift_total = 0;

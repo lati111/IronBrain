@@ -1,8 +1,12 @@
 import {getData} from "../../../main";
 import {openModal, init as initModals, closeModal} from "../../../components/modal";
-import {postOnce, restoreSidebar, setField, setupDropTarget, showWhileDragging, submitForm, toggleSidebar} from "./shared";
 import {
-    formatMinutes, getDraggedPlate, getServiceState, initKitchen, onServiceState, Order, PLATE_MIME, post as postService, toggleMenu,
+    formatMoney, postOnce, refreshMoneyInputs, restoreSidebar, setField, setupDropTarget, setupMoneyInput, showWhileDragging,
+    submitForm, toggleSidebar,
+} from "./shared";
+import {
+    formatMinutes, getDraggedPlate, getServiceState, initKitchen, KitchenRecipe, onServiceState, Order, PLATE_MIME,
+    post as postService, ServiceIngredient, toggleMenu,
 } from "./kitchen";
 import {describeOrder, openOrderDetails, openOrderModal} from "./orders";
 import "./shift";
@@ -42,6 +46,16 @@ interface DraggedCustomer {
 
 const CUSTOMER_MIME = 'application/x-restaurant-customer';
 
+/** The sidebar lists the customers, the ingredients that can be brought in during service, and the recipes' sales */
+type SidebarTab = 'customer' | 'ingredient' | 'sale';
+let activeTab: SidebarTab = 'customer';
+
+/** The ingredient the pile modal is adding */
+let pileIngredient: ServiceIngredient | null = null;
+
+/** The recipe the sale modal is for */
+let saleRecipe: KitchenRecipe | null = null;
+
 let apiUrl = '';
 let floor: Floor = {rooms: [], tables: [], customers: []};
 
@@ -55,10 +69,14 @@ async function init(): Promise<void> {
     apiUrl = root.dataset.apiUrl!;
 
     initModals();
+    setupMoneyInput(document.getElementById('sale-price') as HTMLInputElement);
     const kitchen = initKitchen(root.dataset.serviceUrl!);
 
-    // Tables show their orders, which come with the kitchen's state
-    onServiceState(() => renderFloor());
+    // Tables show their orders, and the sidebar the ingredients, which come with the kitchen's state
+    onServiceState(() => {
+        renderFloor();
+        if (activeTab !== 'customer') renderSidebar();
+    });
 
     // During service the floor and kitchen need the room, so the customer list starts closed
     restoreSidebar('dnd-restaurant-service-sidebar-collapsed', true);
@@ -110,6 +128,16 @@ function render(): void {
 }
 
 function renderSidebar(): void {
+    if (activeTab === 'ingredient') {
+        renderIngredientRows();
+        return;
+    }
+
+    if (activeTab === 'sale') {
+        renderSaleRows();
+        return;
+    }
+
     const list = document.getElementById('inventory-list') as HTMLElement;
     const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
     const template = document.getElementById('list-row-template') as HTMLTemplateElement;
@@ -135,6 +163,130 @@ function renderSidebar(): void {
         empty.className = 'text-center text-gray-400 py-4 text-sm';
         empty.textContent = floor.customers.length === 0 ? 'No customers yet' : 'No results';
         list.appendChild(empty);
+    }
+}
+
+/** Lists the ingredients, each of which can be added to the pile of ingredients brought in during service */
+function renderIngredientRows(): void {
+    const list = document.getElementById('inventory-list') as HTMLElement;
+    const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
+    const template = document.getElementById('list-row-template') as HTMLTemplateElement;
+    const ingredients = getServiceState()?.ingredients ?? [];
+
+    list.replaceChildren();
+    for (const ingredient of ingredients.filter((ingredient) => ingredient.name.toLowerCase().includes(search))) {
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        setField(row, 'name', ingredient.name);
+        setField(row, 'meta', ingredient.pile > 0
+            ? `${ingredient.stored} stored · ${ingredient.pile} unsorted`
+            : `${ingredient.stored} stored`);
+
+        const addButton = row.querySelector('[data-action="add"]') as HTMLElement;
+        addButton.title = 'Add';
+        addButton.addEventListener('click', () => openPileModal(ingredient));
+
+        list.appendChild(row);
+    }
+
+    if (list.childElementCount === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'text-center text-gray-400 py-4 text-sm';
+        empty.textContent = ingredients.length === 0 ? 'No ingredients yet' : 'No results';
+        list.appendChild(empty);
+    }
+}
+
+/** Lists the recipes with their price, and their sale price for this service when they are on sale */
+function renderSaleRows(): void {
+    const list = document.getElementById('inventory-list') as HTMLElement;
+    const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
+    const template = document.getElementById('list-row-template') as HTMLTemplateElement;
+    const recipes = getServiceState()?.recipes ?? [];
+
+    list.replaceChildren();
+    for (const recipe of recipes.filter((recipe) => recipe.name.toLowerCase().includes(search))) {
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        row.classList.add('clickable');
+        row.classList.toggle('on-sale', recipe.on_sale);
+        setField(row, 'name', recipe.name);
+        setField(row, 'meta', recipe.on_sale
+            ? `${formatMoney(recipe.base_price)} → ${formatMoney(recipe.price)}`
+            : formatMoney(recipe.base_price));
+
+        // The whole row opens the sale, so the add button isn't needed
+        row.querySelector('[data-action="add"]')!.classList.add('hidden');
+        row.addEventListener('click', () => openSaleModal(recipe));
+
+        list.appendChild(row);
+    }
+
+    if (list.childElementCount === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'text-center text-gray-400 py-4 text-sm';
+        empty.textContent = recipes.length === 0 ? 'No recipes yet' : 'No results';
+        list.appendChild(empty);
+    }
+}
+
+function openSaleModal(recipe: KitchenRecipe): void {
+    saleRecipe = recipe;
+    document.getElementById('sale-modal-title')!.textContent = `${recipe.name} on sale`;
+    document.getElementById('sale-remove')!.classList.toggle('hidden', !recipe.on_sale);
+
+    const input = document.getElementById('sale-price') as HTMLInputElement;
+    input.value = String(recipe.price);
+    refreshMoneyInputs(input.form!);
+    openModal('sale-modal');
+}
+
+async function saveSale(): Promise<void> {
+    const form = document.getElementById('sale-form') as HTMLFormElement;
+    if (saleRecipe === null || !form.reportValidity()) return;
+
+    if (await postService(`/sale/${saleRecipe.uuid}`, new FormData(form))) {
+        saleRecipe = null;
+        closeModal('sale-modal');
+    }
+}
+
+async function removeSale(): Promise<void> {
+    if (saleRecipe === null) return;
+
+    if (await postService(`/sale/${saleRecipe.uuid}/remove`)) {
+        saleRecipe = null;
+        closeModal('sale-modal');
+    }
+}
+
+function switchTab(tab: SidebarTab): void {
+    activeTab = tab;
+    document.querySelectorAll<HTMLElement>('.inventory-tab[data-tab]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.tab === tab);
+    });
+
+    // New ingredients are made on the management page, so only customers can be created here
+    document.getElementById('customer-create-button')!.classList.toggle('hidden', tab !== 'customer');
+    renderSidebar();
+}
+
+function openPileModal(ingredient: ServiceIngredient): void {
+    pileIngredient = ingredient;
+    document.getElementById('pile-modal-title')!.textContent = `Add ${ingredient.name}`;
+
+    const input = document.getElementById('pile-amount') as HTMLInputElement;
+    input.value = '1';
+    openModal('pile-modal');
+    input.focus();
+    input.select();
+}
+
+async function addToPile(): Promise<void> {
+    const form = document.getElementById('pile-form') as HTMLFormElement;
+    if (pileIngredient === null || !form.reportValidity()) return;
+
+    if (await postService(`/ingredient/${pileIngredient.uuid}/add`, new FormData(form))) {
+        pileIngredient = null;
+        closeModal('pile-modal');
     }
 }
 
@@ -412,6 +564,10 @@ function describeLocation(customer: Customer): string {
 
 (<any>window).init                    = init;
 (<any>window).renderSidebar           = renderSidebar;
+(<any>window).switchTab               = switchTab;
+(<any>window).addToPile               = addToPile;
+(<any>window).saveSale                = saveSale;
+(<any>window).removeSale              = removeSale;
 (<any>window).toggleSidebar           = toggleSidebar;
 (<any>window).openCreateCustomerModal = openCreateCustomerModal;
 (<any>window).createCustomer          = createCustomer;

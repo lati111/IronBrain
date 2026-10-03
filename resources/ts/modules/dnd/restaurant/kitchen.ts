@@ -15,10 +15,23 @@ interface Clock {
     shift_total: number;
 }
 
+/** An ingredient, with how much is in the storage spaces and how much in the pile brought in during service */
+export interface ServiceIngredient {
+    uuid: string;
+    name: string;
+    icon: string | null;
+    stored: number;
+    pile: number;
+}
+
 export interface KitchenRecipe {
     uuid: string;
     name: string;
+    /** What the recipe is ordered at: its sale price while on sale */
     price: number;
+    /** The usual price of the recipe */
+    base_price: number;
+    on_sale: boolean;
     prep_time: number;
     cooking_time: number;
 }
@@ -52,6 +65,8 @@ interface Meal {
     cooker_uuid: string | null;
     cooker_slot: number | null;
     cooking_minutes_left: number | null;
+    /** How far along cooking is, from 0 to 1, or null when not cooking */
+    cooking_progress: number | null;
     expires_in_minutes: number | null;
     spoiled: boolean;
     portions_left: number;
@@ -86,17 +101,56 @@ export interface Order {
     items: OrderItem[];
 }
 
+/** The work areas employees can work in */
+type WorkStationCode = 'prep' | 'cleaning';
+
+interface Employee {
+    uuid: string;
+    name: string;
+    icon: string | null;
+    /** The work area the employee works in, or null while idle */
+    station: WorkStationCode | null;
+    /** The task the employee is on, such as "Prepping Stew" */
+    task: string;
+}
+
+/** A job queued in a work area: prepping a meal, or cleaning pieces of equipment */
+interface WorkJob {
+    uuid: string;
+    meal_uuid: string | null;
+    equipment_uuid: string | null;
+    amount: number;
+    /** How many minutes the job takes at normal speed */
+    work: number;
+    /** How far along the job is, from 0 to 1 */
+    progress: number;
+    /** Minutes until the job is done, counting the jobs before it, or null while nobody works in the area */
+    minutes_left: number | null;
+}
+
+interface WorkStationState {
+    /** The combined speed of the employees working there */
+    speed: number;
+    /** How far along the whole queue is, from 0 to 1, or null while there is nothing to do */
+    progress: number | null;
+    jobs: WorkJob[];
+}
+
 export interface ServiceState {
     clock: Clock;
+    ingredients: ServiceIngredient[];
     recipes: KitchenRecipe[];
     cookers: Cooker[];
     equipment: KitchenEquipment[];
     meals: Meal[];
     plates: Plate[];
+    employees: Employee[];
+    stations: Record<WorkStationCode, WorkStationState>;
     orders: Order[];
 }
 
 const MEAL_MIME = 'application/x-restaurant-meal';
+const EMPLOYEE_MIME = 'application/x-restaurant-employee';
 /** Drag type for plated portions, which are dropped on tables */
 export const PLATE_MIME = 'application/x-restaurant-plate';
 
@@ -109,6 +163,7 @@ const stateListeners: ((state: ServiceState) => void)[] = [];
 /** The meal or plate being dragged, as drop targets can't read drag data until the drop itself */
 let draggedMeal: Meal | null = null;
 let draggedPlate: Plate | null = null;
+let draggedEmployee: Employee | null = null;
 let pendingScrap: Meal | null = null;
 
 export function getServiceState(): ServiceState | null {
@@ -135,6 +190,17 @@ export async function initKitchen(url: string): Promise<void> {
         post(`/meal/${uuid}/serve`);
     }, () => draggedMeal?.status === 'done');
 
+    // Employees work in the area they are dropped on, and stop when dropped back with the rest of the staff
+    const areas: [string, WorkStationCode | null][] = [
+        ['kitchen-staff-area', null],
+        ['kitchen-prep-area', 'prep'],
+        ['kitchen-cleaning-area', 'cleaning'],
+    ];
+    for (const [id, station] of areas) {
+        setupDropTarget(document.getElementById(id) as HTMLElement, EMPLOYEE_MIME, (uuid) => assignEmployee(uuid, station),
+            () => draggedEmployee !== null && draggedEmployee.station !== station);
+    }
+
     const response = await getData(serviceUrl);
     setState(response.data);
 }
@@ -148,6 +214,8 @@ function setState(data: ServiceState): void {
     renderPreparation();
     renderServing();
     renderEquipment();
+    renderStaff();
+    renderStationProgress();
     stateListeners.forEach((listener) => listener(data));
 }
 
@@ -337,6 +405,16 @@ function renderEquipment(): void {
         name.className = 'truncate';
         name.textContent = piece.name;
 
+        // Pieces queued for cleaning, with how long until the last of them is clean
+        const queue = getCleaningJobs(piece);
+        const cleaning = document.createElement('span');
+        cleaning.className = 'kitchen-equipment-cleaning';
+        if (queue.length > 0) {
+            const minutes = queue[queue.length - 1].minutes_left;
+            const amount = queue.reduce((total, job) => total + job.amount, 0);
+            cleaning.textContent = minutes !== null ? `${amount} · ${formatMinutes(minutes)}` : String(amount);
+        }
+
         const counts = document.createElement('span');
         counts.className = 'kitchen-equipment-counts';
         counts.append(
@@ -345,7 +423,12 @@ function renderEquipment(): void {
             createCount(piece.dirty, 'dirty'),
         );
 
-        row.append(name, counts);
+        row.append(name, cleaning, counts);
+        if (queue.length > 0) {
+            const work = queue.reduce((total, job) => total + job.work, 0);
+            const done = queue.reduce((total, job) => total + job.work * job.progress, 0);
+            row.appendChild(createProgressBar(work > 0 ? done / work : 0));
+        }
         row.addEventListener('click', () => toggleEquipmentMenu(piece, row));
         list.appendChild(row);
     }
@@ -354,8 +437,18 @@ function renderEquipment(): void {
         list.appendChild(createNote('No other equipment'));
     }
 
-    const anyDirty = state!.equipment.some((piece) => piece.dirty > 0);
-    (document.getElementById('kitchen-clean-all') as HTMLButtonElement).disabled = !anyDirty;
+    const anyToClean = state!.equipment.some((piece) => getUnqueuedDirty(piece) > 0);
+    (document.getElementById('kitchen-clean-all') as HTMLButtonElement).disabled = !anyToClean;
+}
+
+function getCleaningJobs(piece: KitchenEquipment): WorkJob[] {
+    return state!.stations.cleaning.jobs.filter((job) => job.equipment_uuid === piece.uuid);
+}
+
+/** How many dirty pieces aren't queued for cleaning yet */
+function getUnqueuedDirty(piece: KitchenEquipment): number {
+    const queued = getCleaningJobs(piece).reduce((total, job) => total + job.amount, 0);
+    return Math.max(0, piece.dirty - queued);
 }
 
 function createCount(amount: number, label: string): HTMLElement {
@@ -373,7 +466,8 @@ function describeUsage(piece: KitchenEquipment): string {
 /** Opens the menu for a piece of equipment, where any number of its dirty pieces can be cleaned at once */
 function toggleEquipmentMenu(piece: KitchenEquipment, anchor: HTMLElement): void {
     toggleMenu(anchor, `${piece.name}: ${describeUsage(piece)}`, (_option, options) => {
-        if (piece.dirty === 0) {
+        const available = getUnqueuedDirty(piece);
+        if (available === 0) {
             options.appendChild(createNote('Nothing to clean'));
             return;
         }
@@ -384,20 +478,15 @@ function toggleEquipmentMenu(piece: KitchenEquipment, anchor: HTMLElement): void
         const input = document.createElement('input');
         input.type = 'number';
         input.min = '1';
-        input.max = String(piece.dirty);
-        input.value = String(piece.dirty);
+        input.max = String(available);
+        input.value = String(available);
         input.required = true;
         input.className = 'underlined w-14';
 
         const button = document.createElement('button');
         button.type = 'submit';
         button.className = 'meal-menu-option';
-        const label = () => {
-            const amount = Math.max(1, Math.min(piece.dirty, parseInt(input.value, 10) || 1));
-            button.textContent = `Clean (${formatMinutes(piece.cleaning_time * amount)})`;
-        };
-        input.addEventListener('input', label);
-        label();
+        button.textContent = 'Clean';
 
         form.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -420,6 +509,80 @@ async function cleanAllEquipment(): Promise<void> {
     await post('/equipment/clean-all');
 }
 
+//| Staff
+
+function renderStaff(): void {
+    const container = document.getElementById('kitchen-staff') as HTMLElement;
+    container.replaceChildren();
+    for (const employee of state!.employees) {
+        container.appendChild(createEmployeeElement(employee));
+    }
+
+    if (state!.employees.length === 0) {
+        container.appendChild(createNote('No employees yet'));
+    }
+
+    // Each work area shows who works there, who can be dragged from there as well
+    document.querySelectorAll<HTMLElement>('[data-station-staff]').forEach((element) => {
+        element.replaceChildren();
+        for (const employee of state!.employees.filter((candidate) => candidate.station === element.dataset.stationStaff)) {
+            const icon = createEmployeeIcon(employee);
+            icon.title = employee.name;
+            icon.draggable = true;
+            setupEmployeeDrag(icon, employee);
+            element.appendChild(icon);
+        }
+    });
+}
+
+function createEmployeeElement(employee: Employee): HTMLElement {
+    const template = document.getElementById('employee-template') as HTMLTemplateElement;
+    const element = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+
+    element.querySelector('.kitchen-employee-icon')!.replaceWith(createEmployeeIcon(employee));
+    setField(element, 'name', employee.name);
+    setField(element, 'task', employee.task);
+    if (employee.station !== null) {
+        element.dataset.station = employee.station;
+    }
+
+    setupEmployeeDrag(element, employee);
+    return element;
+}
+
+/** The employee's icon, or the first letter of their name when they have none */
+function createEmployeeIcon(employee: Employee): HTMLElement {
+    const icon = document.createElement('div');
+    icon.className = 'kitchen-employee-icon';
+    if (employee.icon !== null) {
+        icon.style.backgroundImage = `url(${JSON.stringify(employee.icon)})`;
+    } else {
+        icon.textContent = employee.name.charAt(0).toUpperCase();
+    }
+
+    if (employee.station !== null) {
+        icon.dataset.station = employee.station;
+    }
+
+    return icon;
+}
+
+function setupEmployeeDrag(element: HTMLElement, employee: Employee): void {
+    element.addEventListener('dragstart', (event) => {
+        draggedEmployee = employee;
+        event.dataTransfer!.setData(EMPLOYEE_MIME, employee.uuid);
+        event.dataTransfer!.effectAllowed = 'move';
+        event.stopPropagation();
+    });
+    element.addEventListener('dragend', () => draggedEmployee = null);
+}
+
+async function assignEmployee(uuid: string, station: WorkStationCode | null): Promise<void> {
+    const formData = new FormData();
+    if (station !== null) formData.append('station', station);
+    await post(`/employee/${uuid}/assign`, formData, false);
+}
+
 //| Meals
 
 function createMealCard(meal: Meal): HTMLElement {
@@ -433,12 +596,26 @@ function createMealCard(meal: Meal): HTMLElement {
     card.dataset.status = meal.status;
 
     switch (meal.status) {
-        case 'planned':
-            addAction(actions, `Prepare (${formatMinutes(meal.prep_time)})`, () => post(`/meal/${meal.uuid}/prepare`));
+        case 'planned': {
+            // Queued meals show how long until they are prepped, which depends on who works at prep
+            const job = state!.stations.prep.jobs.find((candidate) => candidate.meal_uuid === meal.uuid) ?? null;
+            if (job !== null) {
+                card.dataset.queued = '';
+                setField(card, 'timer', job.minutes_left !== null ? `${formatMinutes(job.minutes_left)} left` : 'queued');
+                card.appendChild(createProgressBar(job.progress));
+            } else {
+                addAction(actions, `Prep (${formatMinutes(meal.prep_time)})`, () => post(`/meal/${meal.uuid}/prepare`));
+            }
             addAction(actions, 'Cancel', () => post(`/meal/${meal.uuid}/cancel`));
             break;
+        }
         case 'prepped':
             addAction(actions, 'Cancel', () => openScrapModal(meal));
+            break;
+        case 'cooking':
+            card.appendChild(createProgressBar(meal.cooking_progress ?? 0));
+            card.classList.add('clickable');
+            card.addEventListener('click', () => toggleMealMenu(meal, card));
             break;
         default:
             // Meals in a cooker or being served open a menu of what can be done with them
@@ -609,6 +786,30 @@ export async function post(path: string, formData: FormData | string = new FormD
         // The error has already been shown to the user
         return false;
     }
+}
+
+/**
+ * Creates a thin bar along the bottom of its container, filled as far as something is along
+ * @param fraction How far along, from 0 to 1
+ */
+function createProgressBar(fraction: number): HTMLElement {
+    const bar = document.createElement('div');
+    bar.className = 'kitchen-progress';
+
+    const fill = document.createElement('div');
+    fill.style.width = `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%`;
+    bar.appendChild(fill);
+    return bar;
+}
+
+/** Fills the bars showing how far along the whole queue of the prep and cleaning areas is */
+function renderStationProgress(): void {
+    document.querySelectorAll<HTMLElement>('[data-station-progress]').forEach((bar) => {
+        const progress = state!.stations[bar.dataset.stationProgress as WorkStationCode].progress;
+        bar.classList.toggle('hidden', progress === null);
+        (bar.firstElementChild as HTMLElement).style.width = `${Math.round((progress ?? 0) * 100)}%`;
+        bar.title = progress !== null ? `${Math.round(progress * 100)}% of the queue done` : '';
+    });
 }
 
 function addAction(container: HTMLElement, label: string, action: () => void): void {

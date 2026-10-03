@@ -66,6 +66,9 @@ interface EquipmentUsage {
 /** The stage new equipment in a recipe starts at, matching the server's default */
 const DEFAULT_EQUIPMENT_STAGE = 'prep';
 
+/** The internal code of the cooker equipment category, which can't be part of a recipe */
+const COOKER_CATEGORY = 'cooker';
+
 interface RecipeType {
     uuid: string;
     name: string;
@@ -93,6 +96,8 @@ type RecipeTab = 'details' | RecipeComponentKind;
 
 interface Inventory {
     storages: StorageSpace[];
+    /** Ingredients brought in during service, waiting to be sorted into a storage space */
+    pile: Item[];
     ingredients: IngredientType[];
     equipment: EquipmentType[];
     recipes: RecipeType[];
@@ -112,6 +117,8 @@ const STORAGE_MIME = 'application/x-inventory-storage';
 /** Drop target keys for the unsaved general storage and the discard zone */
 const GENERAL = 'general';
 const DISCARD = 'discard';
+/** Where items dragged out of the pile of ingredients brought in during service come from, as the server knows it */
+const PILE = 'pile';
 
 const TYPE_LABELS: Record<SidebarTab, string> = {
     ingredient: 'Ingredient',
@@ -132,7 +139,7 @@ const RECIPE_COMPONENT_KEYS: Record<RecipeComponentKind, 'ingredients' | 'equipm
 };
 
 let apiUrl = '';
-let inventory: Inventory = {storages: [], ingredients: [], equipment: [], recipes: []};
+let inventory: Inventory = {storages: [], pile: [], ingredients: [], equipment: [], recipes: []};
 let activeTab: SidebarTab = 'ingredient';
 
 /** The unsaved general storage, keyed by "type:uuid". Only exists client side */
@@ -181,6 +188,8 @@ async function init(): Promise<void> {
     initModals();
     document.querySelectorAll<HTMLInputElement>('input[data-money]').forEach(setupMoneyInput);
     setupItemDropTarget(document.getElementById('general-storage') as HTMLElement, GENERAL);
+    // An empty general storage is hidden, though it still shows while an item is dragged so it can be dropped there
+    showWhileDragging(document.getElementById('general-storage') as HTMLElement, ITEM_MIME);
     setupItemDropTarget(document.getElementById('discard-edge') as HTMLElement, DISCARD);
     showWhileDragging(document.getElementById('discard-edge') as HTMLElement, ITEM_MIME);
     registerStorageCard = createReorderableList(document.getElementById('storage-list') as HTMLElement, {
@@ -219,6 +228,7 @@ function setInventory(data: Inventory): void {
 
 function render(): void {
     renderSidebar();
+    renderPile();
     renderGeneralStorage();
     renderStorages();
 }
@@ -312,6 +322,19 @@ function renderTypeRows(itemType: ItemType, list: HTMLElement, search: string): 
     return types.length;
 }
 
+/** Shows the ingredients brought in during service, which are moved out of the pile like out of a storage space */
+function renderPile(): void {
+    const section = document.getElementById('pile-storage') as HTMLElement;
+    const container = section.querySelector('[data-items]') as HTMLElement;
+    container.replaceChildren();
+
+    for (const item of inventory.pile) {
+        container.appendChild(createItemElement(item, PILE));
+    }
+
+    section.classList.toggle('hidden', inventory.pile.length === 0);
+}
+
 function renderGeneralStorage(): void {
     const container = document.querySelector('#general-storage [data-items]') as HTMLElement;
     container.replaceChildren();
@@ -320,12 +343,7 @@ function renderGeneralStorage(): void {
         container.appendChild(createItemElement(item, null));
     }
 
-    if (generalStorage.size === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'text-gray-400 text-sm m-auto';
-        empty.textContent = 'Empty';
-        container.appendChild(empty);
-    }
+    document.getElementById('general-storage')!.classList.toggle('empty', generalStorage.size === 0);
 }
 
 function renderStorages(): void {
@@ -826,9 +844,11 @@ function renderRecipeComponents(kind: RecipeComponentKind): void {
 
     document.querySelector(`[data-recipe-count="${kind}"]`)!.textContent = components.size > 0 ? `(${components.size})` : '';
 
-    // Only offer the types that are not part of the list yet
+    // Only offer the types that are not part of the list yet. Cookers are where meals cook, so no recipe takes one
     const select = document.getElementById(`recipe-${kind}-select`) as HTMLSelectElement;
-    const types: (IngredientType | EquipmentType)[] = type === 'ingredient' ? inventory.ingredients : inventory.equipment;
+    const types: (IngredientType | EquipmentType)[] = type === 'ingredient'
+        ? inventory.ingredients
+        : inventory.equipment.filter((equipment) => equipment.category !== COOKER_CATEGORY);
     select.replaceChildren();
     for (const definition of types) {
         if (!components.has(definition.uuid)) {

@@ -59,15 +59,16 @@ class MealLifecycleTest extends AbstractFeatureTester
 
     //| preparing
 
-    public function test_preparing_passes_the_prep_time(): void
+    public function test_preparing_queues_the_meal_without_passing_time(): void
     {
         $meal = $this->createTestMeal($this->restaurant, $this->recipe);
 
         $response = $this->act('prepare', $meal);
 
         $response->assertOk();
-        $this->assertEquals('08:10', $response->json('data.clock.time'));
-        $this->assertEquals(Meal::STATUS_PREPPED, $meal->fresh()->status);
+        $this->assertEquals('08:00', $response->json('data.clock.time'));
+        $this->assertEquals(Meal::STATUS_PLANNED, $meal->fresh()->status);
+        $this->assertEquals($meal->uuid, $response->json('data.stations.prep.jobs.0.meal_uuid'));
     }
 
     public function test_only_planned_meals_can_be_prepared(): void

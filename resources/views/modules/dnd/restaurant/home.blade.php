@@ -40,7 +40,7 @@
         <form id="restaurant-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createRestaurant()">
             <x-form.input-wrapper label_text="Name">
                 <input type="text" id="restaurant-create-name" name="name" class="underlined" maxlength="64"
-                       placeholder="The Prancing Pony" required/>
+                       placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Date">
                 <input type="date" name="date" class="underlined" required/>

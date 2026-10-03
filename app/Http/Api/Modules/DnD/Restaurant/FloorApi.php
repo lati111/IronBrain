@@ -5,6 +5,7 @@ use App\Enum\ErrorEnum;
 use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
 use App\Models\DnD\Restaurant\Customer;
+use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Room;
 use App\Models\DnD\Restaurant\Table;
@@ -23,6 +24,8 @@ class FloorApi extends AbstractApi
 
     /** @var string The folder room background images are saved in */
     private const string ROOM_IMAGE_PATH = 'modules/dnd/restaurant/room';
+    /** @var string The folder employee icons are saved in */
+    private const string EMPLOYEE_ICON_PATH = 'modules/dnd/restaurant/employee';
 
     public function __construct(private readonly FloorService $floorService)
     {
@@ -449,6 +452,132 @@ class FloorApi extends AbstractApi
         ]);
     }
 
+    //| Employees
+
+    /**
+     * Creates a new employee for the restaurant
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @return JsonResponse The uuid of the employee and the updated floor state in JSON format
+     */
+    public function createEmployee(Request $request, string $restaurant_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name'           => 'required|string|max:64',
+            'icon'           => 'nullable|image|max:2048',
+            'cleaning_speed' => 'nullable|numeric|min:0|max:100',
+            'prep_speed'     => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $employee = new Employee();
+        $employee->restaurant_uuid = $restaurant->uuid;
+        $employee->name            = $request->get('name');
+        $employee->cleaning_speed  = round((float) ($request->get('cleaning_speed') ?? 1), 2);
+        $employee->prep_speed      = round((float) ($request->get('prep_speed') ?? 1), 2);
+
+        if ($request->hasFile('icon')) {
+            $employee->icon = FileStorage::putFile(self::EMPLOYEE_ICON_PATH, $request->file('icon'));
+        }
+
+        $employee->save();
+
+        return $this->respond(Response::HTTP_CREATED, 'Employee created', [
+            'uuid' => $employee->uuid,
+            'floor' => $this->floorService->getFloor($restaurant),
+        ]);
+    }
+
+    /**
+     * Updates an existing employee. Any field that is left out keeps its current value
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $employee_uuid The uuid of the employee
+     * @return JsonResponse The updated floor state in JSON format
+     */
+    public function editEmployee(Request $request, string $restaurant_uuid, string $employee_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name'           => 'nullable|string|max:64',
+            'icon'           => 'nullable|image|max:2048',
+            'cleaning_speed' => 'nullable|numeric|min:0|max:100',
+            'prep_speed'     => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $employee = $this->getEmployee($restaurant, $employee_uuid);
+        if ($employee === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Employee not found');
+        }
+
+        $employee->name = $request->get('name') ?? $employee->name;
+        if ($request->filled('cleaning_speed')) {
+            $employee->cleaning_speed = round((float) $request->get('cleaning_speed'), 2);
+        }
+        if ($request->filled('prep_speed')) {
+            $employee->prep_speed = round((float) $request->get('prep_speed'), 2);
+        }
+
+        if ($request->hasFile('icon')) {
+            $oldIcon = $employee->icon;
+            $employee->icon = FileStorage::putFile(self::EMPLOYEE_ICON_PATH, $request->file('icon'));
+            if ($oldIcon !== null) {
+                FileStorage::delete($oldIcon);
+            }
+        }
+
+        $employee->save();
+
+        return $this->respond(Response::HTTP_OK, 'Employee updated', [
+            'floor' => $this->floorService->getFloor($restaurant),
+        ]);
+    }
+
+    /**
+     * Deletes an employee, along with their icon
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $employee_uuid The uuid of the employee
+     * @return JsonResponse The updated floor state in JSON format
+     */
+    public function deleteEmployee(string $restaurant_uuid, string $employee_uuid): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $employee = $this->getEmployee($restaurant, $employee_uuid);
+        if ($employee === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Employee not found');
+        }
+
+        $icon = $employee->icon;
+        $employee->delete();
+        if ($icon !== null) {
+            FileStorage::delete($icon);
+        }
+
+        return $this->respond(Response::HTTP_OK, 'Employee deleted', [
+            'floor' => $this->floorService->getFloor($restaurant),
+        ]);
+    }
+
     //| Helpers
 
     /**
@@ -482,5 +611,16 @@ class FloorApi extends AbstractApi
     private function getCustomer(Restaurant $restaurant, string $uuid): ?Customer
     {
         return Customer::where('uuid', $uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+    }
+
+    /**
+     * Gets an employee belonging to a restaurant
+     * @param Restaurant $restaurant The restaurant
+     * @param string $uuid The uuid of the employee
+     * @return Employee|null The employee, or null if they do not belong to the restaurant
+     */
+    private function getEmployee(Restaurant $restaurant, string $uuid): ?Employee
+    {
+        return Employee::where('uuid', $uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
     }
 }

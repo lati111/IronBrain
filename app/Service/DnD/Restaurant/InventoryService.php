@@ -5,6 +5,7 @@ namespace App\Service\DnD\Restaurant;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\OwnedEquipment;
+use App\Models\DnD\Restaurant\PileIngredient;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\RecipeByproduct;
 use App\Models\DnD\Restaurant\RecipeEquipment;
@@ -22,10 +23,13 @@ class InventoryService
     public const string TYPE_INGREDIENT = 'ingredient';
     /** @var string The type key for equipment */
     public const string TYPE_EQUIPMENT = 'equipment';
+    /** @var string Stands for the pile of ingredients brought in during service when moving items */
+    public const string PILE = 'pile';
 
     /**
-     * Builds the full inventory state of a restaurant: its storage spaces with their contents, and the
-     * ingredient and equipment types with how many of each are stored in total
+     * Builds the full inventory state of a restaurant: its storage spaces with their contents, the pile of
+     * ingredients waiting to be sorted, and the ingredient and equipment types with how many of each are stored in
+     * total
      * @param Restaurant $restaurant The restaurant to build the state for
      * @return array The inventory state
      */
@@ -47,6 +51,12 @@ class InventoryService
 
         $storedIngredients = [];
         $storedEquipment = [];
+
+        // Ingredients in the pile count as stored, as they can be cooked with until they are sorted
+        $pile = PileIngredient::where('restaurant_uuid', $restaurant->uuid)->orderBy('created_at')->get();
+        foreach ($pile as $link) {
+            $storedIngredients[$link->ingredient_uuid] = round(($storedIngredients[$link->ingredient_uuid] ?? 0) + $link->amount, 2);
+        }
 
         $storageData = $storages->map(function (Storage $storage) use (&$storedIngredients, &$storedEquipment) {
             $items = [];
@@ -80,6 +90,11 @@ class InventoryService
 
         return [
             'storages' => $storageData->values()->all(),
+            'pile' => $pile->map(fn (PileIngredient $link) => [
+                'type' => self::TYPE_INGREDIENT,
+                'uuid' => $link->ingredient_uuid,
+                'amount' => $link->amount,
+            ])->values()->all(),
             'ingredients' => $ingredients->map(fn (Ingredient $ingredient) => [
                 'uuid' => $ingredient->uuid,
                 'name' => $ingredient->name,
@@ -135,15 +150,20 @@ class InventoryService
 
     /**
      * Moves an amount of an ingredient or equipment between storage spaces. A null storage stands for the
-     * unsaved general storage, meaning the item is either added to or taken out of the saved inventory
+     * unsaved general storage, meaning the item is either added to or taken out of the saved inventory. Ingredients
+     * can also be taken from, or put back in, the pile of ingredients brought in during service
      * @param Ingredient|Equipment $item The item to move
      * @param float $amount How much of the item to move. Ingredients can be moved in fractions, equipment only whole
-     * @param Storage|null $from The storage to take the item from, or null when it comes from general storage
-     * @param Storage|null $to The storage to put the item in, or null when it leaves the saved inventory
-     * @throws InvalidArgumentException Thrown when equipment is split, the source holds too little or the target has too little capacity
+     * @param Storage|string|null $from The storage to take the item from, PILE for the pile, or null when it comes from general storage
+     * @param Storage|string|null $to The storage to put the item in, PILE for the pile, or null when it leaves the saved inventory
+     * @throws InvalidArgumentException Thrown when equipment is split or piled, the source holds too little or the target has too little capacity
      */
-    public function transfer(Ingredient|Equipment $item, float $amount, ?Storage $from, ?Storage $to): void
+    public function transfer(Ingredient|Equipment $item, float $amount, Storage|string|null $from, Storage|string|null $to): void
     {
+        if ($item instanceof Equipment && ($from === self::PILE || $to === self::PILE)) {
+            throw new InvalidArgumentException('Only ingredients go in the pile');
+        }
+
         if ($item instanceof Equipment && $item->requires_storage === false) {
             throw new InvalidArgumentException('This equipment does not require storage');
         }
@@ -156,7 +176,9 @@ class InventoryService
         $amount = round($amount, 2);
 
         DB::transaction(function () use ($item, $amount, $from, $to) {
-            if ($from !== null) {
+            if ($from === self::PILE) {
+                $this->takeFromPile($item, $amount);
+            } elseif ($from !== null) {
                 $link = $this->getLinkQuery($item, $from)->lockForUpdate()->first();
                 if ($link === null || round($link->amount - $amount, 2) < 0) {
                     throw new InvalidArgumentException('Not enough stored to move');
@@ -166,7 +188,9 @@ class InventoryService
                 $link->amount == 0 ? $link->delete() : $link->save();
             }
 
-            if ($to !== null) {
+            if ($to === self::PILE) {
+                $this->addToPile($item->getRestaurant(), $item, $amount);
+            } elseif ($to !== null) {
                 $to = Storage::where('uuid', $to->uuid)->lockForUpdate()->first();
                 // Rounded, as fractional ingredient sizes would otherwise fail exact fits through float imprecision
                 if (round($to->getUsedCapacity() + ($item->size * $amount), 2) > $to->capacity) {
@@ -185,6 +209,56 @@ class InventoryService
                 $link->save();
             }
         });
+    }
+
+    //| Pile
+
+    /**
+     * Adds an ingredient to the restaurant's pile, where ingredients brought in during service wait to be sorted
+     * into the storage spaces. The pile has no capacity
+     * @param Restaurant $restaurant The restaurant
+     * @param Ingredient $ingredient The ingredient
+     * @param float $amount How much to add
+     */
+    public function addToPile(Restaurant $restaurant, Ingredient $ingredient, float $amount): void
+    {
+        DB::transaction(function () use ($restaurant, $ingredient, $amount) {
+            $link = PileIngredient::where('restaurant_uuid', $restaurant->uuid)
+                ->where('ingredient_uuid', $ingredient->uuid)
+                ->lockForUpdate()
+                ->first();
+
+            if ($link === null) {
+                $link = new PileIngredient();
+                $link->restaurant_uuid = $restaurant->uuid;
+                $link->ingredient_uuid = $ingredient->uuid;
+                $link->amount = 0;
+            }
+
+            $link->amount = round($link->amount + $amount, 2);
+            $link->save();
+        });
+    }
+
+    /**
+     * Takes an ingredient out of the restaurant's pile
+     * @param Ingredient $ingredient The ingredient
+     * @param float $amount How much to take
+     * @throws InvalidArgumentException Thrown when the pile holds too little of it
+     */
+    private function takeFromPile(Ingredient $ingredient, float $amount): void
+    {
+        $link = PileIngredient::where('restaurant_uuid', $ingredient->restaurant_uuid)
+            ->where('ingredient_uuid', $ingredient->uuid)
+            ->lockForUpdate()
+            ->first();
+
+        if ($link === null || round($link->amount - $amount, 2) < 0) {
+            throw new InvalidArgumentException('Not enough in the pile to move');
+        }
+
+        $link->amount = round($link->amount - $amount, 2);
+        $link->amount == 0 ? $link->delete() : $link->save();
     }
 
     /**

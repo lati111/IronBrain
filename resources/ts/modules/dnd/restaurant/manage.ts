@@ -27,14 +27,23 @@ interface Customer {
     seat: number | null;
 }
 
+interface Employee {
+    uuid: string;
+    name: string;
+    icon: string | null;
+    cleaning_speed: number;
+    prep_speed: number;
+}
+
 interface Floor {
     rooms: Room[];
     tables: Table[];
     customers: Customer[];
+    employees: Employee[];
 }
 
-/** The sidebar lists tables and customers */
-type SidebarTab = 'table' | 'customer';
+/** The sidebar lists tables, customers and employees */
+type SidebarTab = 'table' | 'customer' | 'employee';
 
 /** What is dragged when a table is moved between rooms */
 interface DraggedTable {
@@ -49,15 +58,17 @@ const ROOM_MIME = 'application/x-restaurant-room';
 const TAB_LABELS: Record<SidebarTab, string> = {
     table:    'Table',
     customer: 'Customer',
+    employee: 'Employee',
 };
 
 let apiUrl = '';
 let editUrl = '';
-let floor: Floor = {rooms: [], tables: [], customers: []};
+let floor: Floor = {rooms: [], tables: [], customers: [], employees: []};
 let activeTab: SidebarTab = 'table';
 
 let editingTableUuid: string | null = null;
 let editingCustomerUuid: string | null = null;
+let editingEmployeeUuid: string | null = null;
 let pendingRoomDelete: string | null = null;
 let pendingDelete: {type: SidebarTab, uuid: string} | null = null;
 
@@ -102,7 +113,9 @@ function renderSidebar(): void {
     const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
 
     list.replaceChildren();
-    const total = activeTab === 'table' ? renderTableRows(list, search) : renderCustomerRows(list, search);
+    const total = activeTab === 'table'
+        ? renderTableRows(list, search)
+        : activeTab === 'customer' ? renderCustomerRows(list, search) : renderEmployeeRows(list, search);
 
     if (list.childElementCount === 0) {
         const empty = document.createElement('li');
@@ -150,6 +163,20 @@ function renderCustomerRows(list: HTMLElement, search: string): number {
     }
 
     return floor.customers.length;
+}
+
+/** Renders the sidebar rows for employees, returning how many employees exist before filtering */
+function renderEmployeeRows(list: HTMLElement, search: string): number {
+    for (const employee of floor.employees.filter((employee) => employee.name.toLowerCase().includes(search))) {
+        const row = createListRow();
+        setField(row, 'name', employee.name);
+        setField(row, 'meta', `Prep ×${employee.prep_speed} · Cleaning ×${employee.cleaning_speed}`);
+        row.querySelector('[data-action="edit"]')!.addEventListener('click', () => openEmployeeModal(employee.uuid));
+
+        list.appendChild(row);
+    }
+
+    return floor.employees.length;
 }
 
 function renderRooms(): void {
@@ -213,8 +240,10 @@ function switchTab(tab: SidebarTab): void {
 function openCreateModal(): void {
     if (activeTab === 'table') {
         openTableModal(null);
-    } else {
+    } else if (activeTab === 'customer') {
         openCustomerModal(null);
+    } else {
+        openEmployeeModal(null);
     }
 }
 
@@ -397,15 +426,60 @@ async function saveCustomer(): Promise<void> {
     setFloor(response.floor);
 }
 
-//| Deleting tables & customers
+//| Employees
+
+function openEmployeeModal(uuid: string | null): void {
+    const employee = uuid !== null ? floor.employees.find((candidate) => candidate.uuid === uuid) ?? null : null;
+    if (uuid !== null && employee === null) return;
+
+    editingEmployeeUuid = uuid;
+    const form = document.getElementById('employee-form') as HTMLFormElement;
+    form.reset();
+
+    if (employee !== null) {
+        (form.elements.namedItem('name') as HTMLInputElement).value = employee.name;
+        (form.elements.namedItem('prep_speed') as HTMLInputElement).value = String(employee.prep_speed);
+        (form.elements.namedItem('cleaning_speed') as HTMLInputElement).value = String(employee.cleaning_speed);
+    }
+
+    document.getElementById('employee-modal-title')!.textContent = employee !== null ? 'Edit Employee' : 'New Employee';
+    document.getElementById('employee-modal-submit')!.textContent = employee !== null ? 'Save' : 'Create';
+    document.getElementById('employee-modal-delete')!.classList.toggle('hidden', employee === null);
+    openModal('employee-modal');
+}
+
+async function saveEmployee(): Promise<void> {
+    const form = document.getElementById('employee-form') as HTMLFormElement;
+    if (!form.reportValidity()) return;
+
+    const editing = editingEmployeeUuid;
+    const url = editing !== null ? `${apiUrl}/employee/${editing}/edit` : `${apiUrl}/employee/create`;
+
+    // An empty icon field keeps the current icon
+    const response = await submitForm(form, url, ['icon']);
+    if (response === null) return;
+
+    editingEmployeeUuid = null;
+    closeModal('employee-modal');
+    setFloor(response.floor);
+}
+
+//| Deleting tables, customers & employees
+
+/** The uuid of what is open in each edit modal */
+function getEditingUuid(type: SidebarTab): string | null {
+    return {table: editingTableUuid, customer: editingCustomerUuid, employee: editingEmployeeUuid}[type];
+}
 
 function openDeleteModal(type: SidebarTab): void {
-    const uuid = type === 'table' ? editingTableUuid : editingCustomerUuid;
+    const uuid = getEditingUuid(type);
     if (uuid === null) return;
 
-    const name = type === 'table'
-        ? getTable(uuid)?.name
-        : floor.customers.find((customer) => customer.uuid === uuid)?.name;
+    const name = {
+        table: () => getTable(uuid)?.name,
+        customer: () => floor.customers.find((customer) => customer.uuid === uuid)?.name,
+        employee: () => floor.employees.find((employee) => employee.uuid === uuid)?.name,
+    }[type]();
 
     pendingDelete = {type, uuid};
     document.getElementById('type-delete-title')!.textContent = `Delete ${TAB_LABELS[type].toLowerCase()}`;
@@ -434,6 +508,7 @@ async function confirmDelete(): Promise<void> {
     if (await postFloor(`${apiUrl}/${type}/${uuid}/delete`)) {
         if (type === 'table') editingTableUuid = null;
         if (type === 'customer') editingCustomerUuid = null;
+        if (type === 'employee') editingEmployeeUuid = null;
     }
 }
 
@@ -480,6 +555,7 @@ function seatsLabel(seats: number): string {
 (<any>window).deleteRoom          = deleteRoom;
 (<any>window).saveTable           = saveTable;
 (<any>window).saveCustomer        = saveCustomer;
+(<any>window).saveEmployee        = saveEmployee;
 (<any>window).openDeleteModal     = openDeleteModal;
 (<any>window).cancelDelete        = cancelDelete;
 (<any>window).confirmDelete       = confirmDelete;

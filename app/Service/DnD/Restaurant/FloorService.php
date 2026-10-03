@@ -3,6 +3,7 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Models\DnD\Restaurant\Customer;
+use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Room;
 use App\Models\DnD\Restaurant\Table;
@@ -13,7 +14,7 @@ class FloorService
 {
     /**
      * Builds the floor state of a restaurant: its rooms, its tables along with the room each is placed in, and its
-     * customers along with the table each is seated at
+     * customers along with the table each is seated at, and its employees
      * @param Restaurant $restaurant The restaurant to build the state for
      * @return array The floor state
      */
@@ -22,6 +23,7 @@ class FloorService
         $rooms = Room::where('restaurant_uuid', $restaurant->uuid)->orderBy('order')->orderBy('created_at')->get();
         $tables = Table::where('restaurant_uuid', $restaurant->uuid)->withCount('Customers')->orderBy('name')->get();
         $customers = Customer::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
+        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
 
         return [
             'rooms' => $rooms->map(fn (Room $room) => [
@@ -42,6 +44,13 @@ class FloorService
                 'description' => $customer->description,
                 'table_uuid' => $customer->table_uuid,
                 'seat' => $customer->seat,
+            ])->values()->all(),
+            'employees' => $employees->map(fn (Employee $employee) => [
+                'uuid' => $employee->uuid,
+                'name' => $employee->name,
+                'icon' => $employee->icon !== null ? asset('img/' . $employee->icon) : null,
+                'cleaning_speed' => $employee->cleaning_speed,
+                'prep_speed' => $employee->prep_speed,
             ])->values()->all(),
         ];
     }

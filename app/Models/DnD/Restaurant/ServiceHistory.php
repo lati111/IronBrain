@@ -30,6 +30,14 @@ class ServiceHistory extends RestaurantDataModel
     //| Relationships
 
     /**
+     * The relationship for the recipes on sale during the service
+     * @return HasMany
+     */
+    public function Sales(): HasMany {
+        return $this->hasMany(Sale::class, 'service_uuid', 'uuid');
+    }
+
+    /**
      * The relationship for the orders placed during the service
      * @return HasMany
      */

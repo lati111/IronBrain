@@ -19,22 +19,22 @@
          data-management-url="{{route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid])}}">
 
         {{--| Top bar. Both sides share a width, so the title stays centred |--}}
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-2">
             <a href="{{route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive w-80">&larr; Management</a>
-            <h1 class="title">{{$restaurant->name}} &mdash; Service</h1>
+            <h1 class="title">Service</h1>
 
             {{--| Service clock. The time can be typed in, or moved forward with the buttons |--}}
-            <div class="w-80 flex flex-col items-end gap-1">
+            <div class="w-80 flex flex-col items-end gap-0.5">
                 <div class="flex items-center gap-2">
                     <small id="service-date" class="text-gray-500"></small>
                     <input id="service-time" type="time" class="underlined service-clock" title="Current time" onchange="setServiceTime(this.value)">
                 </div>
-                <div class="flex gap-1">
+                <div class="flex items-center gap-1">
                     @foreach([1 => '+1m', 5 => '+5m', 15 => '+15m', 60 => '+1h'] as $minutes => $label)
                         <button class="service-clock-step interactive" onclick="advanceTime({{$minutes}})" dusk="advance-{{$minutes}}">{{$label}}</button>
                     @endforeach
+                    <button class="interactive text-sm font-semibold ml-2" onclick="openEndServiceModal()" dusk="service-end">End service</button>
                 </div>
-                <button class="interactive text-sm font-semibold" onclick="openEndServiceModal()" dusk="service-end">End service</button>
                 <small class="text-gray-500">
                     Open {{substr($restaurant->opening_time, 0, 5)}} &ndash; {{substr($restaurant->closing_time, 0, 5)}}
                     &middot; shift total <span id="service-shift-total" class="font-semibold">0b</span>
@@ -42,7 +42,7 @@
             </div>
         </div>
 
-        <div class="flex gap-4 items-start">
+        <div class="flex gap-3 items-start">
 
             {{--| Sidebar |--}}
             {{--| Collapsed until opened, as the floor and kitchen need the room during service |--}}
@@ -52,19 +52,21 @@
                         <span class="inventory-sidebar-toggle-icon">&laquo;</span>
                     </button>
                     <div class="inventory-sidebar-body flex flex-1">
-                        <span class="inventory-tab active flex-1 py-2 text-center">Customers</span>
+                        <button class="inventory-tab active flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="sale" onclick="switchTab('sale')">Sales</button>
                     </div>
                 </div>
 
                 <div class="inventory-sidebar-body flex flex-col gap-2 p-2">
                     <input id="inventory-search" type="search" class="underlined w-full" placeholder="Search..." oninput="renderSidebar()">
                     <ul id="inventory-list" class="inventory-list"></ul>
-                    <button class="interactive text-sm" onclick="openCreateCustomerModal()" dusk="customer-create">+ New Customer</button>
+                    <button id="customer-create-button" class="interactive text-sm" onclick="openCreateCustomerModal()" dusk="customer-create">+ New Customer</button>
                 </div>
             </aside>
 
             {{--| Floor |--}}
-            <div class="flex-1 flex flex-col gap-4 min-w-0">
+            <div class="service-floor flex-1 flex flex-col gap-2">
 
                 {{--| Entrance |--}}
                 {{--| Hidden while nobody is waiting, which is always the case when the page loads |--}}
@@ -76,7 +78,7 @@
                 </section>
 
                 {{--| Rooms with their tables |--}}
-                <div id="service-rooms" class="flex flex-col gap-4"></div>
+                <div id="service-rooms" class="flex flex-col gap-2"></div>
                 <p id="service-empty" class="hidden text-center text-gray-400 py-6">No tables yet</p>
             </div>
 
@@ -86,6 +88,12 @@
 
                 {{--| The areas sit side by side when there is room for it |--}}
                 <div class="kitchen-areas">
+                    {{--| Employees, dragged to the prep or cleaning area to work there, and back here to stop |--}}
+                    <section id="kitchen-staff-area" class="kitchen-area kitchen-staff-area">
+                        <h4 class="kitchen-area-title">Staff</h4>
+                        <div id="kitchen-staff" class="kitchen-staff"></div>
+                    </section>
+
                     <section id="kitchen-serving-area" class="kitchen-area">
                         <h4 class="kitchen-area-title">Serving</h4>
                         <div id="kitchen-serving" class="kitchen-meal-list kitchen-drop-zone"></div>
@@ -96,19 +104,23 @@
                         <div id="kitchen-cookers" class="kitchen-cookers"></div>
                     </section>
 
-                    <section class="kitchen-area">
-                        <div class="flex justify-between items-center">
+                    <section id="kitchen-prep-area" class="kitchen-area kitchen-work-area">
+                        <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Preparation</h4>
+                            <div class="kitchen-area-staff" data-station-staff="prep"></div>
                             <button class="interactive text-xs" onclick="openPlanMealModal()" dusk="meal-plan">+ Plan meal</button>
                         </div>
+                        <div class="kitchen-total-progress hidden" data-station-progress="prep"><div></div></div>
                         <div id="kitchen-preparation" class="kitchen-meal-list"></div>
                     </section>
 
-                    <section class="kitchen-area">
-                        <div class="flex justify-between items-center">
+                    <section id="kitchen-cleaning-area" class="kitchen-area kitchen-work-area">
+                        <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Equipment</h4>
+                            <div class="kitchen-area-staff" data-station-staff="cleaning"></div>
                             <button id="kitchen-clean-all" class="interactive text-xs disabled:opacity-40" onclick="cleanAllEquipment()" dusk="clean-all">Clean all</button>
                         </div>
+                        <div class="kitchen-total-progress hidden" data-station-progress="cleaning"><div></div></div>
 
                         <ul id="kitchen-equipment" class="kitchen-equipment"></ul>
                     </section>
@@ -179,6 +191,15 @@
             <span data-field="name" class="font-semibold truncate flex-1 min-w-0"></span>
             <span data-field="timer" class="text-xs text-gray-500 whitespace-nowrap"></span>
             <div class="kitchen-meal-actions flex gap-2 text-xs whitespace-nowrap" data-actions></div>
+        </div>
+    </template>
+
+    {{--| An employee, with their name and the task they are on below them |--}}
+    <template id="employee-template">
+        <div class="kitchen-employee" draggable="true">
+            <div class="kitchen-employee-icon" data-field="initial"></div>
+            <span data-field="name" class="kitchen-employee-name"></span>
+            <small data-field="task" class="kitchen-employee-task"></small>
         </div>
     </template>
 
@@ -267,12 +288,41 @@
         </x-slot:buttons>
     </x-modal>
 
+    {{--| Adding an ingredient brought in during service to the pile |--}}
+    <x-modal id="pile-modal">
+        <h3 id="pile-modal-title" class="title py-1"></h3>
+        <form id="pile-form" class="w-full" onsubmit="event.preventDefault(); addToPile()">
+            <x-form.input-wrapper label_text="Amount">
+                <input id="pile-amount" type="number" name="amount" class="underlined" min="0.01" step="0.01" value="1" required/>
+            </x-form.input-wrapper>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('pile-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="pile-confirm" onclick="addToPile()">Add</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Putting a recipe on sale for this service, or taking it off sale |--}}
+    <x-modal id="sale-modal">
+        <h3 id="sale-modal-title" class="title py-1"></h3>
+        <form id="sale-form" class="w-full" onsubmit="event.preventDefault(); saveSale()">
+            <x-form.input-wrapper label_text="Price">
+                <input id="sale-price" type="number" name="price" class="underlined" min="0" step="0.01" data-money required/>
+            </x-form.input-wrapper>
+        </form>
+        <x-slot:buttons>
+            <button id="sale-remove" class="interactive px-5 py-2.5 hidden" onclick="removeSale()">Remove sale</button>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('sale-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="sale-confirm" onclick="saveSale()">Save</button>
+        </x-slot:buttons>
+    </x-modal>
+
     {{--| Create customer modal |--}}
     <x-modal id="customer-create-modal">
         <h3 class="title py-1">New Customer</h3>
         <form id="customer-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createCustomer()">
             <x-form.input-wrapper label_text="Name">
-                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Bilbo Baggins" required/>
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Description (optional)">
                 <textarea name="description" class="underlined" rows="3"></textarea>
