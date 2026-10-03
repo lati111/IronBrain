@@ -325,7 +325,7 @@
         <h3 id="amount-modal-title" class="title py-1"></h3>
         <form class="w-full" onsubmit="event.preventDefault(); confirmAmount()">
             <x-form.input-wrapper label_text="Amount">
-                <input id="amount-modal-input" type="number" class="underlined" min="1" value="1" required/>
+                <input id="amount-modal-input" type="number" class="underlined" value="1" required/>
             </x-form.input-wrapper>
         </form>
         <x-slot:buttons>
