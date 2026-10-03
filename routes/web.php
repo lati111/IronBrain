@@ -105,10 +105,13 @@ Route::prefix('/arsenal')
     });
 
 //| dnd restaurant
-Route::prefix('/dnd-restaurant')
+Route::prefix('/dnd/restaurant')
     ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access'])
     ->group(function() {
-        Route::get('/', [\App\Http\Controllers\Modules\DndRestaurant\DndRestaurantController::class, 'showOverview'])
-            ->name('dnd_restaurant.home.show');
+        Route::get('/', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showOverview'])
+            ->name('dnd.restaurant.overview');
+
+        Route::get('/{restaurant_uuid}/inventory', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showInventory'])
+            ->name('dnd.restaurant.inventory');
     });
 

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property integer capacity The maximum capacity of the storage space
  * @property float expiration_multiplier The multiplier applied to the expiration of stored ingredients
  * @property string|null background_image The path to the background image, if any
+ * @property integer order The position of the storage space within the restaurant
  */
 class Storage extends RestaurantDataModel
 {
@@ -24,17 +25,24 @@ class Storage extends RestaurantDataModel
     protected $casts = [
         'capacity'              => 'integer',
         'expiration_multiplier' => 'float',
+        'order'                 => 'integer',
     ];
 
     /**
-     * Get how much of the storage capacity is taken up by the stored ingredients
+     * Get how much of the storage capacity is taken up by the stored ingredients and equipment
      * @return int The used capacity
      */
     public function getUsedCapacity(): int
     {
-        return (int) $this->StorageIngredients()
+        $ingredients = (int) $this->StorageIngredients()
             ->join(Ingredient::TABLE_NAME, Ingredient::TABLE_NAME.'.uuid', '=', StorageIngredient::TABLE_NAME.'.ingredient_uuid')
             ->sum($this->getConnection()->raw(StorageIngredient::TABLE_NAME.'.amount * '.Ingredient::TABLE_NAME.'.size'));
+
+        $equipment = (int) $this->StorageEquipment()
+            ->join(Equipment::TABLE_NAME, Equipment::TABLE_NAME.'.uuid', '=', StorageEquipment::TABLE_NAME.'.equipment_uuid')
+            ->sum($this->getConnection()->raw(StorageEquipment::TABLE_NAME.'.amount * '.Equipment::TABLE_NAME.'.size'));
+
+        return $ingredients + $equipment;
     }
 
     //| Relationships
@@ -54,6 +62,25 @@ class Storage extends RestaurantDataModel
     public function Ingredients(): BelongsToMany {
         return $this->belongsToMany(Ingredient::class, StorageIngredient::TABLE_NAME, 'storage_uuid', 'ingredient_uuid', 'uuid', 'uuid')
             ->using(StorageIngredient::class)
+            ->withPivot('uuid', 'amount')
+            ->withTimestamps();
+    }
+
+    /**
+     * The relationship for the equipment entries in this storage
+     * @return HasMany
+     */
+    public function StorageEquipment(): HasMany {
+        return $this->hasMany(StorageEquipment::class, 'storage_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the equipment in this storage, with the amount on the pivot
+     * @return BelongsToMany
+     */
+    public function Equipment(): BelongsToMany {
+        return $this->belongsToMany(Equipment::class, StorageEquipment::TABLE_NAME, 'storage_uuid', 'equipment_uuid', 'uuid', 'uuid')
+            ->using(StorageEquipment::class)
             ->withPivot('uuid', 'amount')
             ->withTimestamps();
     }

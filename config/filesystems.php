@@ -80,6 +80,9 @@ return [
         public_path('img/modules/arsenal/weapon') => storage_path('app/modules/arsenal/weapon'),
         public_path('img/modules/arsenal/companion') => storage_path('app/modules/arsenal/companion'),
         public_path('img/modules/arsenal/component') => storage_path('app/modules/arsenal/component'),
+
+        public_path('img/modules/dnd/restaurant/storage') => storage_path('app/modules/dnd/restaurant/storage'),
+        public_path('img/modules/dnd/restaurant/ingredient') => storage_path('app/modules/dnd/restaurant/ingredient'),
     ],
 
 ];

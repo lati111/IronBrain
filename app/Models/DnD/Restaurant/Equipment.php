@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string category The category this equipment falls under
  * @property integer cleaning_time How long the equipment takes to clean, in minutes
  * @property float multiplier The multiplier this equipment applies
+ * @property integer size How much storage capacity a single piece of the equipment takes up
+ * @property bool requires_storage Whether this equipment must be placed in a storage space to be stored
  */
 class Equipment extends RestaurantDataModel
 {
@@ -25,8 +27,10 @@ class Equipment extends RestaurantDataModel
 
     /** @inheritdoc */
     protected $casts = [
-        'cleaning_time' => 'integer',
-        'multiplier'    => 'float',
+        'cleaning_time'    => 'integer',
+        'multiplier'       => 'float',
+        'size'             => 'integer',
+        'requires_storage' => 'boolean',
     ];
 
     //| Relationships
@@ -56,6 +60,25 @@ class Equipment extends RestaurantDataModel
             ->using(RecipeEquipment::class)
             ->withPivot('uuid', 'amount')
             ->withTimestamps();
+    }
+
+    /**
+     * The relationship for the storage spaces this equipment is stored in, with the amount on the pivot
+     * @return BelongsToMany
+     */
+    public function Storages(): BelongsToMany {
+        return $this->belongsToMany(Storage::class, StorageEquipment::TABLE_NAME, 'equipment_uuid', 'storage_uuid', 'uuid', 'uuid')
+            ->using(StorageEquipment::class)
+            ->withPivot('uuid', 'amount')
+            ->withTimestamps();
+    }
+
+    /**
+     * The relationship for the owned equipment entries for this equipment, used when it does not require storage
+     * @return HasMany
+     */
+    public function Owned(): HasMany {
+        return $this->hasMany(OwnedEquipment::class, 'equipment_uuid', 'uuid');
     }
 
     //| Getters

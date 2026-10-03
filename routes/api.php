@@ -76,6 +76,42 @@ Route::prefix('/arsenal')
     });
 
 
+//| DnD Restaurant
+
+Route::prefix('/dnd/restaurant')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access'])
+    ->group(function() {
+        Route::post('/create', [\App\Http\Api\Modules\DnD\Restaurant\RestaurantApi::class, 'createRestaurant'])
+            ->name('api.dnd.restaurant.create');
+
+        Route::prefix('/{restaurant_uuid}/inventory')->group(function() {
+            Route::get('/', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'getInventory'])
+                ->name('api.dnd.restaurant.inventory.get');
+            Route::post('/transfer', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'transferItem'])
+                ->name('api.dnd.restaurant.inventory.transfer');
+
+            Route::post('/storage/create', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'createStorage'])
+                ->name('api.dnd.restaurant.inventory.storage.create');
+            Route::post('/storage/reorder', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'reorderStorages'])
+                ->name('api.dnd.restaurant.inventory.storage.reorder');
+            Route::post('/storage/{storage_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'deleteStorage'])
+                ->name('api.dnd.restaurant.inventory.storage.delete');
+
+            Route::post('/ingredient/create', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'createIngredient'])
+                ->name('api.dnd.restaurant.inventory.ingredient.create');
+            Route::post('/ingredient/{ingredient_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'editIngredient'])
+                ->name('api.dnd.restaurant.inventory.ingredient.edit');
+
+            Route::post('/equipment/create', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'createEquipment'])
+                ->name('api.dnd.restaurant.inventory.equipment.create');
+            Route::post('/equipment/{equipment_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'editEquipment'])
+                ->name('api.dnd.restaurant.inventory.equipment.edit');
+            Route::post('/equipment/{equipment_uuid}/owned', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'adjustOwnedEquipment'])
+                ->name('api.dnd.restaurant.inventory.equipment.owned');
+        });
+    });
+
+
 //| PKSanc
 
 Route::prefix('/pksanc')

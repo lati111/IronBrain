@@ -97,6 +97,8 @@ return new class extends Migration
             $table->string('category', 64);
             $table->integer('cleaning_time')->default(0);
             $table->decimal('multiplier', 8, 2)->default(1.0);
+            $table->integer('size')->default(1);
+            $table->boolean('requires_storage')->default(true);
 
             $table->timestamps();
 
@@ -141,6 +143,7 @@ return new class extends Migration
             $table->integer('capacity')->default(0);
             $table->decimal('expiration_multiplier', 8, 2)->default(1.0);
             $table->text('background_image')->nullable();
+            $table->integer('order')->default(0);
 
             $table->timestamps();
 
@@ -158,6 +161,18 @@ return new class extends Migration
             $table->foreign('storage_uuid')->references('uuid')->on('dnd__restaurant_storage')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('ingredient_uuid')->references('uuid')->on('dnd__restaurant_ingredient')->onDelete('cascade')->onUpdate('no action');
         });
+
+        Schema::create('dnd__restaurant_storage_equipment', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('storage_uuid');
+            $table->foreignUuid('equipment_uuid');
+            $table->integer('amount')->default(1);
+            $table->timestamps();
+
+            $table->unique(['storage_uuid', 'equipment_uuid'], 'dnd__restaurant_storage_equipment_unique');
+            $table->foreign('storage_uuid')->references('uuid')->on('dnd__restaurant_storage')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('equipment_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
+        });
     }
 
     /**
@@ -165,6 +180,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('dnd__restaurant_storage_equipment');
         Schema::dropIfExists('dnd__restaurant_storage_ingredient');
         Schema::dropIfExists('dnd__restaurant_storage');
         Schema::dropIfExists('dnd__restaurant_owned_equipment');
