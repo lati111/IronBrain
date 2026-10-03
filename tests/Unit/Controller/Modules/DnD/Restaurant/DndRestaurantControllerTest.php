@@ -59,18 +59,18 @@ class DndRestaurantControllerTest extends AbstractControllerUnitTester
         $response->assertViewIs('errors.auth.forbidden');
     }
 
-    //| show inventory test
-    public function testInventoryShowForOwner(): void
+    //| show management test
+    public function testManagementShowForOwner(): void
     {
         $restaurant = $this->createTestRestaurant($this->getAdminUser());
 
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('dnd.restaurant.inventory', ['restaurant_uuid' => $restaurant->uuid]));
-        $this->assertView($response, 'modules.dnd.restaurant.inventory');
+            ->get(route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid]));
+        $this->assertView($response, 'modules.dnd.restaurant.management');
     }
 
-    public function testInventoryShowForSharedUser(): void
+    public function testManagementShowForSharedUser(): void
     {
         $user = $this->getAdminUser();
         $owner = $this->getTestUser();
@@ -79,25 +79,72 @@ class DndRestaurantControllerTest extends AbstractControllerUnitTester
 
         $response = $this
             ->actingAs($user)
-            ->get(route('dnd.restaurant.inventory', ['restaurant_uuid' => $sharedRestaurant->uuid]));
-        $this->assertView($response, 'modules.dnd.restaurant.inventory');
+            ->get(route('dnd.restaurant.management', ['restaurant_uuid' => $sharedRestaurant->uuid]));
+        $this->assertView($response, 'modules.dnd.restaurant.management');
     }
 
-    public function testInventoryShowWithoutAccess(): void
+    public function testManagementShowWithoutAccess(): void
     {
         $restaurant = $this->createTestRestaurant($this->getTestUser());
 
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('dnd.restaurant.inventory', ['restaurant_uuid' => $restaurant->uuid]));
+            ->get(route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid]));
         $response->assertNotFound();
     }
 
-    public function testInventoryShowNonExistent(): void
+    //| show manage test
+    public function testManageShowForOwner(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getAdminUser());
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid]));
+        $this->assertView($response, 'modules.dnd.restaurant.manage');
+    }
+
+    public function testManageShowWithoutAccess(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getTestUser());
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid]));
+        $response->assertNotFound();
+    }
+
+    //| show service test
+    public function testServiceShowSetsCurrentTimeToOpening(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getAdminUser());
+        $restaurant->current_time = '15:30';
+        $restaurant->save();
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
+        $this->assertView($response, 'modules.dnd.restaurant.service');
+
+        $this->assertEquals('08:00:00', $restaurant->fresh()->current_time);
+    }
+
+    public function testServiceShowWithoutAccess(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getTestUser());
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
+        $response->assertNotFound();
+        $this->assertNull($restaurant->fresh()->current_time);
+    }
+
+    public function testManagementShowNonExistent(): void
     {
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('dnd.restaurant.inventory', ['restaurant_uuid' => $this->faker->uuid()]));
+            ->get(route('dnd.restaurant.management', ['restaurant_uuid' => $this->faker->uuid()]));
         $response->assertNotFound();
     }
 }

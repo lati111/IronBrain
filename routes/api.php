@@ -83,6 +83,36 @@ Route::prefix('/dnd/restaurant')
     ->group(function() {
         Route::post('/create', [\App\Http\Api\Modules\DnD\Restaurant\RestaurantApi::class, 'createRestaurant'])
             ->name('api.dnd.restaurant.create');
+        Route::post('/{restaurant_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\RestaurantApi::class, 'editRestaurant'])
+            ->name('api.dnd.restaurant.edit');
+
+        Route::prefix('/{restaurant_uuid}/floor')->group(function() {
+            Route::get('/', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'getFloor'])
+                ->name('api.dnd.restaurant.floor.get');
+
+            Route::post('/room/create', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'createRoom'])
+                ->name('api.dnd.restaurant.floor.room.create');
+            Route::post('/room/reorder', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'reorderRooms'])
+                ->name('api.dnd.restaurant.floor.room.reorder');
+            Route::post('/room/{room_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'deleteRoom'])
+                ->name('api.dnd.restaurant.floor.room.delete');
+
+            Route::post('/table/create', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'createTable'])
+                ->name('api.dnd.restaurant.floor.table.create');
+            Route::post('/table/{table_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'editTable'])
+                ->name('api.dnd.restaurant.floor.table.edit');
+            Route::post('/table/{table_uuid}/move', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'moveTable'])
+                ->name('api.dnd.restaurant.floor.table.move');
+            Route::post('/table/{table_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'deleteTable'])
+                ->name('api.dnd.restaurant.floor.table.delete');
+
+            Route::post('/customer/create', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'createCustomer'])
+                ->name('api.dnd.restaurant.floor.customer.create');
+            Route::post('/customer/{customer_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'editCustomer'])
+                ->name('api.dnd.restaurant.floor.customer.edit');
+            Route::post('/customer/{customer_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'deleteCustomer'])
+                ->name('api.dnd.restaurant.floor.customer.delete');
+        });
 
         Route::prefix('/{restaurant_uuid}/inventory')->group(function() {
             Route::get('/', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'getInventory'])

@@ -14,6 +14,9 @@ class RestaurantOverviewCardlistTest extends AbstractFeatureTester
         $restaurant = new Restaurant();
         $restaurant->owner_uuid = $owner->uuid;
         $restaurant->name = $name;
+        $restaurant->date = '1492-03-01';
+        $restaurant->opening_time = '08:00';
+        $restaurant->closing_time = '22:00';
         $restaurant->save();
 
         return $restaurant;
@@ -47,6 +50,6 @@ class RestaurantOverviewCardlistTest extends AbstractFeatureTester
         $this->assertEquals(1, $items[$owned->uuid]['is_owner']);
         $this->assertEquals(0, $items[$shared->uuid]['is_owner']);
         $this->assertEquals($other->username, $items[$shared->uuid]['owner_name']);
-        $this->assertEquals(route('dnd.restaurant.inventory', ['restaurant_uuid' => $owned->uuid]), $items[$owned->uuid]['url']);
+        $this->assertEquals(route('dnd.restaurant.management', ['restaurant_uuid' => $owned->uuid]), $items[$owned->uuid]['url']);
     }
 }

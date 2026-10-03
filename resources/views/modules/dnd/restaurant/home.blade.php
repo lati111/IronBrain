@@ -37,10 +37,24 @@
     <x-modal id="restaurant-create-modal">
         <h3 class="title py-1">New Restaurant</h3>
 
-        <x-form.input-wrapper label_text="Name" cls="w-full">
-            <input type="text" id="restaurant-create-name" name="name" class="underlined" maxlength="64"
-                   placeholder="The Prancing Pony" onkeydown="if (event.key === 'Enter') createRestaurant()" required/>
-        </x-form.input-wrapper>
+        <form id="restaurant-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createRestaurant()">
+            <x-form.input-wrapper label_text="Name">
+                <input type="text" id="restaurant-create-name" name="name" class="underlined" maxlength="64"
+                       placeholder="The Prancing Pony" required/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Date">
+                <input type="date" name="date" class="underlined" required/>
+            </x-form.input-wrapper>
+            <div class="flex gap-3">
+                <x-form.input-wrapper label_text="Opening time" cls="flex-1">
+                    <input type="time" name="opening_time" class="underlined" value="08:00" required/>
+                </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Closing time" cls="flex-1">
+                    <input type="time" name="closing_time" class="underlined" value="22:00" required/>
+                </x-form.input-wrapper>
+            </div>
+            <button type="submit" class="hidden"></button>
+        </form>
 
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5"

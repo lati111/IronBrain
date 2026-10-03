@@ -1,5 +1,6 @@
 import {getData, postData, toast} from "../../../main";
 import {openModal, init as initModals, closeModal} from "../../../components/modal";
+import {createReorderableList, restoreSidebar, setField, showWhileDragging, submitForm, toggleSidebar} from "./shared";
 
 type ItemType = 'ingredient' | 'equipment';
 
@@ -124,7 +125,8 @@ const generalStorage = new Map<string, Item>();
 let pendingAmountAction: ((amount: number) => Promise<void> | void) | null = null;
 let pendingAmountMax: number | null = null;
 let pendingDeleteUuid: string | null = null;
-let draggedStorage: HTMLElement | null = null;
+/** Makes a rendered storage space reorderable by dragging */
+let registerStorageCard: (card: HTMLElement) => void = () => {};
 
 /** The uuid of the ingredient or equipment currently being edited, or null when the create modal is for a new type */
 let editingIngredientUuid: string | null = null;
@@ -156,12 +158,14 @@ async function init(): Promise<void> {
     initModals();
     setupItemDropTarget(document.getElementById('general-storage') as HTMLElement, GENERAL);
     setupItemDropTarget(document.getElementById('discard-edge') as HTMLElement, DISCARD);
-    setupStorageReordering(document.getElementById('storage-list') as HTMLElement);
-    setupDiscardEdgeVisibility();
-
-    if (localStorage.getItem('dnd-restaurant-sidebar-collapsed') === '1') {
-        document.getElementById('inventory-sidebar')!.classList.add('collapsed');
-    }
+    showWhileDragging(document.getElementById('discard-edge') as HTMLElement, ITEM_MIME);
+    registerStorageCard = createReorderableList(document.getElementById('storage-list') as HTMLElement, {
+        mime: STORAGE_MIME,
+        getSavedOrder: () => inventory.storages.map((storage) => storage.uuid),
+        save: saveStorageOrder,
+        restore: renderStorages,
+    });
+    restoreSidebar();
 
     window.addEventListener('beforeunload', (event) => {
         if (generalStorage.size > 0) {
@@ -328,7 +332,7 @@ function renderStorages(): void {
 
         section.querySelector('[data-action="delete"]')!.addEventListener('click', () => openDeleteStorageModal(storage));
         setupItemDropTarget(section, storage.uuid);
-        setupStorageDragging(section);
+        registerStorageCard(section);
 
         list.appendChild(section);
     }
@@ -356,13 +360,6 @@ function createItemElement(item: Item, from: string | null): HTMLElement {
     return element;
 }
 
-function setField(root: HTMLElement, field: string, value: string): void {
-    const element = root.querySelector(`[data-field="${field}"]`);
-    if (element !== null) {
-        element.textContent = value;
-    }
-}
-
 function setIcon(root: HTMLElement, src: string | null): void {
     const icon = root.querySelector('[data-field="icon"]') as HTMLImageElement | null;
     if (icon === null) return;
@@ -375,12 +372,6 @@ function setIcon(root: HTMLElement, src: string | null): void {
 }
 
 //| Sidebar
-
-function toggleSidebar(): void {
-    const sidebar = document.getElementById('inventory-sidebar')!;
-    sidebar.classList.toggle('collapsed');
-    localStorage.setItem('dnd-restaurant-sidebar-collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
-}
 
 function switchTab(tab: SidebarTab): void {
     activeTab = tab;
@@ -440,20 +431,6 @@ async function adjustOwned(uuid: string, amount: number): Promise<void> {
 //| Drag and drop: items
 
 /** Shows the discard edge zone only while an inventory item is actively being dragged, without displacing layout */
-function setupDiscardEdgeVisibility(): void {
-    const edge = document.getElementById('discard-edge') as HTMLElement;
-
-    document.addEventListener('dragstart', (event) => {
-        if (event.dataTransfer?.types.includes(ITEM_MIME)) {
-            edge.classList.add('visible');
-        }
-    });
-
-    document.addEventListener('dragend', () => {
-        edge.classList.remove('visible');
-    });
-}
-
 function setupItemDropTarget(element: HTMLElement, target: string): void {
     element.addEventListener('dragover', (event) => {
         if (!event.dataTransfer!.types.includes(ITEM_MIME)) return;
@@ -535,75 +512,23 @@ async function transfer(item: Item, amount: number, from: string | null, to: str
     }
 }
 
-//| Drag and drop: storage reordering
+//| Storage reordering
 
-function setupStorageDragging(section: HTMLElement): void {
-    // Drags of the items inside the space bubble up here too, so only handle drags of the space itself
-    section.addEventListener('dragstart', (event) => {
-        if (event.target !== section) return;
+async function saveStorageOrder(order: string[]): Promise<void> {
+    const formData = new FormData();
+    order.forEach((uuid) => formData.append('order[]', uuid));
 
-        draggedStorage = section;
-        event.dataTransfer!.setData(STORAGE_MIME, section.dataset.uuid!);
-        event.dataTransfer!.effectAllowed = 'move';
-        section.classList.add('dragging');
-    });
-
-    section.addEventListener('dragend', (event) => {
-        if (event.target !== section) return;
-
-        section.classList.remove('dragging');
-        if (draggedStorage !== null) {
-            // The drag was cancelled, so restore the saved order
-            draggedStorage = null;
-            renderStorages();
-        }
-    });
-}
-
-function setupStorageReordering(list: HTMLElement): void {
-    list.addEventListener('dragover', (event) => {
-        if (draggedStorage === null || !event.dataTransfer!.types.includes(STORAGE_MIME)) return;
-        event.preventDefault();
-
-        const target = (event.target as Element).closest('.inventory-storage') as HTMLElement | null;
-        if (target === null || target === draggedStorage || target.parentElement !== list) return;
-
-        // The dragged space takes over the slot of the hovered one, shifting it and those in between along. As the
-        // dragged space ends up under the pointer afterwards, this doesn't flip back and forth on the next dragover
-        const siblings = Array.from(list.children);
-        const movingForward = siblings.indexOf(draggedStorage) < siblings.indexOf(target);
-        list.insertBefore(draggedStorage, movingForward ? target.nextSibling : target);
-    });
-
-    list.addEventListener('drop', async (event) => {
-        if (draggedStorage === null) return;
-        event.preventDefault();
-
-        draggedStorage.classList.remove('dragging');
-        draggedStorage = null;
-
-        const order = Array.from(list.querySelectorAll(':scope > .inventory-storage'))
-            .map((section) => (section as HTMLElement).dataset.uuid!);
-
-        if (order.join() === inventory.storages.map((storage) => storage.uuid).join()) {
+    try {
+        const response = await postData(`${apiUrl}/storage/reorder`, formData);
+        if (response?.ok) {
+            setInventory(response.data.inventory);
             return;
         }
+    } catch {
+        // The error has already been shown to the user
+    }
 
-        const formData = new FormData();
-        order.forEach((uuid) => formData.append('order[]', uuid));
-
-        try {
-            const response = await postData(`${apiUrl}/storage/reorder`, formData);
-            if (response?.ok) {
-                setInventory(response.data.inventory);
-                return;
-            }
-        } catch {
-            // The error has already been shown to the user
-        }
-
-        renderStorages();
-    });
+    renderStorages();
 }
 
 //| Storage spaces
@@ -774,29 +699,6 @@ async function createEquipment(): Promise<void> {
         } else {
             openAmountModal(`Add ${name} to general storage`, 1, null, (amount) => addToGeneral('equipment', response.uuid, amount));
         }
-    }
-}
-
-async function submitForm(form: HTMLFormElement, url: string, fileFields: string[] = []): Promise<any | null> {
-    const formData = new FormData(form);
-
-    // Don't send empty file inputs, so optional images stay optional
-    for (const field of fileFields) {
-        const file = formData.get(field);
-        if (file instanceof File && file.size === 0) {
-            formData.delete(field);
-        }
-    }
-
-    try {
-        const response = await postData(url, formData);
-        if (!response?.ok) return null;
-
-        response.announce();
-        return response.data;
-    } catch {
-        // The error has already been shown to the user
-        return null;
     }
 }
 

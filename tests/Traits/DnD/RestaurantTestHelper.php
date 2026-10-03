@@ -4,6 +4,7 @@ namespace Tests\Traits\DnD;
 
 use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Models\Auth\User;
+use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\OwnedEquipment;
@@ -12,9 +13,11 @@ use App\Models\DnD\Restaurant\RecipeByproduct;
 use App\Models\DnD\Restaurant\RecipeIngredient;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\RestaurantUser;
+use App\Models\DnD\Restaurant\Room;
 use App\Models\DnD\Restaurant\Storage;
 use App\Models\DnD\Restaurant\StorageEquipment;
 use App\Models\DnD\Restaurant\StorageIngredient;
+use App\Models\DnD\Restaurant\Table;
 
 trait RestaurantTestHelper
 {
@@ -23,6 +26,9 @@ trait RestaurantTestHelper
         $restaurant = new Restaurant();
         $restaurant->owner_uuid = $owner->uuid;
         $restaurant->name = $name;
+        $restaurant->date = '1492-03-01';
+        $restaurant->opening_time = '08:00';
+        $restaurant->closing_time = '22:00';
         $restaurant->save();
         return $restaurant;
     }
@@ -33,6 +39,37 @@ trait RestaurantTestHelper
         $access->restaurant_uuid = $restaurant->uuid;
         $access->user_uuid = $user->uuid;
         $access->save();
+    }
+
+    protected function createTestRoom(Restaurant $restaurant, int $order = 0, string $name = 'Test Room'): Room
+    {
+        $room = new Room();
+        $room->restaurant_uuid = $restaurant->uuid;
+        $room->name = $name;
+        $room->order = $order;
+        $room->save();
+        return $room;
+    }
+
+    protected function createTestTable(Restaurant $restaurant, ?Room $room = null, int $capacity = 4, string $name = 'Test Table'): Table
+    {
+        $table = new Table();
+        $table->restaurant_uuid = $restaurant->uuid;
+        $table->room_uuid = $room?->uuid;
+        $table->name = $name;
+        $table->capacity = $capacity;
+        $table->save();
+        return $table;
+    }
+
+    protected function createTestCustomer(Restaurant $restaurant, ?Table $table = null, string $name = 'Test Customer'): Customer
+    {
+        $customer = new Customer();
+        $customer->restaurant_uuid = $restaurant->uuid;
+        $customer->table_uuid = $table?->uuid;
+        $customer->name = $name;
+        $customer->save();
+        return $customer;
     }
 
     protected function createTestStorage(Restaurant $restaurant, int $capacity = 100, int $order = 0, string $name = 'Test Storage'): Storage

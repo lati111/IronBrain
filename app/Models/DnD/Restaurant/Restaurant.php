@@ -3,6 +3,7 @@
 namespace App\Models\DnD\Restaurant;
 
 use App\Models\Auth\User;
+use Carbon\Carbon;
 use App\Models\DnD\Restaurant\Interfaces\DndRestaurantModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,6 +13,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @inheritdoc
  * @property string owner_uuid The uuid of the user that owns this restaurant
  * @property string name The display name of the restaurant
+ * @property Carbon date The current in-game date of the restaurant
+ * @property string opening_time The time the restaurant opens, as H:i:s
+ * @property string closing_time The time the restaurant closes, as H:i:s
+ * @property string|null current_time The current in-game time during service as H:i:s, or null when not in service
  * @property integer bits How many bits the restaurant has
  * @property integer copper How much copper the restaurant has
  * @property integer silver How much silver the restaurant has
@@ -26,6 +31,7 @@ class Restaurant extends DndRestaurantModel
 
     /** @inheritdoc */
     protected $casts = [
+        'date'   => 'date:Y-m-d',
         'bits'   => 'integer',
         'copper' => 'integer',
         'silver' => 'integer',
@@ -44,6 +50,35 @@ class Restaurant extends DndRestaurantModel
         }
 
         return $this->Access()->where('user_uuid', $user->uuid)->exists();
+    }
+
+    /**
+     * Gets the details of the restaurant as shown and edited on its manage page. Times are given as H:i
+     * @return array The details
+     */
+    public function getDetails(): array
+    {
+        return [
+            'uuid' => $this->uuid,
+            'name' => $this->name,
+            'date' => $this->date->format('Y-m-d'),
+            'opening_time' => substr($this->opening_time, 0, 5),
+            'closing_time' => substr($this->closing_time, 0, 5),
+            'current_time' => $this->current_time !== null ? substr($this->current_time, 0, 5) : null,
+            'gold' => $this->gold,
+            'silver' => $this->silver,
+            'copper' => $this->copper,
+            'bits' => $this->bits,
+        ];
+    }
+
+    /**
+     * Starts a service, which begins at the restaurant's opening time
+     */
+    public function startService(): void
+    {
+        $this->current_time = $this->opening_time;
+        $this->save();
     }
 
     //| Relationships
@@ -123,6 +158,30 @@ class Restaurant extends DndRestaurantModel
      */
     public function Storages(): HasMany {
         return $this->hasMany(Storage::class, 'restaurant_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the restaurant's rooms
+     * @return HasMany
+     */
+    public function Rooms(): HasMany {
+        return $this->hasMany(Room::class, 'restaurant_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the restaurant's tables
+     * @return HasMany
+     */
+    public function Tables(): HasMany {
+        return $this->hasMany(Table::class, 'restaurant_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the restaurant's customers
+     * @return HasMany
+     */
+    public function Customers(): HasMany {
+        return $this->hasMany(Customer::class, 'restaurant_uuid', 'uuid');
     }
 
     //| Getters

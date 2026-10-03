@@ -111,7 +111,13 @@ Route::prefix('/dnd/restaurant')
         Route::get('/', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showOverview'])
             ->name('dnd.restaurant.overview');
 
-        Route::get('/{restaurant_uuid}/inventory', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showInventory'])
-            ->name('dnd.restaurant.inventory');
+        Route::get('/{restaurant_uuid}/management', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManagement'])
+            ->name('dnd.restaurant.management');
+
+        Route::get('/{restaurant_uuid}/manage', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManage'])
+            ->name('dnd.restaurant.manage');
+
+        Route::get('/{restaurant_uuid}/service', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showService'])
+            ->name('dnd.restaurant.service');
     });
 

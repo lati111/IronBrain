@@ -17,6 +17,11 @@ return new class extends Migration
             $table->foreignUuid('owner_uuid');
             $table->string('name', 64);
 
+            $table->date('date');
+            $table->time('opening_time');
+            $table->time('closing_time');
+            $table->time('current_time')->nullable();
+
             $table->integer('bits')->default(0);
             $table->integer('copper')->default(0);
             $table->integer('silver')->default(0);
@@ -189,6 +194,50 @@ return new class extends Migration
             $table->foreign('storage_uuid')->references('uuid')->on('dnd__restaurant_storage')->onDelete('cascade')->onUpdate('no action');
             $table->foreign('equipment_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
         });
+
+        //| Floor
+        Schema::create('dnd__restaurant_room', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+
+            $table->string('name', 64);
+            $table->text('background_image')->nullable();
+            $table->integer('order')->default(0);
+
+            $table->timestamps();
+
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+        });
+
+        Schema::create('dnd__restaurant_table', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+            // Null while the table has not been placed in a room
+            $table->foreignUuid('room_uuid')->nullable();
+
+            $table->string('name', 64);
+            $table->integer('capacity')->default(1);
+
+            $table->timestamps();
+
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('room_uuid')->references('uuid')->on('dnd__restaurant_room')->nullOnDelete()->onUpdate('no action');
+        });
+
+        Schema::create('dnd__restaurant_customer', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+            // Null while the customer is not seated
+            $table->foreignUuid('table_uuid')->nullable();
+
+            $table->string('name', 64);
+            $table->text('description')->nullable();
+
+            $table->timestamps();
+
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('table_uuid')->references('uuid')->on('dnd__restaurant_table')->nullOnDelete()->onUpdate('no action');
+        });
     }
 
     /**
@@ -196,6 +245,9 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('dnd__restaurant_customer');
+        Schema::dropIfExists('dnd__restaurant_table');
+        Schema::dropIfExists('dnd__restaurant_room');
         Schema::dropIfExists('dnd__restaurant_storage_equipment');
         Schema::dropIfExists('dnd__restaurant_storage_ingredient');
         Schema::dropIfExists('dnd__restaurant_storage');

@@ -21,6 +21,9 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $restaurant = new Restaurant();
         $restaurant->owner_uuid = $owner->uuid;
         $restaurant->name = 'The Prancing Pony';
+        $restaurant->date = '1492-03-01';
+        $restaurant->opening_time = '08:00';
+        $restaurant->closing_time = '22:00';
         $restaurant->save();
 
         return $restaurant;

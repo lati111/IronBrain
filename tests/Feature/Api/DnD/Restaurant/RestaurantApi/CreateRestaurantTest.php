@@ -25,7 +25,10 @@ class CreateRestaurantTest extends AbstractApiFeatureTester implements PostOpera
     function getPostParameters(array $overwrites = []): array
     {
         return array_merge([
-            'name' => 'The Prancing Pony',
+            'name'         => 'The Prancing Pony',
+            'date'         => '1492-03-01',
+            'opening_time' => '08:00',
+            'closing_time' => '22:00',
         ], $overwrites);
     }
 
@@ -36,6 +39,23 @@ class CreateRestaurantTest extends AbstractApiFeatureTester implements PostOpera
         $this->assertRequiredValidation('name');
         $this->assertStringValidation('name');
         $this->assertMaxValidation('string', 'name', 64);
+    }
+
+    public function test_date_and_times_are_required(): void
+    {
+        $this->assertRequiredValidation('date');
+        $this->assertRequiredValidation('opening_time', 'opening time');
+        $this->assertRequiredValidation('closing_time', 'closing time');
+    }
+
+    public function test_times_must_be_valid(): void
+    {
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters(['opening_time' => '25:00', 'date' => 'tomorrow']));
+
+        $response->assertBadRequest();
+        $this->assertArrayHasKey('opening_time', $response->json('errors'));
+        $this->assertArrayHasKey('date', $response->json('errors'));
     }
 
     //| restaurant is saved test
@@ -53,6 +73,10 @@ class CreateRestaurantTest extends AbstractApiFeatureTester implements PostOpera
         $this->assertEquals('The Prancing Pony', $restaurant->name);
         $this->assertEquals($this->getAdminUser()->uuid, $restaurant->owner_uuid);
         $this->assertEquals(0, $restaurant->fresh()->gold);
+        $this->assertEquals('1492-03-01', $restaurant->date->format('Y-m-d'));
+        $this->assertEquals('08:00:00', $restaurant->fresh()->opening_time);
+        $this->assertEquals('22:00:00', $restaurant->fresh()->closing_time);
+        $this->assertNull($restaurant->fresh()->current_time);
     }
 
     //| permission test

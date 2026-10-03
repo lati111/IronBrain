@@ -11,21 +11,23 @@ async function init(): Promise<void> {
     initModals();
 }
 
-function getNameInput(): HTMLInputElement {
-    return document.getElementById('restaurant-create-name') as HTMLInputElement;
+function getCreateForm(): HTMLFormElement {
+    return document.getElementById('restaurant-create-form') as HTMLFormElement;
 }
 
 function openCreateRestaurantModal(): void {
-    const nameInput = getNameInput();
-    nameInput.value = '';
+    getCreateForm().reset();
 
     openModal('restaurant-create-modal');
-    nameInput.focus();
+    (document.getElementById('restaurant-create-name') as HTMLInputElement).focus();
 }
 
 async function createRestaurant(): Promise<void> {
-    const formData = new FormData();
-    formData.append('name', getNameInput().value.trim());
+    const form = getCreateForm();
+    if (!form.reportValidity()) return;
+
+    const formData = new FormData(form);
+    formData.set('name', String(formData.get('name')).trim());
 
     const response = await postData('/api/dnd/restaurant/create', formData);
     if (!response) return;

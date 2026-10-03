@@ -53,6 +53,17 @@
     cursor: pointer;
 }
 
+.inventory-list-row[draggable="true"] {
+    cursor: grab;
+}
+
+/*| Manage restaurant |*/
+
+.restaurant-details {
+    background-color: white;
+    padding: 1rem;
+}
+
 /*| Recipe modal |*/
 
 .recipe-components {

@@ -5,8 +5,8 @@
 
 @section('header')
     @vite([
-        'resources/css/modules/dnd/restaurant/inventory.css',
-        'resources/ts/modules/dnd/restaurant/inventory.ts',
+        'resources/css/modules/dnd/restaurant/restaurant.css',
+        'resources/ts/modules/dnd/restaurant/management.ts',
     ])
 @stop
 
@@ -17,9 +17,16 @@
 
         {{--| Top bar |--}}
         <div class="flex justify-between items-center mb-4">
-            <a href="{{route('dnd.restaurant.overview')}}" class="interactive w-64">&larr; Restaurants</a>
-            <h1 class="title">{{$restaurant->name}} &mdash; Inventory</h1>
-            <button class="interactive w-64 text-right" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
+            {{--| Both sides share a width, so the title stays centred |--}}
+            <div class="w-72 flex gap-4 whitespace-nowrap">
+                <a href="{{route('dnd.restaurant.overview')}}" class="interactive">&larr; Restaurants</a>
+                <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
+            </div>
+            <h1 class="title">{{$restaurant->name}} &mdash; Management</h1>
+            <div class="w-72 flex justify-end gap-4 whitespace-nowrap">
+                <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
+                <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-start">Start service</a>
+            </div>
         </div>
 
         <div class="flex gap-4 items-start">
