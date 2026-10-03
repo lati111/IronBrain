@@ -29,6 +29,40 @@ class DndRestaurantModelTest extends AbstractUnitTester
         return $restaurant;
     }
 
+    public function test_money_is_formatted_as_coins(): void
+    {
+        $this->assertEquals('1gp 2sp 3cp 4b', Restaurant::formatMoney(1234));
+        $this->assertEquals('2cp 5b', Restaurant::formatMoney(25));
+        $this->assertEquals('5cp', Restaurant::formatMoney(50));
+        $this->assertEquals('12gp 3b', Restaurant::formatMoney(12003));
+        $this->assertEquals('1cp 2.5b', Restaurant::formatMoney(12.5));
+        $this->assertEquals('0b', Restaurant::formatMoney(0));
+    }
+
+    public function test_money_is_added_per_coin(): void
+    {
+        $restaurant = new Restaurant();
+        $restaurant->gold = 2;
+        $restaurant->silver = 15;
+        $restaurant->copper = 0;
+        $restaurant->bits = 9;
+
+        $restaurant->addMoney(12034.4);
+
+        $this->assertEquals([14, 15, 3, 13], [$restaurant->gold, $restaurant->silver, $restaurant->copper, $restaurant->bits]);
+    }
+
+    public function test_total_bits_combines_all_coins(): void
+    {
+        $restaurant = new Restaurant();
+        $restaurant->gold = 1;
+        $restaurant->silver = 12;
+        $restaurant->copper = 3;
+        $restaurant->bits = 4;
+
+        $this->assertEquals(2234, $restaurant->getTotalBits());
+    }
+
     public function testRestaurantAccess(): void
     {
         $owner = $this->getAdminUser();
@@ -107,11 +141,11 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $recipe->Equipment()->attach($pot->uuid, ['amount' => 1]);
         $recipe->Byproducts()->attach($ingredient->uuid, ['amount' => 2]);
 
-        $this->assertSame(3, $recipe->Ingredients()->first()->pivot->amount);
+        $this->assertSame(3.0, $recipe->Ingredients()->first()->pivot->amount);
         $this->assertNotNull(RecipeIngredient::where('recipe_uuid', $recipe->uuid)->first()->uuid);
         $this->assertSame($recipe->uuid, $ingredient->Recipes()->first()->uuid);
         $this->assertSame($pot->uuid, $recipe->Equipment()->first()->uuid);
-        $this->assertSame(2, $recipe->Byproducts()->first()->pivot->amount);
+        $this->assertSame(2.0, $recipe->Byproducts()->first()->pivot->amount);
         $this->assertSame(1, $recipe->fresh()->portions);
         $this->assertSame($stove->uuid, $pot->getParent()->uuid);
         $this->assertSame(1, $stove->Children()->count());
@@ -150,7 +184,7 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $storage->Ingredients()->attach($cheese->uuid, ['amount' => 3]);
 
         $this->assertSame(35.0, $storage->getUsedCapacity());
-        $this->assertSame(10, $potato->Storages()->first()->pivot->amount);
+        $this->assertSame(10.0, $potato->Storages()->first()->pivot->amount);
         $this->assertNotNull(StorageIngredient::where('storage_uuid', $storage->uuid)->first()->uuid);
         $this->assertNull($storage->fresh()->background_image);
         $this->assertSame(1.25, $storage->fresh()->expiration_multiplier);

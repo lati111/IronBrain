@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage as FileStorage;
 use Illuminate\Support\Facades\Validator;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 
 class FloorApi extends AbstractApi
@@ -221,8 +222,13 @@ class FloorApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Table not found');
         }
 
+        $capacity = $request->has('capacity') ? (int) $request->get('capacity') : $table->capacity;
+        if ($capacity < $this->floorService->getHighestOccupiedSeat($table)) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, 'A customer is seated on a seat this would remove');
+        }
+
         $table->name     = $request->get('name', $table->name);
-        $table->capacity = $request->has('capacity') ? (int) $request->get('capacity') : $table->capacity;
+        $table->capacity = $capacity;
         $table->save();
 
         return $this->respond(Response::HTTP_OK, 'Table updated', [
@@ -288,7 +294,11 @@ class FloorApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Table not found');
         }
 
-        $table->delete();
+        // The foreign key only clears the table, so the seat is cleared along with it here
+        DB::transaction(function () use ($table) {
+            Customer::where('table_uuid', $table->uuid)->update(['table_uuid' => null, 'seat' => null]);
+            $table->delete();
+        });
 
         return $this->respond(Response::HTTP_OK, 'Table deleted', [
             'floor' => $this->floorService->getFloor($restaurant),
@@ -364,6 +374,52 @@ class FloorApi extends AbstractApi
         $customer->save();
 
         return $this->respond(Response::HTTP_OK, 'Customer updated', [
+            'floor' => $this->floorService->getFloor($restaurant),
+        ]);
+    }
+
+    /**
+     * Seats a customer on a seat of a table, or unseats them when no table is given. Unseating does not delete them
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $customer_uuid The uuid of the customer
+     * @return JsonResponse The updated floor state in JSON format
+     */
+    public function seatCustomer(Request $request, string $restaurant_uuid, string $customer_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'table_uuid' => 'nullable|string|max:255',
+            'seat'       => 'required_with:table_uuid|nullable|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $customer = $this->getCustomer($restaurant, $customer_uuid);
+        if ($customer === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Customer not found');
+        }
+
+        $tableUuid = $request->get('table_uuid');
+        $table = $tableUuid !== null ? $this->getTable($restaurant, $tableUuid) : null;
+        if ($tableUuid !== null && $table === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Table not found');
+        }
+
+        try {
+            $seat = $request->get('seat');
+            $this->floorService->seatCustomer($customer, $table, $seat !== null ? (int) $seat : null);
+        } catch (InvalidArgumentException $exception) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
+        }
+
+        return $this->respond(Response::HTTP_OK, $table !== null ? 'Customer seated' : 'Customer unseated', [
             'floor' => $this->floorService->getFloor($restaurant),
         ]);
     }

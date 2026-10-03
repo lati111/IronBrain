@@ -53,9 +53,10 @@ class InventoryService
             $used = 0;
 
             foreach ($storage->Ingredients as $ingredient) {
-                $amount = (int) $ingredient->pivot->amount;
+                // Ingredients can be stored in fractions, such as half a cabbage
+                $amount = (float) $ingredient->pivot->amount;
                 $used += $amount * $ingredient->size;
-                $storedIngredients[$ingredient->uuid] = ($storedIngredients[$ingredient->uuid] ?? 0) + $amount;
+                $storedIngredients[$ingredient->uuid] = round(($storedIngredients[$ingredient->uuid] ?? 0) + $amount, 2);
                 $items[] = ['type' => self::TYPE_INGREDIENT, 'uuid' => $ingredient->uuid, 'amount' => $amount];
             }
 
@@ -118,7 +119,12 @@ class InventoryService
                     ->map(fn (RecipeIngredient $link) => ['uuid' => $link->ingredient_uuid, 'amount' => $link->amount])
                     ->values()->all(),
                 'equipment' => $recipe->RecipeEquipment
-                    ->map(fn (RecipeEquipment $link) => ['uuid' => $link->equipment_uuid, 'amount' => $link->amount])
+                    ->map(fn (RecipeEquipment $link) => [
+                        'uuid' => $link->equipment_uuid,
+                        'amount' => $link->amount,
+                        'stage' => $link->stage->value,
+                        'container' => $link->container,
+                    ])
                     ->values()->all(),
                 'byproducts' => $recipe->RecipeByproducts
                     ->map(fn (RecipeByproduct $link) => ['uuid' => $link->ingredient_uuid, 'amount' => $link->amount])
@@ -131,26 +137,33 @@ class InventoryService
      * Moves an amount of an ingredient or equipment between storage spaces. A null storage stands for the
      * unsaved general storage, meaning the item is either added to or taken out of the saved inventory
      * @param Ingredient|Equipment $item The item to move
-     * @param int $amount How much of the item to move
+     * @param float $amount How much of the item to move. Ingredients can be moved in fractions, equipment only whole
      * @param Storage|null $from The storage to take the item from, or null when it comes from general storage
      * @param Storage|null $to The storage to put the item in, or null when it leaves the saved inventory
-     * @throws InvalidArgumentException Thrown when the source holds too little or the target has too little capacity
+     * @throws InvalidArgumentException Thrown when equipment is split, the source holds too little or the target has too little capacity
      */
-    public function transfer(Ingredient|Equipment $item, int $amount, ?Storage $from, ?Storage $to): void
+    public function transfer(Ingredient|Equipment $item, float $amount, ?Storage $from, ?Storage $to): void
     {
         if ($item instanceof Equipment && $item->requires_storage === false) {
             throw new InvalidArgumentException('This equipment does not require storage');
         }
 
+        if ($item instanceof Equipment && floor($amount) !== $amount) {
+            throw new InvalidArgumentException('Equipment can only be moved in whole pieces');
+        }
+
+        // Amounts are stored with two decimals, so compare and store them at that precision to avoid float drift
+        $amount = round($amount, 2);
+
         DB::transaction(function () use ($item, $amount, $from, $to) {
             if ($from !== null) {
                 $link = $this->getLinkQuery($item, $from)->lockForUpdate()->first();
-                if ($link === null || $link->amount < $amount) {
+                if ($link === null || round($link->amount - $amount, 2) < 0) {
                     throw new InvalidArgumentException('Not enough stored to move');
                 }
 
-                $link->amount -= $amount;
-                $link->amount === 0 ? $link->delete() : $link->save();
+                $link->amount = round($link->amount - $amount, 2);
+                $link->amount == 0 ? $link->delete() : $link->save();
             }
 
             if ($to !== null) {
@@ -168,7 +181,7 @@ class InventoryService
                     $link->amount = 0;
                 }
 
-                $link->amount += $amount;
+                $link->amount = round($link->amount + $amount, 2);
                 $link->save();
             }
         });

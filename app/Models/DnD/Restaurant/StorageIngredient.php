@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\Concerns\AsPivot;
  * @inheritdoc
  * @property string storage_uuid The uuid of the storage space
  * @property string ingredient_uuid The uuid of the ingredient
- * @property integer amount How much of the ingredient is stored
+ * @property float amount How much of the ingredient is stored
  */
 class StorageIngredient extends DndRestaurantModel
 {
@@ -26,7 +26,7 @@ class StorageIngredient extends DndRestaurantModel
 
     /** @inheritdoc */
     protected $casts = [
-        'amount' => 'integer',
+        'amount' => 'float',
     ];
 
     //| Relationships

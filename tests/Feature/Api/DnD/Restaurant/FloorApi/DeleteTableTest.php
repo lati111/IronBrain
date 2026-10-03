@@ -49,6 +49,7 @@ class DeleteTableTest extends AbstractApiFeatureTester
         $this->assertFalse(Table::where('uuid', $this->table->uuid)->exists());
         $this->assertNotNull($customer->fresh());
         $this->assertNull($customer->fresh()->table_uuid);
+        $this->assertNull($customer->fresh()->seat);
     }
 
     public function test_table_of_another_restaurant_is_not_found(): void

@@ -25,7 +25,11 @@
             <h1 class="title">{{$restaurant->name}} &mdash; Management</h1>
             <div class="w-72 flex justify-end gap-4 whitespace-nowrap">
                 <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
-                <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-start">Start service</a>
+                @if($restaurant->isInService())
+                    <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-continue">Continue service</a>
+                @else
+                    <button class="interactive font-semibold" onclick="openModal('service-start-modal')" dusk="service-start">Start service</button>
+                @endif
             </div>
         </div>
 
@@ -58,20 +62,19 @@
                 <section id="general-storage" class="inventory-storage inventory-general" data-drop-target="general">
                     <div class="inventory-storage-header">
                         <span class="font-semibold">General Storage</span>
-                        <small class="text-gray-500">Not saved &mdash; move items into a storage space</small>
                     </div>
                     <div class="inventory-storage-items" data-items></div>
                 </section>
 
                 {{--| Storage spaces |--}}
                 <div id="storage-list" class="inventory-storage-list"></div>
-                <p id="storage-empty" class="hidden text-center text-gray-400 py-6">This restaurant has no storage spaces yet</p>
+                <p id="storage-empty" class="hidden text-center text-gray-400 py-6">No storage spaces yet</p>
             </div>
         </div>
     </div>
 
     {{--| Drop zone for removing items, pinned to the right edge of the viewport while an item is being dragged |--}}
-    <div id="discard-edge" data-drop-target="discard" title="Drop here to remove">
+    <div id="discard-edge" data-drop-target="discard">
         <img src="{{asset('img/icons/x.svg')}}" alt="" class="w-6 h-6">
         <span class="text-sm">Remove</span>
     </div>
@@ -99,6 +102,20 @@
         </li>
     </template>
 
+    {{--| When a recipe's equipment is used, shown in its row in the recipe modal |--}}
+    <template id="equipment-usage-template">
+        <span class="flex items-center gap-2">
+            <select data-field="stage" class="underlined text-xs">
+                @foreach(\App\Enum\DnD\Restaurant\EquipmentStage::cases() as $stage)
+                    <option value="{{$stage->value}}" data-container="{{$stage->allowsContainer() ? 1 : 0}}">{{$stage->label()}}</option>
+                @endforeach
+            </select>
+            <label class="flex items-center gap-1 text-xs">
+                <input type="checkbox" data-field="container" class="w-3 h-3"> Container
+            </label>
+        </span>
+    </template>
+
     <template id="item-template">
         <div class="inventory-item" draggable="true">
             <img data-field="icon" alt="" class="inventory-icon" draggable="false">
@@ -111,7 +128,7 @@
         {{--| The whole space can be dragged to reorder it, while drags starting on an item inside it move that item |--}}
         <section class="inventory-storage" data-drop-target="storage" draggable="true">
             <div class="inventory-storage-background"></div>
-            <div class="inventory-storage-header" title="Drag to reorder">
+            <div class="inventory-storage-header">
                 <span class="inventory-storage-handle">&#8942;&#8942;</span>
                 <span data-field="name" class="font-semibold flex-1 truncate"></span>
                 <span data-field="occupancy" class="text-sm"></span>
@@ -204,7 +221,7 @@
             <x-form.input-wrapper label_text="Storage">
                 {{--| A hidden field before the checkbox ensures an explicit 0 is sent when unchecked, instead of the field being left out |--}}
                 <input type="hidden" name="requires_storage" value="0"/>
-                <x-form.input.checkbox name="requires_storage" value="1" checked right_label="Must be placed in a storage space to be stored"/>
+                <x-form.input.checkbox name="requires_storage" value="1" checked right_label="Requires storage"/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Variant of (optional)">
                 <select id="equipment-parent-select" name="parent_uuid" class="underlined">
@@ -243,7 +260,7 @@
             <div class="recipe-panel flex flex-col gap-3" data-recipe-panel="details">
                 <div class="flex gap-3">
                     <x-form.input-wrapper label_text="Price" cls="flex-1">
-                        <input type="number" name="price" class="underlined" min="0" step="0.01" value="0" required/>
+                        <input type="number" name="price" class="underlined" min="0" step="0.01" value="0" data-money required/>
                     </x-form.input-wrapper>
                     <x-form.input-wrapper label_text="Portions" cls="flex-1">
                         <input type="number" name="portions" class="underlined" min="1" value="1" required/>
@@ -309,12 +326,27 @@
         </x-slot:buttons>
     </x-modal>
 
+    {{--| Start service modal |--}}
+    <x-modal id="service-start-modal">
+        <h3 class="title py-1">Start service</h3>
+        <form id="service-start-form" method="POST" class="flex flex-col gap-3 w-full"
+              action="{{route('dnd.restaurant.service.start', ['restaurant_uuid' => $restaurant->uuid])}}">
+            @csrf
+            <x-form.input-wrapper label_text="Starting time">
+                <input type="time" name="time" class="underlined" value="{{substr($restaurant->opening_time, 0, 5)}}" required/>
+            </x-form.input-wrapper>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('service-start-modal')">Cancel</button>
+            <button type="submit" form="service-start-form" class="interactive px-5 py-2.5" dusk="service-start-confirm">Start</button>
+        </x-slot:buttons>
+    </x-modal>
+
     {{--| Delete storage modal |--}}
     <x-modal id="storage-delete-modal">
         <h3 class="title py-1">Delete storage space</h3>
         <p class="text-center">
-            Are you sure you want to delete <span id="storage-delete-name" class="font-semibold"></span>?<br>
-            Its contents will be moved to the general storage.
+            Are you sure you want to delete <span id="storage-delete-name" class="font-semibold"></span>?
         </p>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('storage-delete-modal')">Cancel</button>
@@ -326,8 +358,7 @@
     <x-modal id="type-delete-modal">
         <h3 id="type-delete-title" class="title py-1"></h3>
         <p class="text-center">
-            Are you sure you want to delete <span id="type-delete-name" class="font-semibold"></span>?<br>
-            <span id="type-delete-warning"></span>
+            Are you sure you want to delete <span id="type-delete-name" class="font-semibold"></span>?
         </p>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="cancelDeleteType()">Cancel</button>

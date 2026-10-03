@@ -2,6 +2,7 @@
 
 namespace App\Models\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Models\DnD\Restaurant\Interfaces\DndRestaurantModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Concerns\AsPivot;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\Concerns\AsPivot;
  * @property string recipe_uuid The uuid of the recipe
  * @property string equipment_uuid The uuid of the equipment
  * @property integer amount How much of the equipment the recipe requires
+ * @property EquipmentStage stage When during making the recipe the equipment is used
+ * @property bool container Whether the equipment holds the meal, staying in use for longer
  */
 class RecipeEquipment extends DndRestaurantModel
 {
@@ -26,7 +29,9 @@ class RecipeEquipment extends DndRestaurantModel
 
     /** @inheritdoc */
     protected $casts = [
-        'amount' => 'integer',
+        'amount'    => 'integer',
+        'stage'     => EquipmentStage::class,
+        'container' => 'boolean',
     ];
 
     //| Relationships

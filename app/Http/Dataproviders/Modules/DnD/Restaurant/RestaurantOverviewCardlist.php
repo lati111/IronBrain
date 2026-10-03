@@ -27,7 +27,8 @@ class RestaurantOverviewCardlist extends AbstractCardlist
             ->get()
             ->map(function ($restaurant) use ($user) {
                 $restaurant['is_owner'] = $restaurant->owner_uuid === $user->uuid ? 1 : 0;
-                $restaurant['url'] = route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid]);
+                $restaurant['money'] = Restaurant::formatMoney($restaurant->getTotalBits());
+                $restaurant['url'] =route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid]);
                 return $restaurant;
             });
 

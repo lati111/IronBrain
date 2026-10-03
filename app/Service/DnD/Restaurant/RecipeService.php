@@ -2,6 +2,7 @@
 
 namespace App\Service\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Recipe;
@@ -46,42 +47,56 @@ class RecipeService
     }
 
     /**
-     * Turns a list of components into amounts keyed by uuid, checking that every component belongs to the restaurant
+     * Turns a list of components into the attributes to save for each, keyed by uuid, checking that every component
+     * belongs to the restaurant. Equipment also gets when it is used and whether it is a container
      * @param Restaurant $restaurant The restaurant the components must belong to
      * @param string $kind The component kind
-     * @param array $entries The components, each with a uuid and an amount
-     * @return array<string, int>|null The amounts keyed by uuid, or null when a component does not belong to the restaurant
+     * @param array $entries The components, each with a uuid and an amount, and for equipment a stage and container
+     * @return array<string, array>|null The attributes keyed by uuid, or null when a component does not belong to the restaurant
      */
     public function resolveComponents(Restaurant $restaurant, string $kind, array $entries): ?array
     {
-        $amounts = [];
+        $model = $this->getComponentModel($kind);
+        $components = [];
         foreach ($entries as $entry) {
-            $amounts[$entry['uuid']] = (int) $entry['amount'];
+            if ($model === Equipment::class) {
+                // Equipment comes in whole pieces. Equipment used for serving can't be a container
+                $stage = EquipmentStage::tryFrom($entry['stage'] ?? '') ?? EquipmentStage::PREP;
+                $components[$entry['uuid']] = [
+                    'amount' => (int) $entry['amount'],
+                    'stage' => $stage,
+                    'container' => $stage->allowsContainer() && filter_var($entry['container'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                ];
+            } else {
+                // Ingredient amounts can be fractional and are stored with two decimals
+                $components[$entry['uuid']] = ['amount' => round((float) $entry['amount'], 2)];
+            }
         }
 
-        $model = $this->getComponentModel($kind);
-        $found = $model::where('restaurant_uuid', $restaurant->uuid)->whereIn('uuid', array_keys($amounts))->count();
-        return $found === count($amounts) ? $amounts : null;
+        $found = $model::where('restaurant_uuid', $restaurant->uuid)->whereIn('uuid', array_keys($components))->count();
+        return $found === count($components) ? $components : null;
     }
 
     /**
      * Replaces the components of a kind of a recipe, removing those that are no longer listed
      * @param Recipe $recipe The recipe
      * @param string $kind The component kind
-     * @param array<string, int> $amounts The component amounts keyed by component uuid
+     * @param array<string, array> $components The attributes to save for each component, keyed by component uuid
      */
-    public function syncComponents(Recipe $recipe, string $kind, array $amounts): void
+    public function syncComponents(Recipe $recipe, string $kind, array $components): void
     {
         [$link, $key] = self::COMPONENTS[$kind];
 
-        $link::where('recipe_uuid', $recipe->uuid)->whereNotIn($key, array_keys($amounts))->delete();
+        $link::where('recipe_uuid', $recipe->uuid)->whereNotIn($key, array_keys($components))->delete();
         $existing = $link::where('recipe_uuid', $recipe->uuid)->get()->keyBy($key);
 
-        foreach ($amounts as $uuid => $amount) {
+        foreach ($components as $uuid => $attributes) {
             $entry = $existing->get($uuid) ?? new $link();
             $entry->recipe_uuid = $recipe->uuid;
             $entry->{$key} = $uuid;
-            $entry->amount = $amount;
+            foreach ($attributes as $attribute => $value) {
+                $entry->{$attribute} = $value;
+            }
             $entry->save();
         }
     }

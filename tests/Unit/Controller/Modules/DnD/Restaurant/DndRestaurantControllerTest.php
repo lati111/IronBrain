@@ -115,7 +115,7 @@ class DndRestaurantControllerTest extends AbstractControllerUnitTester
     }
 
     //| show service test
-    public function testServiceShowSetsCurrentTimeToOpening(): void
+    public function testServiceShowKeepsTheCurrentTime(): void
     {
         $restaurant = $this->createTestRestaurant($this->getAdminUser());
         $restaurant->current_time = '15:30';
@@ -126,16 +126,71 @@ class DndRestaurantControllerTest extends AbstractControllerUnitTester
             ->get(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
         $this->assertView($response, 'modules.dnd.restaurant.service');
 
-        $this->assertEquals('08:00:00', $restaurant->fresh()->current_time);
+        $this->assertEquals('15:30:00', $restaurant->fresh()->current_time);
     }
 
-    public function testServiceShowWithoutAccess(): void
+    public function testServiceShowWithoutServiceGoesToManagement(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getAdminUser());
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
+        $response->assertRedirect(route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid]));
+    }
+
+    public function testServiceStartDefaultsToOpening(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getAdminUser());
+        $restaurant->shift_total = 42.5;
+        $restaurant->save();
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->post(route('dnd.restaurant.service.start', ['restaurant_uuid' => $restaurant->uuid]));
+        $response->assertRedirect(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
+
+        $this->assertEquals('08:00:00', $restaurant->fresh()->current_time);
+        $this->assertEquals(0.0, $restaurant->fresh()->shift_total);
+        $this->assertEquals('08:00', $restaurant->fresh()->getCurrentService()->started_at->format('H:i'));
+    }
+
+    public function testServiceStartAtAGivenTime(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getAdminUser());
+
+        $this
+            ->actingAs($this->getAdminUser())
+            ->post(route('dnd.restaurant.service.start', ['restaurant_uuid' => $restaurant->uuid]), ['time' => '10:15'])
+            ->assertRedirect(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
+
+        $this->assertEquals('10:15:00', $restaurant->fresh()->current_time);
+        $this->assertEquals('10:15', $restaurant->fresh()->getCurrentService()->started_at->format('H:i'));
+    }
+
+    public function testServiceStartPicksUpAnOngoingService(): void
+    {
+        $restaurant = $this->createTestRestaurant($this->getAdminUser());
+        $restaurant->current_time = '15:30';
+        $restaurant->shift_total = 42.5;
+        $restaurant->save();
+
+        $this
+            ->actingAs($this->getAdminUser())
+            ->post(route('dnd.restaurant.service.start', ['restaurant_uuid' => $restaurant->uuid]), ['time' => '08:00'])
+            ->assertRedirect(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
+
+        $this->assertEquals('15:30:00', $restaurant->fresh()->current_time);
+        $this->assertEquals(42.5, $restaurant->fresh()->shift_total);
+    }
+
+    public function testServiceStartWithoutAccess(): void
     {
         $restaurant = $this->createTestRestaurant($this->getTestUser());
 
         $response = $this
             ->actingAs($this->getAdminUser())
-            ->get(route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid]));
+            ->post(route('dnd.restaurant.service.start', ['restaurant_uuid' => $restaurant->uuid]));
         $response->assertNotFound();
         $this->assertNull($restaurant->fresh()->current_time);
     }

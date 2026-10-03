@@ -3,13 +3,16 @@
 namespace Tests\Traits\DnD;
 
 use App\Enum\DnD\Restaurant\EquipmentCategory;
+use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
+use App\Models\DnD\Restaurant\Meal;
 use App\Models\DnD\Restaurant\OwnedEquipment;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\RecipeByproduct;
+use App\Models\DnD\Restaurant\RecipeEquipment;
 use App\Models\DnD\Restaurant\RecipeIngredient;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\RestaurantUser;
@@ -62,11 +65,12 @@ trait RestaurantTestHelper
         return $table;
     }
 
-    protected function createTestCustomer(Restaurant $restaurant, ?Table $table = null, string $name = 'Test Customer'): Customer
+    protected function createTestCustomer(Restaurant $restaurant, ?Table $table = null, string $name = 'Test Customer', int $seat = 1): Customer
     {
         $customer = new Customer();
         $customer->restaurant_uuid = $restaurant->uuid;
         $customer->table_uuid = $table?->uuid;
+        $customer->seat = $table !== null ? $seat : null;
         $customer->name = $name;
         $customer->save();
         return $customer;
@@ -126,7 +130,7 @@ trait RestaurantTestHelper
         return $recipe;
     }
 
-    protected function addRecipeIngredient(Recipe $recipe, Ingredient $ingredient, int $amount): RecipeIngredient
+    protected function addRecipeIngredient(Recipe $recipe, Ingredient $ingredient, float $amount): RecipeIngredient
     {
         $link = new RecipeIngredient();
         $link->recipe_uuid = $recipe->uuid;
@@ -136,7 +140,40 @@ trait RestaurantTestHelper
         return $link;
     }
 
-    protected function addRecipeByproduct(Recipe $recipe, Ingredient $ingredient, int $amount): RecipeByproduct
+    protected function createTestMeal(Restaurant $restaurant, Recipe $recipe, string $status = Meal::STATUS_PLANNED): Meal
+    {
+        $meal = new Meal();
+        $meal->restaurant_uuid = $restaurant->uuid;
+        $meal->recipe_uuid = $recipe->uuid;
+        $meal->status = $status;
+        $meal->consumed = [];
+        $meal->save();
+        return $meal;
+    }
+
+    /** Creates cooker equipment that doesn't need storage, with a number of pieces owned */
+    protected function createTestCooker(Restaurant $restaurant, int $pieces = 1, string $name = 'Stove'): Equipment
+    {
+        $cooker = $this->createTestEquipment($restaurant, 1, $name, false);
+        $cooker->category = EquipmentCategory::COOKER;
+        $cooker->save();
+        $this->ownEquipment($restaurant, $cooker, $pieces);
+        return $cooker;
+    }
+
+    protected function addRecipeEquipment(Recipe $recipe, Equipment $equipment, int $amount, EquipmentStage $stage = EquipmentStage::PREP, bool $container = false): RecipeEquipment
+    {
+        $link = new RecipeEquipment();
+        $link->recipe_uuid = $recipe->uuid;
+        $link->equipment_uuid = $equipment->uuid;
+        $link->amount = $amount;
+        $link->stage = $stage;
+        $link->container = $container;
+        $link->save();
+        return $link;
+    }
+
+    protected function addRecipeByproduct(Recipe $recipe, Ingredient $ingredient, float $amount): RecipeByproduct
     {
         $link = new RecipeByproduct();
         $link->recipe_uuid = $recipe->uuid;
@@ -146,7 +183,7 @@ trait RestaurantTestHelper
         return $link;
     }
 
-    protected function storeIngredient(Storage $storage, Ingredient $ingredient, int $amount): StorageIngredient
+    protected function storeIngredient(Storage $storage, Ingredient $ingredient, float $amount): StorageIngredient
     {
         $link = new StorageIngredient();
         $link->storage_uuid = $storage->uuid;
@@ -166,9 +203,9 @@ trait RestaurantTestHelper
         return $link;
     }
 
-    protected function getStoredIngredientAmount(Storage $storage, Ingredient $ingredient): int
+    protected function getStoredIngredientAmount(Storage $storage, Ingredient $ingredient): float
     {
-        return (int) StorageIngredient::where('storage_uuid', $storage->uuid)
+        return (float) StorageIngredient::where('storage_uuid', $storage->uuid)
             ->where('ingredient_uuid', $ingredient->uuid)
             ->value('amount');
     }

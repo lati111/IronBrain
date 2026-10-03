@@ -1,6 +1,6 @@
-import {getData, postData} from "../../../main";
+import {getData} from "../../../main";
 import {openModal, init as initModals, closeModal} from "../../../components/modal";
-import {createReorderableList, restoreSidebar, setField, showWhileDragging, submitForm, toggleSidebar} from "./shared";
+import {createReorderableList, postOnce, restoreSidebar, setField, showWhileDragging, submitForm, toggleSidebar} from "./shared";
 
 interface Room {
     uuid: string;
@@ -22,8 +22,9 @@ interface Customer {
     uuid: string;
     name: string;
     description: string | null;
-    /** Null while the customer is not seated */
+    /** Both null while the customer is not seated */
     table_uuid: string | null;
+    seat: number | null;
 }
 
 interface Floor {
@@ -126,7 +127,6 @@ function renderTableRows(list: HTMLElement, search: string): number {
 
         // Tables are placed in rooms by dragging them from the sidebar
         row.draggable = true;
-        row.title = 'Drag into a room to place it';
         setupTableDrag(row, table);
 
         list.appendChild(row);
@@ -140,7 +140,9 @@ function renderCustomerRows(list: HTMLElement, search: string): number {
     for (const customer of floor.customers.filter((customer) => customer.name.toLowerCase().includes(search))) {
         const row = createListRow();
         setField(row, 'name', customer.name);
-        setField(row, 'meta', customer.table_uuid !== null ? `Seated at ${getTable(customer.table_uuid)?.name ?? 'a table'}` : 'Not seated');
+        setField(row, 'meta', customer.table_uuid !== null
+            ? `Seated at ${getTable(customer.table_uuid)?.name ?? 'a table'}, seat ${customer.seat}`
+            : 'Not seated');
         row.title = customer.description ?? '';
         row.querySelector('[data-action="edit"]')!.addEventListener('click', () => openCustomerModal(customer.uuid));
 
@@ -408,9 +410,6 @@ function openDeleteModal(type: SidebarTab): void {
     pendingDelete = {type, uuid};
     document.getElementById('type-delete-title')!.textContent = `Delete ${TAB_LABELS[type].toLowerCase()}`;
     document.getElementById('type-delete-name')!.textContent = name ?? TAB_LABELS[type];
-    document.getElementById('type-delete-warning')!.textContent = type === 'table'
-        ? 'Any customers seated at it will no longer be seated.'
-        : '';
 
     // The edit modal stays filled in, so cancelling can return to it as it was
     closeModal(`${type}-modal`);
@@ -446,7 +445,7 @@ async function confirmDelete(): Promise<void> {
  */
 async function postFloor(url: string, formData: FormData = new FormData(), announce: boolean = true): Promise<boolean> {
     try {
-        const response = await postData(url, formData);
+        const response = await postOnce(url, formData);
         if (!response?.ok) return false;
         if (announce) response.announce();
 

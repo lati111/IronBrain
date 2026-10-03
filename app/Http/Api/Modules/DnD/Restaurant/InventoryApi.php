@@ -58,7 +58,8 @@ class InventoryApi extends AbstractApi
         $validator = Validator::make($request->all(), [
             'type'              => ['required', 'string', Rule::in([InventoryService::TYPE_INGREDIENT, InventoryService::TYPE_EQUIPMENT])],
             'item_uuid'         => 'required|string|max:255',
-            'amount'            => 'required|integer|min:1',
+            // Ingredients can be moved in fractions, while equipment is checked to be whole when moving it
+            'amount'            => 'required|numeric|gt:0|max:999999',
             'from_storage_uuid' => 'nullable|string|max:255',
             'to_storage_uuid'   => 'nullable|string|max:255|different:from_storage_uuid',
         ]);
@@ -94,7 +95,7 @@ class InventoryApi extends AbstractApi
         }
 
         try {
-            $this->inventoryService->transfer($item, (int) $request->get('amount'), $from, $to);
+            $this->inventoryService->transfer($item, (float) $request->get('amount'), $from, $to);
         } catch (InvalidArgumentException $exception) {
             return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
         }
@@ -301,7 +302,8 @@ class InventoryApi extends AbstractApi
         $equipment->cleaning_time    = (int) $request->get('cleaning_time');
         $equipment->multiplier       = (float) $request->get('multiplier');
         $equipment->size             = (int) $request->get('size');
-        $equipment->requires_storage = $request->boolean('requires_storage');
+        // Equipment needs storage unless explicitly said otherwise
+        $equipment->requires_storage = $request->has('requires_storage') ? $request->boolean('requires_storage') : true;
         $equipment->save();
 
         return $this->respond(Response::HTTP_CREATED, 'Equipment created', [

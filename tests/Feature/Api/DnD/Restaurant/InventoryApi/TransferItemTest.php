@@ -72,7 +72,51 @@ class TransferItemTest extends AbstractApiFeatureTester implements PostOperation
     public function test_amount_validation(): void
     {
         $this->assertRequiredValidation('amount');
-        $this->assertIntegerValidation('amount');
+        $this->assertNumericValidation('amount');
+    }
+
+    public function test_amount_must_be_above_zero(): void
+    {
+        $this->transfer(['amount' => 0])->assertBadRequest();
+    }
+
+    public function test_ingredients_can_be_moved_in_fractions(): void
+    {
+        $target = $this->createTestStorage($this->restaurant, 10, 1);
+        $this->storeIngredient($this->storage, $this->ingredient, 1.5);
+
+        $response = $this->transfer([
+            'amount'            => 0.5,
+            'from_storage_uuid' => $this->storage->uuid,
+            'to_storage_uuid'   => $target->uuid,
+        ]);
+
+        $response->assertOk();
+        $this->assertEquals(1.0, $this->getStoredIngredientAmount($this->storage, $this->ingredient));
+        $this->assertEquals(0.5, $this->getStoredIngredientAmount($target, $this->ingredient));
+        $this->assertEquals(1.5, $response->json('data.inventory.ingredients.0.stored'));
+    }
+
+    public function test_moving_the_last_fraction_removes_the_stack(): void
+    {
+        $this->storeIngredient($this->storage, $this->ingredient, 0.3);
+
+        // 0.1 + 0.2 isn't exactly 0.3 in floating point, so this checks amounts are compared at two decimals
+        $this->transfer(['amount' => 0.1, 'from_storage_uuid' => $this->storage->uuid, 'to_storage_uuid' => null])->assertOk();
+        $this->transfer(['amount' => 0.2, 'from_storage_uuid' => $this->storage->uuid, 'to_storage_uuid' => null])->assertOk();
+
+        $this->assertFalse(StorageIngredient::where('storage_uuid', $this->storage->uuid)->exists());
+    }
+
+    public function test_equipment_cannot_be_moved_in_fractions(): void
+    {
+        $equipment = $this->createTestEquipment($this->restaurant);
+
+        $response = $this->transfer(['type' => 'equipment', 'item_uuid' => $equipment->uuid, 'amount' => 0.5]);
+
+        $response->assertBadRequest();
+        $this->assertApiMessage('Equipment can only be moved in whole pieces', $response);
+        $this->assertFalse(StorageEquipment::where('storage_uuid', $this->storage->uuid)->exists());
     }
 
     public function test_requires_a_storage(): void

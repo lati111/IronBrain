@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property float multiplier The multiplier this equipment applies
  * @property integer size How much storage capacity a single piece of the equipment takes up
  * @property bool requires_storage Whether this equipment must be placed in a storage space to be stored
+ * @property integer amount_dirty How many pieces are dirty and need cleaning before they can be used, during service
+ * @property integer amount_in_use How many pieces are being used by meals, during service
  */
 class Equipment extends RestaurantDataModel
 {
@@ -33,6 +35,8 @@ class Equipment extends RestaurantDataModel
         'multiplier'       => 'float',
         'size'             => 'integer',
         'requires_storage' => 'boolean',
+        'amount_dirty'     => 'integer',
+        'amount_in_use'    => 'integer',
     ];
 
     //| Relationships

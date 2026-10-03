@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property integer copper How much copper the restaurant has
  * @property integer silver How much silver the restaurant has
  * @property integer gold How much gold the restaurant has
+ * @property float shift_total What the orders placed during the current service are worth
  */
 class Restaurant extends DndRestaurantModel
 {
@@ -36,6 +37,7 @@ class Restaurant extends DndRestaurantModel
         'copper' => 'integer',
         'silver' => 'integer',
         'gold'   => 'integer',
+        'shift_total' => 'float',
     ];
 
     /**
@@ -73,12 +75,106 @@ class Restaurant extends DndRestaurantModel
     }
 
     /**
-     * Starts a service, which begins at the restaurant's opening time
+     * Gets the restaurant's current moment in its own time, combining its date and current time. Before a service
+     * has started, this is the opening time
+     * @return Carbon The current moment
      */
-    public function startService(): void
+    public function getNow(): Carbon
     {
-        $this->current_time = $this->opening_time;
-        $this->save();
+        return Carbon::parse($this->date->format('Y-m-d') . ' ' . ($this->current_time ?? $this->opening_time));
+    }
+
+    /**
+     * Sets the restaurant's current moment, moving the date along when it passes midnight. Does not save
+     * @param Carbon $now The new current moment
+     */
+    public function setNow(Carbon $now): void
+    {
+        $this->date = $now->format('Y-m-d');
+        $this->current_time = $now->format('H:i:s');
+    }
+
+    /**
+     * Whether a service is ongoing, which is the case while the restaurant has a current time
+     * @return bool Whether a service is ongoing
+     */
+    public function isInService(): bool
+    {
+        return $this->current_time !== null;
+    }
+
+    /**
+     * Gets the log of the ongoing service
+     * @return ServiceHistory|null The ongoing service, or null when there is none or it started before services were logged
+     */
+    public function getCurrentService(): ?ServiceHistory
+    {
+        return $this->ServiceHistory()->whereNull('ended_at')->latest('started_at')->first();
+    }
+
+    //| Money
+
+    /** The coins below gold, from the smallest up. Each is worth ten of the previous, and gold takes everything above */
+    private const array LOWER_COINS = ['b', 'cp', 'sp'];
+
+    /**
+     * Gets how much money the restaurant has, in bits
+     * @return int The amount in bits
+     */
+    public function getTotalBits(): int
+    {
+        return $this->gold * 1000 + $this->silver * 100 + $this->copper * 10 + $this->bits;
+    }
+
+    /**
+     * Adds an amount to the restaurant's money. Each digit goes to its own coin, so 1234 bits adds a gold, two silver,
+     * three copper and four bits, leaving the coins already there as they are. Does not save
+     * @param float $bits The amount in bits, rounded to whole bits
+     */
+    public function addMoney(float $bits): void
+    {
+        $amount = (int) round($bits);
+        if ($amount <= 0) {
+            return;
+        }
+
+        $this->bits += $amount % 10;
+        $this->copper += intdiv($amount, 10) % 10;
+        $this->silver += intdiv($amount, 100) % 10;
+        $this->gold += intdiv($amount, 1000);
+    }
+
+    /**
+     * Formats an amount of bits as coins, leaving out coins there are none of, so 1234 becomes "1gp 2sp 3cp 4b" and 50
+     * becomes "5cp". Fractions of a bit stay on the bits. Matches formatMoney on the frontend
+     * @param float $bits The amount in bits
+     * @return string The formatted amount
+     */
+    public static function formatMoney(float $bits): string
+    {
+        $sign = $bits < 0 ? '-' : '';
+        $rounded = round(abs($bits), 2);
+        $whole = (int) floor($rounded);
+        $fraction = $rounded - $whole;
+
+        $parts = [];
+        foreach (self::LOWER_COINS as $index => $coin) {
+            $amount = $whole % 10;
+            if ($index === 0) {
+                $amount = round($amount + $fraction, 2);
+            }
+
+            if ($amount > 0) {
+                array_unshift($parts, $amount . $coin);
+            }
+            $whole = intdiv($whole, 10);
+        }
+
+        if ($whole > 0) {
+            array_unshift($parts, $whole . 'gp');
+        }
+
+        return count($parts) === 0 ? '0b' : $sign . implode(' ', $parts);
     }
 
     //| Relationships
@@ -174,6 +270,14 @@ class Restaurant extends DndRestaurantModel
      */
     public function Tables(): HasMany {
         return $this->hasMany(Table::class, 'restaurant_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the logs of the restaurant's services
+     * @return HasMany
+     */
+    public function ServiceHistory(): HasMany {
+        return $this->hasMany(ServiceHistory::class, 'restaurant_uuid', 'uuid');
     }
 
     /**

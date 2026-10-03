@@ -53,6 +53,7 @@ class GetFloorTest extends AbstractApiFeatureTester
         $this->assertNull($data['tables'][1]['room_uuid']);
         $this->assertEquals(1, $data['tables'][0]['seated']);
         $this->assertEquals($booth->uuid, $data['customers'][0]['table_uuid']);
+        $this->assertEquals(1, $data['customers'][0]['seat']);
         $this->assertNull($data['customers'][1]['table_uuid']);
     }
 

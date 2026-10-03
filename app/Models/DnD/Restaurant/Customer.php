@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * A customer that visits the restaurant
  * @inheritdoc
  * @property string|null table_uuid The uuid of the table the customer is seated at, or null when not seated
+ * @property integer|null seat The seat at the table the customer is seated on, from 1 up to its capacity
  * @property string name The name of the customer
  * @property string|null description A description of the customer
  */
@@ -18,6 +19,11 @@ class Customer extends RestaurantDataModel
     public const string TABLE_NAME = 'dnd__restaurant_customer';
     /** @inheritdoc */
     protected $table = self::TABLE_NAME;
+
+    /** @inheritdoc */
+    protected $casts = [
+        'seat' => 'integer',
+    ];
 
     //| Relationships
 

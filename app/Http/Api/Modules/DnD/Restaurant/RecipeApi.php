@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Api\Modules\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Enum\ErrorEnum;
 use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
 class RecipeApi extends AbstractApi
@@ -169,10 +171,34 @@ class RecipeApi extends AbstractApi
         foreach ($this->recipeService->getComponentKinds() as $kind) {
             $rules[$kind]               = 'nullable|array';
             $rules[$kind . '.*.uuid']   = 'required|string|max:255|distinct';
-            $rules[$kind . '.*.amount'] = 'required|integer|min:1';
+            // Ingredients can be used and produced in fractions, while equipment comes in whole pieces
+            $rules[$kind . '.*.amount'] = $this->recipeService->getComponentModel($kind) === Equipment::class
+                ? 'required|integer|min:1'
+                : 'required|numeric|gt:0|max:999999';
         }
 
+        // Equipment is used during a stage of making the recipe, and may hold the meal as a container
+        $rules[RecipeService::EQUIPMENT . '.*.stage']     = ['nullable', 'string', Rule::in(EquipmentStage::values())];
+        $rules[RecipeService::EQUIPMENT . '.*.container'] = 'nullable|boolean';
+
         return $rules;
+    }
+
+    /**
+     * Checks that no equipment used for serving is marked as a container, as serving equipment can't hold a meal
+     * @param Request $request The request parameters as given by Laravel
+     * @return JsonResponse|null An error response when it is, or null when the equipment is valid
+     */
+    private function validateContainers(Request $request): ?JsonResponse
+    {
+        foreach ($request->get(RecipeService::EQUIPMENT) ?? [] as $entry) {
+            $stage = EquipmentStage::tryFrom($entry['stage'] ?? '') ?? EquipmentStage::PREP;
+            if ($stage->allowsContainer() === false && filter_var($entry['container'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                return $this->respond(Response::HTTP_BAD_REQUEST, 'Equipment used for ' . strtolower($stage->label()) . ' can\'t be a container');
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -184,6 +210,11 @@ class RecipeApi extends AbstractApi
      */
     private function resolveComponents(Request $request, Restaurant $restaurant): array|JsonResponse
     {
+        $invalid = $this->validateContainers($request);
+        if ($invalid !== null) {
+            return $invalid;
+        }
+
         $components = [];
         foreach ($this->recipeService->getComponentKinds() as $kind) {
             if ($request->has($kind) === false) {

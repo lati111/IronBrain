@@ -119,5 +119,7 @@ Route::prefix('/dnd/restaurant')
 
         Route::get('/{restaurant_uuid}/service', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showService'])
             ->name('dnd.restaurant.service');
+        Route::post('/{restaurant_uuid}/service/start', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'startService'])
+            ->name('dnd.restaurant.service.start');
     });
 

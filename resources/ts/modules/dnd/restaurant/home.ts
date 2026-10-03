@@ -1,5 +1,5 @@
 import {DataCardlist} from "../../../components/datalists/DataCardlist";
-import {postData} from "../../../main";
+import {postOnce} from "./shared";
 import {openModal, init as initModals, closeModal} from "../../../components/modal";
 
 let restaurantCardlist: DataCardlist;
@@ -29,7 +29,7 @@ async function createRestaurant(): Promise<void> {
     const formData = new FormData(form);
     formData.set('name', String(formData.get('name')).trim());
 
-    const response = await postData('/api/dnd/restaurant/create', formData);
+    const response = await postOnce('/api/dnd/restaurant/create', formData);
     if (!response) return;
     response.announce();
 

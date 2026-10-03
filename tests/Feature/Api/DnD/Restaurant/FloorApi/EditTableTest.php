@@ -67,6 +67,17 @@ class EditTableTest extends AbstractApiFeatureTester implements PostOperationInt
         $this->assertEquals($room, $this->item->fresh()->room_uuid);
     }
 
+    public function test_capacity_cannot_drop_below_an_occupied_seat(): void
+    {
+        $this->createTestCustomer($this->restaurant, $this->item, 'Bilbo', 2);
+
+        $response = $this->getHttpClient($this->getOperationUser())->post($this->getRoute(), ['capacity' => 1]);
+
+        $response->assertBadRequest();
+        $this->assertApiMessage('A customer is seated on a seat this would remove', $response);
+        $this->assertEquals(2, $this->item->fresh()->capacity);
+    }
+
     public function test_table_of_another_restaurant_is_not_found(): void
     {
         $otherTable = $this->createTestTable($this->createTestRestaurant($this->getAdminUser(), 'Other'));

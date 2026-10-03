@@ -15,10 +15,7 @@
     </small>
 
     {{--| Currency |--}}
-    <div class="flex justify-center gap-3 pt-2 mt-1 border-t border-gray-200 w-full">
-        <span title="Gold"><span data-name="gold"></span> gp</span>
-        <span title="Silver"><span data-name="silver"></span> sp</span>
-        <span title="Copper"><span data-name="copper"></span> cp</span>
-        <span title="Bits"><span data-name="bits"></span> bits</span>
+    <div class="flex justify-center pt-2 mt-1 border-t border-gray-200 w-full">
+        <span title="Money" data-name="money"></span>
     </div>
 </x-datalist.cardlist.template>

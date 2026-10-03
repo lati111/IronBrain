@@ -80,13 +80,13 @@
 
                 {{--| Rooms |--}}
                 <div id="room-list" class="inventory-storage-list"></div>
-                <p id="room-empty" class="hidden text-center text-gray-400 py-6">This restaurant has no rooms yet</p>
+                <p id="room-empty" class="hidden text-center text-gray-400 py-6">No rooms yet</p>
             </div>
         </div>
     </div>
 
     {{--| Drop zone for taking tables out of their room, pinned to the right edge of the viewport while a table is dragged |--}}
-    <div id="discard-edge" title="Drop here to take the table out of its room">
+    <div id="discard-edge">
         <img src="{{asset('img/icons/x.svg')}}" alt="" class="w-6 h-6">
         <span class="text-sm text-center">Remove from room</span>
     </div>
@@ -113,7 +113,7 @@
         {{--| The whole room can be dragged to reorder it, while drags starting on a table inside it move that table |--}}
         <section class="inventory-storage" draggable="true">
             <div class="inventory-storage-background"></div>
-            <div class="inventory-storage-header" title="Drag to reorder">
+            <div class="inventory-storage-header">
                 <span class="inventory-storage-handle">&#8942;&#8942;</span>
                 <span data-field="name" class="font-semibold flex-1 truncate"></span>
                 <span data-field="seats" class="text-sm"></span>
@@ -147,8 +147,7 @@
     <x-modal id="room-delete-modal">
         <h3 class="title py-1">Delete room</h3>
         <p class="text-center">
-            Are you sure you want to delete <span id="room-delete-name" class="font-semibold"></span>?<br>
-            Its tables will be kept, but no longer placed in a room.
+            Are you sure you want to delete <span id="room-delete-name" class="font-semibold"></span>?
         </p>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('room-delete-modal')">Cancel</button>
@@ -198,8 +197,7 @@
     <x-modal id="type-delete-modal">
         <h3 id="type-delete-title" class="title py-1"></h3>
         <p class="text-center">
-            Are you sure you want to delete <span id="type-delete-name" class="font-semibold"></span>?<br>
-            <span id="type-delete-warning"></span>
+            Are you sure you want to delete <span id="type-delete-name" class="font-semibold"></span>?
         </p>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="cancelDelete()">Cancel</button>

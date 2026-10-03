@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\DnD\Restaurant\RecipeApi;
 
+use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\RecipeByproduct;
 use App\Models\DnD\Restaurant\RecipeEquipment;
@@ -133,6 +134,90 @@ class CreateRecipeTest extends AbstractApiFeatureTester implements PostOperation
         $this->assertEquals(3, RecipeIngredient::where('recipe_uuid', $recipe->uuid)->where('ingredient_uuid', $potato->uuid)->value('amount'));
         $this->assertEquals(1, RecipeEquipment::where('recipe_uuid', $recipe->uuid)->where('equipment_uuid', $pot->uuid)->value('amount'));
         $this->assertEquals([['uuid' => $potato->uuid, 'amount' => 3]], $response->json('data.inventory.recipes.0.ingredients'));
+    }
+
+    public function test_ingredient_and_byproduct_amounts_can_be_fractional(): void
+    {
+        $potato = $this->createTestIngredient($this->restaurant, 1, 'Potato');
+        $peel = $this->createTestIngredient($this->restaurant, 1, 'Peel');
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters([
+                'ingredients' => [['uuid' => $potato->uuid, 'amount' => 0.5]],
+                'byproducts'  => [['uuid' => $peel->uuid, 'amount' => 0.25]],
+            ]));
+
+        $response->assertCreated();
+        $recipe = Recipe::where('uuid', $response->json('data.uuid'))->first();
+        $this->assertEquals(0.5, RecipeIngredient::where('recipe_uuid', $recipe->uuid)->value('amount'));
+        $this->assertEquals(0.25, RecipeByproduct::where('recipe_uuid', $recipe->uuid)->value('amount'));
+    }
+
+    public function test_equipment_is_saved_with_its_stage_and_container(): void
+    {
+        $pot = $this->createTestEquipment($this->restaurant, 1, 'Pot');
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters([
+                'equipment' => [['uuid' => $pot->uuid, 'amount' => 1, 'stage' => 'cooking', 'container' => true]],
+            ]));
+
+        $response->assertCreated();
+        $link = RecipeEquipment::where('recipe_uuid', $response->json('data.uuid'))->first();
+        $this->assertSame(EquipmentStage::COOKING, $link->stage);
+        $this->assertTrue($link->container);
+        $this->assertEquals('cooking', $response->json('data.inventory.recipes.0.equipment.0.stage'));
+    }
+
+    public function test_equipment_stage_defaults_to_prep(): void
+    {
+        $pot = $this->createTestEquipment($this->restaurant, 1, 'Pot');
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters([
+                'equipment' => [['uuid' => $pot->uuid, 'amount' => 1]],
+            ]));
+
+        $response->assertCreated();
+        $link = RecipeEquipment::where('recipe_uuid', $response->json('data.uuid'))->first();
+        $this->assertSame(EquipmentStage::PREP, $link->stage);
+        $this->assertFalse($link->container);
+    }
+
+    public function test_serving_equipment_cannot_be_a_container(): void
+    {
+        $plate = $this->createTestEquipment($this->restaurant, 1, 'Plate');
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters([
+                'equipment' => [['uuid' => $plate->uuid, 'amount' => 1, 'stage' => 'serving', 'container' => true]],
+            ]));
+
+        $response->assertBadRequest();
+        $this->assertApiMessage('Equipment used for serving can\'t be a container', $response);
+    }
+
+    public function test_equipment_stage_must_exist(): void
+    {
+        $pot = $this->createTestEquipment($this->restaurant, 1, 'Pot');
+
+        $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters([
+                'equipment' => [['uuid' => $pot->uuid, 'amount' => 1, 'stage' => 'juggling']],
+            ]))
+            ->assertBadRequest();
+    }
+
+    public function test_equipment_amounts_must_be_whole(): void
+    {
+        $pot = $this->createTestEquipment($this->restaurant, 1, 'Pot');
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters([
+                'equipment' => [['uuid' => $pot->uuid, 'amount' => 0.5]],
+            ]));
+
+        $response->assertBadRequest();
     }
 
     public function test_component_amount_must_be_positive(): void

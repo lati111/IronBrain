@@ -1,6 +1,9 @@
-import {getData, postData, toast} from "../../../main";
+import {getData, toast} from "../../../main";
 import {openModal, init as initModals, closeModal} from "../../../components/modal";
-import {createReorderableList, restoreSidebar, setField, showWhileDragging, submitForm, toggleSidebar} from "./shared";
+import {
+    createReorderableList, formatMoney, postOnce, refreshMoneyInputs, restoreSidebar, setField, setupMoneyInput, showWhileDragging,
+    submitForm, toggleSidebar,
+} from "./shared";
 
 type ItemType = 'ingredient' | 'equipment';
 
@@ -48,7 +51,20 @@ interface EquipmentType {
 interface RecipeComponent {
     uuid: string;
     amount: number;
+    /** For equipment: when during making the recipe it is used */
+    stage?: string;
+    /** For equipment: whether it holds the meal, staying in use for longer */
+    container?: boolean;
 }
+
+/** When a recipe's equipment is used, and whether it holds the meal */
+interface EquipmentUsage {
+    stage: string;
+    container: boolean;
+}
+
+/** The stage new equipment in a recipe starts at, matching the server's default */
+const DEFAULT_EQUIPMENT_STAGE = 'prep';
 
 interface RecipeType {
     uuid: string;
@@ -124,6 +140,10 @@ const generalStorage = new Map<string, Item>();
 
 let pendingAmountAction: ((amount: number) => Promise<void> | void) | null = null;
 let pendingAmountMax: number | null = null;
+let pendingAmountDecimals = false;
+
+/** The smallest fraction an ingredient can be moved or used in, matching the two decimals amounts are stored with */
+const MIN_DECIMAL_AMOUNT = 0.01;
 let pendingDeleteUuid: string | null = null;
 /** Makes a rendered storage space reorderable by dragging */
 let registerStorageCard: (card: HTMLElement) => void = () => {};
@@ -143,6 +163,9 @@ const EDIT_MODALS: Record<SidebarTab, string> = {
 /** What the delete confirmation for ingredients, equipment and recipes deletes when confirmed */
 let pendingTypeDelete: {type: SidebarTab, uuid: string} | null = null;
 
+/** When each piece of equipment of the recipe open in the recipe modal is used, keyed by uuid */
+const recipeEquipmentUsage = new Map<string, EquipmentUsage>();
+
 /** The component lists of the recipe open in the recipe modal, as amounts keyed by uuid */
 const recipeComponents: Record<RecipeComponentKind, Map<string, number>> = {
     ingredient: new Map(),
@@ -156,6 +179,7 @@ async function init(): Promise<void> {
     apiUrl = (document.getElementById('inventory') as HTMLElement).dataset.apiUrl!;
 
     initModals();
+    document.querySelectorAll<HTMLInputElement>('input[data-money]').forEach(setupMoneyInput);
     setupItemDropTarget(document.getElementById('general-storage') as HTMLElement, GENERAL);
     setupItemDropTarget(document.getElementById('discard-edge') as HTMLElement, DISCARD);
     showWhileDragging(document.getElementById('discard-edge') as HTMLElement, ITEM_MIME);
@@ -226,7 +250,7 @@ function renderRecipeRows(list: HTMLElement, search: string): number {
         row.classList.add('clickable');
         setIcon(row, null);
         setField(row, 'name', recipe.name);
-        setField(row, 'stored', `${recipe.price}`);
+        setField(row, 'stored', formatMoney(recipe.price));
         row.querySelector('[data-field="stored"]')!.setAttribute('title', 'Price');
         row.title = `${recipe.name} — ${recipe.portions} portions, ${recipe.ingredients.length} ingredients, `
             + `${recipe.equipment.length} equipment, ${recipe.byproducts.length} byproducts`;
@@ -278,7 +302,7 @@ function renderTypeRows(itemType: ItemType, list: HTMLElement, search: string): 
             });
         } else {
             addButton.addEventListener('click', () => {
-                openAmountModal(`Add ${type.name} to general storage`, 1, null, (amount) => addToGeneral(itemType, type.uuid, amount));
+                openAmountModal(`Add ${type.name} to general storage`, 1, null, (amount) => addToGeneral(itemType, type.uuid, amount), itemType === 'ingredient');
             });
         }
 
@@ -299,7 +323,7 @@ function renderGeneralStorage(): void {
     if (generalStorage.size === 0) {
         const empty = document.createElement('p');
         empty.className = 'text-gray-400 text-sm m-auto';
-        empty.textContent = 'Add items from the list on the left';
+        empty.textContent = 'Empty';
         container.appendChild(empty);
     }
 }
@@ -391,7 +415,7 @@ function addToGeneral(type: ItemType, uuid: string, amount: number): void {
     const existing = generalStorage.get(key);
 
     if (existing !== undefined) {
-        existing.amount += amount;
+        existing.amount = roundAmount(existing.amount + amount);
     } else {
         generalStorage.set(key, {type, uuid, amount});
     }
@@ -404,7 +428,7 @@ function removeFromGeneral(type: ItemType, uuid: string, amount: number): void {
     const existing = generalStorage.get(key);
     if (existing === undefined) return;
 
-    existing.amount -= amount;
+    existing.amount = roundAmount(existing.amount - amount);
     if (existing.amount <= 0) {
         generalStorage.delete(key);
     }
@@ -419,7 +443,7 @@ async function adjustOwned(uuid: string, amount: number): Promise<void> {
     formData.append('amount', String(amount));
 
     try {
-        const response = await postData(`${apiUrl}/equipment/${uuid}/owned`, formData);
+        const response = await postOnce(`${apiUrl}/equipment/${uuid}/owned`, formData);
         if (!response?.ok) return;
 
         setInventory(response.data.inventory);
@@ -462,14 +486,15 @@ function handleItemDrop(item: DraggedItem, target: string): void {
         return;
     }
 
+    // A single piece, or a fraction of an ingredient, is moved whole without asking how much
     if (item.amount <= 1) {
-        moveItem(item, 1, target);
+        moveItem(item, item.amount, target);
         return;
     }
 
     const name = getDefinition(item.type, item.uuid)?.name ?? 'item';
     const title = target === DISCARD ? `Remove ${name}` : `Move ${name}`;
-    openAmountModal(title, item.amount, item.amount, (amount) => moveItem(item, amount, target));
+    openAmountModal(title, item.amount, item.amount, (amount) => moveItem(item, amount, target), item.type === 'ingredient');
 }
 
 async function moveItem(item: DraggedItem, amount: number, target: string): Promise<void> {
@@ -501,7 +526,7 @@ async function transfer(item: Item, amount: number, from: string | null, to: str
     if (to !== null) formData.append('to_storage_uuid', to);
 
     try {
-        const response = await postData(`${apiUrl}/transfer`, formData);
+        const response = await postOnce(`${apiUrl}/transfer`, formData);
         if (!response?.ok) return false;
 
         setInventory(response.data.inventory);
@@ -519,7 +544,7 @@ async function saveStorageOrder(order: string[]): Promise<void> {
     order.forEach((uuid) => formData.append('order[]', uuid));
 
     try {
-        const response = await postData(`${apiUrl}/storage/reorder`, formData);
+        const response = await postOnce(`${apiUrl}/storage/reorder`, formData);
         if (response?.ok) {
             setInventory(response.data.inventory);
             return;
@@ -563,7 +588,7 @@ async function deleteStorage(): Promise<void> {
     closeModal('storage-delete-modal');
 
     try {
-        const response = await postData(`${apiUrl}/storage/${uuid}/delete`, new FormData());
+        const response = await postOnce(`${apiUrl}/storage/${uuid}/delete`, new FormData());
         if (!response?.ok) return;
         response.announce();
 
@@ -672,7 +697,7 @@ async function createIngredient(): Promise<void> {
     if (editing === null) {
         // Offer to add the new type straight away, as that is almost always the next step
         const name = getDefinition('ingredient', response.uuid)?.name ?? TYPE_LABELS['ingredient'];
-        openAmountModal(`Add ${name} to general storage`, 1, null, (amount) => addToGeneral('ingredient', response.uuid, amount));
+        openAmountModal(`Add ${name} to general storage`, 1, null, (amount) => addToGeneral('ingredient', response.uuid, amount), true);
     }
 }
 
@@ -719,6 +744,13 @@ function openRecipeModal(uuid: string | null): void {
             (form.elements.namedItem(field) as HTMLInputElement).value = String(recipe[field]);
         }
     }
+    refreshMoneyInputs(form);
+
+    recipeEquipmentUsage.clear();
+    recipe?.equipment.forEach((component) => recipeEquipmentUsage.set(component.uuid, {
+        stage: component.stage ?? DEFAULT_EQUIPMENT_STAGE,
+        container: component.container ?? false,
+    }));
 
     for (const kind of Object.keys(recipeComponents) as RecipeComponentKind[]) {
         recipeComponents[kind].clear();
@@ -760,16 +792,25 @@ function renderRecipeComponents(kind: RecipeComponentKind): void {
         setIcon(row, definition !== null && 'icon' in definition ? definition.icon : null);
         setField(row, 'name', definition?.name ?? 'Unknown');
 
-        // Invalid amounts are left for the form's own validation to report on save
+        // Ingredients can be used and produced in fractions, while equipment comes in whole pieces. Invalid amounts
+        // are left for the form's own validation to report on save
+        const decimals = type === 'ingredient';
         const input = row.querySelector('[data-field="amount"]') as HTMLInputElement;
+        input.min = decimals ? String(MIN_DECIMAL_AMOUNT) : '1';
+        input.step = decimals ? String(MIN_DECIMAL_AMOUNT) : '1';
         input.value = String(amount);
         input.addEventListener('input', () => {
-            const value = parseInt(input.value, 10);
+            const value = decimals ? roundAmount(parseFloat(input.value)) : parseInt(input.value, 10);
             if (!isNaN(value)) components.set(uuid, value);
         });
 
+        if (kind === 'equipment') {
+            input.before(createEquipmentUsageControls(uuid));
+        }
+
         row.querySelector('[data-action="remove"]')!.addEventListener('click', () => {
             components.delete(uuid);
+            recipeEquipmentUsage.delete(uuid);
             renderRecipeComponents(kind);
         });
 
@@ -801,6 +842,34 @@ function renderRecipeComponents(kind: RecipeComponentKind): void {
     }
 }
 
+/**
+ * Creates the controls for when a recipe's equipment is used, and whether it holds the meal as a container. The
+ * stages come from a template rendered from the server, which also marks which stages can't hold a container
+ */
+function createEquipmentUsageControls(uuid: string): HTMLElement {
+    const template = document.getElementById('equipment-usage-template') as HTMLTemplateElement;
+    const controls = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    const stage = controls.querySelector('[data-field="stage"]') as HTMLSelectElement;
+    const container = controls.querySelector('[data-field="container"]') as HTMLInputElement;
+    const usage = recipeEquipmentUsage.get(uuid) ?? {stage: DEFAULT_EQUIPMENT_STAGE, container: false};
+    recipeEquipmentUsage.set(uuid, usage);
+
+    const allowsContainer = () => stage.selectedOptions[0]?.dataset.container === '1';
+    const sync = () => {
+        container.disabled = !allowsContainer();
+        if (container.disabled) container.checked = false;
+        recipeEquipmentUsage.set(uuid, {stage: stage.value, container: container.checked});
+    };
+
+    stage.value = usage.stage;
+    container.checked = usage.container;
+    stage.addEventListener('change', sync);
+    container.addEventListener('change', sync);
+    sync();
+
+    return controls;
+}
+
 function addRecipeComponent(kind: RecipeComponentKind): void {
     const select = document.getElementById(`recipe-${kind}-select`) as HTMLSelectElement;
     if (select.disabled || select.value === '') return;
@@ -826,11 +895,12 @@ async function saveRecipe(): Promise<void> {
     // Sent as JSON, so an emptied component list still arrives as an empty list
     const payload: Record<string, unknown> = Object.fromEntries(new FormData(form));
     for (const kind of Object.keys(recipeComponents) as RecipeComponentKind[]) {
-        payload[RECIPE_COMPONENT_KEYS[kind]] = Array.from(recipeComponents[kind], ([uuid, amount]): RecipeComponent => ({uuid, amount}));
+        payload[RECIPE_COMPONENT_KEYS[kind]] = Array.from(recipeComponents[kind], ([uuid, amount]): RecipeComponent =>
+            kind === 'equipment' ? {uuid, amount, ...recipeEquipmentUsage.get(uuid)} : {uuid, amount});
     }
 
     try {
-        const response = await postData(url, JSON.stringify(payload));
+        const response = await postOnce(url, JSON.stringify(payload));
         if (!response?.ok) return;
         response.announce();
 
@@ -863,9 +933,6 @@ function openDeleteTypeModal(type: SidebarTab): void {
     pendingTypeDelete = {type, uuid};
     document.getElementById('type-delete-title')!.textContent = `Delete ${TYPE_LABELS[type].toLowerCase()}`;
     document.getElementById('type-delete-name')!.textContent = name ?? TYPE_LABELS[type];
-    document.getElementById('type-delete-warning')!.textContent = type === 'recipe'
-        ? ''
-        : 'It will also be removed from every storage space and recipe.';
 
     // The edit modal stays filled in, so cancelling can return to it as it was
     closeModal(EDIT_MODALS[type]);
@@ -888,7 +955,7 @@ async function deleteType(): Promise<void> {
     closeModal('type-delete-modal');
 
     try {
-        const response = await postData(`${apiUrl}/${type}/${uuid}/delete`, new FormData());
+        const response = await postOnce(`${apiUrl}/${type}/${uuid}/delete`, new FormData());
         if (!response?.ok) return;
         response.announce();
 
@@ -905,12 +972,19 @@ async function deleteType(): Promise<void> {
 
 //| Amount modal
 
-function openAmountModal(title: string, amount: number, max: number | null, action: (amount: number) => Promise<void> | void): void {
+/**
+ * Asks for an amount before performing an action with it
+ * @param decimals Whether fractions such as 0.5 are allowed, as for ingredients. Equipment only comes in whole pieces
+ */
+function openAmountModal(title: string, amount: number, max: number | null, action: (amount: number) => Promise<void> | void, decimals: boolean = false): void {
     pendingAmountAction = action;
     pendingAmountMax = max;
+    pendingAmountDecimals = decimals;
 
     document.getElementById('amount-modal-title')!.textContent = title;
     const input = document.getElementById('amount-modal-input') as HTMLInputElement;
+    input.min = decimals ? String(MIN_DECIMAL_AMOUNT) : '1';
+    input.step = decimals ? String(MIN_DECIMAL_AMOUNT) : '1';
     input.value = String(amount);
     input.max = max !== null ? String(max) : '';
 
@@ -920,9 +994,13 @@ function openAmountModal(title: string, amount: number, max: number | null, acti
 }
 
 async function confirmAmount(): Promise<void> {
-    const amount = parseInt((document.getElementById('amount-modal-input') as HTMLInputElement).value, 10);
-    if (isNaN(amount) || amount < 1 || (pendingAmountMax !== null && amount > pendingAmountMax)) {
-        toast(pendingAmountMax !== null ? `Enter an amount between 1 and ${pendingAmountMax}` : 'Enter an amount of at least 1');
+    const amount = roundAmount(parseFloat((document.getElementById('amount-modal-input') as HTMLInputElement).value));
+    const min = pendingAmountDecimals ? MIN_DECIMAL_AMOUNT : 1;
+    const whole = pendingAmountDecimals || Number.isInteger(amount);
+
+    if (isNaN(amount) || amount < min || !whole || (pendingAmountMax !== null && amount > pendingAmountMax)) {
+        const kind = pendingAmountDecimals ? 'an amount' : 'a whole amount';
+        toast(pendingAmountMax !== null ? `Enter ${kind} between ${min} and ${pendingAmountMax}` : `Enter ${kind} of at least ${min}`);
         return;
     }
 
@@ -939,6 +1017,11 @@ async function confirmAmount(): Promise<void> {
 
 function itemKey(type: ItemType, uuid: string): string {
     return `${type}:${uuid}`;
+}
+
+/** Rounds an amount to the two decimals amounts are stored with, so adding fractions doesn't drift (0.1 + 0.2) */
+function roundAmount(amount: number): number {
+    return Math.round(amount * 100) / 100;
 }
 
 function getDefinition(type: ItemType, uuid: string): IngredientType | EquipmentType | null {

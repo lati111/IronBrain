@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\Concerns\AsPivot;
  * @inheritdoc
  * @property string recipe_uuid The uuid of the recipe
  * @property string ingredient_uuid The uuid of the ingredient produced as a byproduct
- * @property integer amount How much of the ingredient making the recipe produces
+ * @property float amount How much of the ingredient making the recipe produces
  */
 class RecipeByproduct extends DndRestaurantModel
 {
@@ -26,7 +26,7 @@ class RecipeByproduct extends DndRestaurantModel
 
     /** @inheritdoc */
     protected $casts = [
-        'amount' => 'integer',
+        'amount' => 'float',
     ];
 
     //| Relationships
