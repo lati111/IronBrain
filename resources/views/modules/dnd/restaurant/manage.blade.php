@@ -21,7 +21,7 @@
         {{--| Top bar |--}}
         <div class="flex justify-between items-center mb-4">
             <a href="{{route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive w-64">&larr; Management</a>
-            <h1 class="title"><span id="restaurant-title-name">{{$restaurant->name}}</span> &mdash; Manage</h1>
+            <h1 class="title">Manage restaurant</h1>
             <button class="interactive w-64 text-right" onclick="openCreateRoomModal()" dusk="room-create">+ New Room</button>
         </div>
 

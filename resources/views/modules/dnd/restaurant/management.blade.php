@@ -22,7 +22,7 @@
                 <a href="{{route('dnd.restaurant.overview')}}" class="interactive">&larr; Restaurants</a>
                 <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
             </div>
-            <h1 class="title">{{$restaurant->name}} &mdash; Management</h1>
+            <h1 class="title">Inventory</h1>
             <div class="w-72 flex justify-end gap-4 whitespace-nowrap">
                 <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
                 @if($restaurant->isInService())
