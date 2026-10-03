@@ -29,12 +29,13 @@ class Storage extends RestaurantDataModel
     ];
 
     /**
-     * Get how much of the storage capacity is taken up by the stored ingredients and equipment
-     * @return int The used capacity
+     * Get how much of the storage capacity is taken up by the stored ingredients and equipment. Ingredient sizes
+     * can be fractional, so the result is rounded to the two decimals sizes are stored with
+     * @return float The used capacity
      */
-    public function getUsedCapacity(): int
+    public function getUsedCapacity(): float
     {
-        $ingredients = (int) $this->StorageIngredients()
+        $ingredients = (float) $this->StorageIngredients()
             ->join(Ingredient::TABLE_NAME, Ingredient::TABLE_NAME.'.uuid', '=', StorageIngredient::TABLE_NAME.'.ingredient_uuid')
             ->sum($this->getConnection()->raw(StorageIngredient::TABLE_NAME.'.amount * '.Ingredient::TABLE_NAME.'.size'));
 
@@ -42,7 +43,7 @@ class Storage extends RestaurantDataModel
             ->join(Equipment::TABLE_NAME, Equipment::TABLE_NAME.'.uuid', '=', StorageEquipment::TABLE_NAME.'.equipment_uuid')
             ->sum($this->getConnection()->raw(StorageEquipment::TABLE_NAME.'.amount * '.Equipment::TABLE_NAME.'.size'));
 
-        return $ingredients + $equipment;
+        return round($ingredients + $equipment, 2);
     }
 
     //| Relationships

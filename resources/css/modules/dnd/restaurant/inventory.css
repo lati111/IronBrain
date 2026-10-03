@@ -49,6 +49,36 @@
     background-color: rgb(249 250 251);
 }
 
+.inventory-list-row.clickable {
+    cursor: pointer;
+}
+
+/*| Recipe modal |*/
+
+.recipe-components {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* A shared minimum height, so the modal doesn't jump in size when switching tabs */
+.recipe-panel {
+    min-height: 19rem;
+}
+
+.recipe-component-list {
+    max-height: 15rem;
+    overflow-y: auto;
+}
+
+.recipe-component-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    border-bottom: 1px solid rgb(243 244 246);
+}
+
 .inventory-icon {
     width: 1.5rem;
     height: 1.5rem;
@@ -102,8 +132,12 @@
     border-bottom: 1px solid rgb(229 231 235);
 }
 
-.inventory-storage-handle {
+/* The whole storage space is draggable, the header just signals it */
+.inventory-storage-header {
     cursor: grab;
+}
+
+.inventory-storage-handle {
     color: rgb(156 163 175);
     letter-spacing: -0.3em;
     user-select: none;

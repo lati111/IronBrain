@@ -40,7 +40,7 @@ class EditEquipmentTest extends AbstractApiFeatureTester implements PostOperatio
     {
         return array_merge([
             'name'          => 'Big Cooking Pot',
-            'category'      => 'Cookware',
+            'category'      => 'cooker',
             'cleaning_time' => 15,
             'multiplier'    => 1.5,
             'size'          => 4,
@@ -56,7 +56,7 @@ class EditEquipmentTest extends AbstractApiFeatureTester implements PostOperatio
 
     public function test_category_validation(): void
     {
-        $this->assertMaxValidation('string', 'category', 64);
+        $this->assertInArrayValidation('category', 'spaceship');
     }
 
     public function test_numeric_field_validation(): void

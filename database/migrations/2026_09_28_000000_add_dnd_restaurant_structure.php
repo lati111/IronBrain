@@ -47,6 +47,9 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2)->default(0);
 
+            $table->integer('portions')->default(1);
+            $table->integer('difficulty')->default(0);
+
             $table->integer('prep_time')->default(0);
             $table->integer('cooking_time')->default(0);
             $table->integer('fresh_for')->default(0);
@@ -66,7 +69,7 @@ return new class extends Migration
             $table->string('name', 64);
             $table->text('icon')->nullable();
             $table->integer('expires_in')->default(0);
-            $table->integer('size')->default(1);
+            $table->decimal('size', 8, 2)->default(1);
 
             $table->timestamps();
 
@@ -86,6 +89,18 @@ return new class extends Migration
             $table->foreign('ingredient_uuid')->references('uuid')->on('dnd__restaurant_ingredient')->onDelete('cascade')->onUpdate('no action');
         });
 
+        Schema::create('dnd__restaurant_recipe_byproduct', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('recipe_uuid');
+            $table->foreignUuid('ingredient_uuid');
+            $table->integer('amount')->default(1);
+            $table->timestamps();
+
+            $table->unique(['recipe_uuid', 'ingredient_uuid'], 'dnd__restaurant_recipe_byproduct_unique');
+            $table->foreign('recipe_uuid')->references('uuid')->on('dnd__restaurant_recipe')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('ingredient_uuid')->references('uuid')->on('dnd__restaurant_ingredient')->onDelete('cascade')->onUpdate('no action');
+        });
+
         //| Equipment
         Schema::create('dnd__restaurant_equipment', function (Blueprint $table) {
             $table->uuid('uuid')->primary();
@@ -94,7 +109,8 @@ return new class extends Migration
 
             $table->string('name', 64);
             $table->text('description')->nullable();
-            $table->string('category', 64);
+            // Holds the internal code of an EquipmentCategory
+            $table->string('category', 32);
             $table->integer('cleaning_time')->default(0);
             $table->decimal('multiplier', 8, 2)->default(1.0);
             $table->integer('size')->default(1);
@@ -186,6 +202,7 @@ return new class extends Migration
         Schema::dropIfExists('dnd__restaurant_owned_equipment');
         Schema::dropIfExists('dnd__restaurant_recipe_equipment');
         Schema::dropIfExists('dnd__restaurant_equipment');
+        Schema::dropIfExists('dnd__restaurant_recipe_byproduct');
         Schema::dropIfExists('dnd__restaurant_recipe_ingredient');
         Schema::dropIfExists('dnd__restaurant_ingredient');
         Schema::dropIfExists('dnd__restaurant_recipe');

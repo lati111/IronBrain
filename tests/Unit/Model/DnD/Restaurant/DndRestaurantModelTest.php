@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Model\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
@@ -72,8 +73,8 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $recipe->prep_time = 10;
         $recipe->cooking_time = 60;
         $recipe->fresh_for = 30;
-        $recipe->good_for = 120;
-        $recipe->expires_in = 480;
+        $recipe->good_for = 8;
+        $recipe->expires_in = 3;
         $recipe->save();
 
         $ingredient = new Ingredient();
@@ -85,7 +86,7 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $stove = new Equipment();
         $stove->restaurant_uuid = $restaurant->uuid;
         $stove->name = 'Stove';
-        $stove->category = 'heating';
+        $stove->category = EquipmentCategory::COOKER;
         $stove->cleaning_time = 15;
         $stove->multiplier = 1.0;
         $stove->save();
@@ -94,18 +95,21 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $pot->restaurant_uuid = $restaurant->uuid;
         $pot->parent_uuid = $stove->uuid;
         $pot->name = 'Pot';
-        $pot->category = 'cookware';
+        $pot->category = EquipmentCategory::COOKWARE;
         $pot->cleaning_time = 5;
         $pot->multiplier = 1.5;
         $pot->save();
 
         $recipe->Ingredients()->attach($ingredient->uuid, ['amount' => 3]);
         $recipe->Equipment()->attach($pot->uuid, ['amount' => 1]);
+        $recipe->Byproducts()->attach($ingredient->uuid, ['amount' => 2]);
 
         $this->assertSame(3, $recipe->Ingredients()->first()->pivot->amount);
         $this->assertNotNull(RecipeIngredient::where('recipe_uuid', $recipe->uuid)->first()->uuid);
         $this->assertSame($recipe->uuid, $ingredient->Recipes()->first()->uuid);
         $this->assertSame($pot->uuid, $recipe->Equipment()->first()->uuid);
+        $this->assertSame(2, $recipe->Byproducts()->first()->pivot->amount);
+        $this->assertSame(1, $recipe->fresh()->portions);
         $this->assertSame($stove->uuid, $pot->getParent()->uuid);
         $this->assertSame(1, $stove->Children()->count());
         $this->assertSame(1.5, $pot->fresh()->multiplier);
@@ -142,7 +146,7 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $storage->Ingredients()->attach($potato->uuid, ['amount' => 10]);
         $storage->Ingredients()->attach($cheese->uuid, ['amount' => 3]);
 
-        $this->assertSame(35, $storage->getUsedCapacity());
+        $this->assertSame(35.0, $storage->getUsedCapacity());
         $this->assertSame(10, $potato->Storages()->first()->pivot->amount);
         $this->assertNotNull(StorageIngredient::where('storage_uuid', $storage->uuid)->first()->uuid);
         $this->assertNull($storage->fresh()->background_image);
@@ -157,7 +161,7 @@ class DndRestaurantModelTest extends AbstractUnitTester
         $oven = new Equipment();
         $oven->restaurant_uuid = $restaurant->uuid;
         $oven->name = 'Oven';
-        $oven->category = 'heating';
+        $oven->category = EquipmentCategory::COOKER;
         $oven->cleaning_time = 20;
         $oven->multiplier = 1.0;
         $oven->save();

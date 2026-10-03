@@ -44,7 +44,7 @@ class EditIngredientTest extends AbstractApiFeatureTester implements PostOperati
         return array_merge([
             'name'       => 'Sweet Potato',
             'expires_in' => 21,
-            'size'       => 3,
+            'size'       => 1.5,
         ], $overwrites);
     }
 
@@ -62,7 +62,7 @@ class EditIngredientTest extends AbstractApiFeatureTester implements PostOperati
 
     public function test_size_validation(): void
     {
-        $this->assertIntegerValidation('size');
+        $this->assertNumericValidation('size');
     }
 
     //| save tests

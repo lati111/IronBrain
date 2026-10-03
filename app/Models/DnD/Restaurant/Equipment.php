@@ -2,6 +2,7 @@
 
 namespace App\Models\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Models\DnD\Restaurant\Interfaces\RestaurantDataModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null parent_uuid The uuid of the parent equipment, if any
  * @property string name The display name of the equipment
  * @property string|null description The description of the equipment
- * @property string category The category this equipment falls under
+ * @property EquipmentCategory category The category this equipment falls under
  * @property integer cleaning_time How long the equipment takes to clean, in minutes
  * @property float multiplier The multiplier this equipment applies
  * @property integer size How much storage capacity a single piece of the equipment takes up
@@ -27,6 +28,7 @@ class Equipment extends RestaurantDataModel
 
     /** @inheritdoc */
     protected $casts = [
+        'category'         => EquipmentCategory::class,
         'cleaning_time'    => 'integer',
         'multiplier'       => 'float',
         'size'             => 'integer',

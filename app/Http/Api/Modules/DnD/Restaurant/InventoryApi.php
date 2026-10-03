@@ -2,7 +2,9 @@
 namespace App\Http\Api\Modules\DnD\Restaurant;
 
 use App\Enum\ErrorEnum;
+use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Http\Api\AbstractApi;
+use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Restaurant;
@@ -10,7 +12,6 @@ use App\Models\DnD\Restaurant\Storage;
 use App\Service\DnD\Restaurant\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage as FileStorage;
 use Illuminate\Support\Facades\Validator;
@@ -20,6 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class InventoryApi extends AbstractApi
 {
+    use ResolvesRestaurant;
+
     /** @var string The folder storage background images are saved in */
     private const string STORAGE_IMAGE_PATH = 'modules/dnd/restaurant/storage';
     /** @var string The folder ingredient icons are saved in */
@@ -225,7 +228,7 @@ class InventoryApi extends AbstractApi
         $validator = Validator::make($request->all(), [
             'name'       => 'required|string|max:64',
             'expires_in' => 'required|integer|min:0',
-            'size'       => 'required|integer|min:1',
+            'size'       => 'required|numeric|gt:0|max:999999',
             'icon'       => 'nullable|image|max:2048',
         ]);
 
@@ -242,7 +245,7 @@ class InventoryApi extends AbstractApi
         $ingredient->restaurant_uuid = $restaurant->uuid;
         $ingredient->name            = $request->get('name');
         $ingredient->expires_in      = (int) $request->get('expires_in');
-        $ingredient->size            = (int) $request->get('size');
+        $ingredient->size            = round((float) $request->get('size'), 2);
 
         if ($request->hasFile('icon')) {
             $ingredient->icon = FileStorage::putFile(self::INGREDIENT_ICON_PATH, $request->file('icon'));
@@ -267,7 +270,7 @@ class InventoryApi extends AbstractApi
         $validator = Validator::make($request->all(), [
             'name'             => 'required|string|max:64',
             'description'      => 'nullable|string',
-            'category'         => 'required|string|max:64',
+            'category'         => ['required', 'string', Rule::in(EquipmentCategory::values())],
             'cleaning_time'    => 'required|integer|min:0',
             'multiplier'       => 'required|numeric|min:0',
             'size'             => 'required|integer|min:1',
@@ -294,7 +297,7 @@ class InventoryApi extends AbstractApi
         $equipment->parent_uuid      = $parentUuid;
         $equipment->name             = $request->get('name');
         $equipment->description      = $request->get('description');
-        $equipment->category         = $request->get('category');
+        $equipment->category         = EquipmentCategory::from($request->get('category'));
         $equipment->cleaning_time    = (int) $request->get('cleaning_time');
         $equipment->multiplier       = (float) $request->get('multiplier');
         $equipment->size             = (int) $request->get('size');
@@ -319,7 +322,7 @@ class InventoryApi extends AbstractApi
         $validator = Validator::make($request->all(), [
             'name'       => 'nullable|string|max:64',
             'expires_in' => 'nullable|integer|min:0',
-            'size'       => 'nullable|integer|min:1',
+            'size'       => 'nullable|numeric|gt:0|max:999999',
             'icon'       => 'nullable|image|max:2048',
         ]);
 
@@ -339,7 +342,7 @@ class InventoryApi extends AbstractApi
 
         $ingredient->name       = $request->get('name', $ingredient->name);
         $ingredient->expires_in = $request->has('expires_in') ? (int) $request->get('expires_in') : $ingredient->expires_in;
-        $ingredient->size       = $request->has('size') ? (int) $request->get('size') : $ingredient->size;
+        $ingredient->size       = $request->has('size') ? round((float) $request->get('size'), 2) : $ingredient->size;
 
         if ($request->hasFile('icon')) {
             $oldIcon = $ingredient->icon;
@@ -369,7 +372,7 @@ class InventoryApi extends AbstractApi
         $validator = Validator::make($request->all(), [
             'name'             => 'nullable|string|max:64',
             'description'      => 'nullable|string',
-            'category'         => 'nullable|string|max:64',
+            'category'         => ['nullable', 'string', Rule::in(EquipmentCategory::values())],
             'cleaning_time'    => 'nullable|integer|min:0',
             'multiplier'       => 'nullable|numeric|min:0',
             'size'             => 'nullable|integer|min:1',
@@ -412,7 +415,7 @@ class InventoryApi extends AbstractApi
 
         $equipment->name          = $request->get('name', $equipment->name);
         $equipment->description   = $request->has('description') ? $request->get('description') : $equipment->description;
-        $equipment->category      = $request->get('category', $equipment->category);
+        $equipment->category      = $request->filled('category') ? EquipmentCategory::from($request->get('category')) : $equipment->category;
         $equipment->cleaning_time = $request->has('cleaning_time') ? (int) $request->get('cleaning_time') : $equipment->cleaning_time;
         $equipment->multiplier    = $request->has('multiplier') ? (float) $request->get('multiplier') : $equipment->multiplier;
         $equipment->size          = $request->has('size') ? (int) $request->get('size') : $equipment->size;
@@ -420,6 +423,61 @@ class InventoryApi extends AbstractApi
 
         return $this->respond(Response::HTTP_OK, 'Equipment updated', [
             'uuid' => $equipment->uuid,
+            'inventory' => $this->inventoryService->getInventory($restaurant),
+        ]);
+    }
+
+    /**
+     * Deletes an ingredient type. It is removed from every storage space and recipe it was part of
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $ingredient_uuid The uuid of the ingredient
+     * @return JsonResponse The updated inventory state in JSON format
+     */
+    public function deleteIngredient(string $restaurant_uuid, string $ingredient_uuid): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $ingredient = Ingredient::where('uuid', $ingredient_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($ingredient === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Ingredient not found');
+        }
+
+        $icon = $ingredient->icon;
+        $ingredient->delete();
+        if ($icon !== null) {
+            FileStorage::delete($icon);
+        }
+
+        return $this->respond(Response::HTTP_OK, 'Ingredient deleted', [
+            'inventory' => $this->inventoryService->getInventory($restaurant),
+        ]);
+    }
+
+    /**
+     * Deletes an equipment type. It is removed from every storage space and recipe it was part of, and any
+     * equipment that was part of it no longer has a parent
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $equipment_uuid The uuid of the equipment
+     * @return JsonResponse The updated inventory state in JSON format
+     */
+    public function deleteEquipment(string $restaurant_uuid, string $equipment_uuid): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $equipment = Equipment::where('uuid', $equipment_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($equipment === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Equipment not found');
+        }
+
+        $equipment->delete();
+
+        return $this->respond(Response::HTTP_OK, 'Equipment deleted', [
             'inventory' => $this->inventoryService->getInventory($restaurant),
         ]);
     }
@@ -466,21 +524,6 @@ class InventoryApi extends AbstractApi
         return $this->respond(Response::HTTP_OK, 'Equipment updated', [
             'inventory' => $this->inventoryService->getInventory($restaurant),
         ]);
-    }
-
-    /**
-     * Gets a restaurant the current user has access to
-     * @param string $uuid The uuid of the restaurant
-     * @return Restaurant|null The restaurant, or null if it does not exist or the user has no access
-     */
-    private function getRestaurant(string $uuid): ?Restaurant
-    {
-        $restaurant = Restaurant::where('uuid', $uuid)->first();
-        if ($restaurant === null || $restaurant->hasAccess(Auth::user()) === false) {
-            return null;
-        }
-
-        return $restaurant;
     }
 
     /**

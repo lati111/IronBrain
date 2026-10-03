@@ -5,6 +5,10 @@ namespace App\Service\DnD\Restaurant;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\OwnedEquipment;
+use App\Models\DnD\Restaurant\Recipe;
+use App\Models\DnD\Restaurant\RecipeByproduct;
+use App\Models\DnD\Restaurant\RecipeEquipment;
+use App\Models\DnD\Restaurant\RecipeIngredient;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Storage;
 use App\Models\DnD\Restaurant\StorageEquipment;
@@ -36,6 +40,10 @@ class InventoryService
         $ingredients = Ingredient::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
         $equipment = Equipment::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
         $ownedEquipment = OwnedEquipment::where('restaurant_uuid', $restaurant->uuid)->pluck('amount', 'equipment_uuid');
+        $recipes = Recipe::where('restaurant_uuid', $restaurant->uuid)
+            ->with(['RecipeIngredients', 'RecipeEquipment', 'RecipeByproducts'])
+            ->orderBy('name')
+            ->get();
 
         $storedIngredients = [];
         $storedEquipment = [];
@@ -62,7 +70,7 @@ class InventoryService
                 'uuid' => $storage->uuid,
                 'name' => $storage->name,
                 'capacity' => $storage->capacity,
-                'used_capacity' => $used,
+                'used_capacity' => round($used, 2),
                 'expiration_multiplier' => $storage->expiration_multiplier,
                 'background_image' => $storage->background_image !== null ? asset('img/' . $storage->background_image) : null,
                 'items' => $items,
@@ -83,7 +91,8 @@ class InventoryService
                 'uuid' => $piece->uuid,
                 'name' => $piece->name,
                 'description' => $piece->description,
-                'category' => $piece->category,
+                'category' => $piece->category->value,
+                'category_label' => $piece->category->label(),
                 'size' => $piece->size,
                 'cleaning_time' => $piece->cleaning_time,
                 'multiplier' => $piece->multiplier,
@@ -92,6 +101,28 @@ class InventoryService
                 'stored' => $piece->requires_storage
                     ? ($storedEquipment[$piece->uuid] ?? 0)
                     : (int) ($ownedEquipment[$piece->uuid] ?? 0),
+            ])->values()->all(),
+            'recipes' => $recipes->map(fn (Recipe $recipe) => [
+                'uuid' => $recipe->uuid,
+                'name' => $recipe->name,
+                'description' => $recipe->description,
+                'price' => $recipe->price,
+                'portions' => $recipe->portions,
+                'difficulty' => $recipe->difficulty,
+                'prep_time' => $recipe->prep_time,
+                'cooking_time' => $recipe->cooking_time,
+                'fresh_for' => $recipe->fresh_for,
+                'good_for' => $recipe->good_for,
+                'expires_in' => $recipe->expires_in,
+                'ingredients' => $recipe->RecipeIngredients
+                    ->map(fn (RecipeIngredient $link) => ['uuid' => $link->ingredient_uuid, 'amount' => $link->amount])
+                    ->values()->all(),
+                'equipment' => $recipe->RecipeEquipment
+                    ->map(fn (RecipeEquipment $link) => ['uuid' => $link->equipment_uuid, 'amount' => $link->amount])
+                    ->values()->all(),
+                'byproducts' => $recipe->RecipeByproducts
+                    ->map(fn (RecipeByproduct $link) => ['uuid' => $link->ingredient_uuid, 'amount' => $link->amount])
+                    ->values()->all(),
             ])->values()->all(),
         ];
     }
@@ -124,7 +155,8 @@ class InventoryService
 
             if ($to !== null) {
                 $to = Storage::where('uuid', $to->uuid)->lockForUpdate()->first();
-                if ($to->getUsedCapacity() + ($item->size * $amount) > $to->capacity) {
+                // Rounded, as fractional ingredient sizes would otherwise fail exact fits through float imprecision
+                if (round($to->getUsedCapacity() + ($item->size * $amount), 2) > $to->capacity) {
                     throw new InvalidArgumentException('Not enough capacity in ' . $to->name);
                 }
 

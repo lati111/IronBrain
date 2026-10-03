@@ -33,6 +33,7 @@
                     <div class="inventory-sidebar-body flex flex-1">
                         <button class="inventory-tab active flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="equipment" onclick="switchTab('equipment')">Equipment</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="recipe" onclick="switchTab('recipe')">Recipes</button>
                     </div>
                 </div>
 
@@ -80,23 +81,35 @@
         </li>
     </template>
 
+    <template id="recipe-component-template">
+        <li class="recipe-component-row">
+            <img data-field="icon" alt="" class="inventory-icon">
+            <span data-field="name" class="flex-1 truncate"></span>
+            <input type="number" data-field="amount" class="underlined w-16" min="1" required/>
+            <button type="button" class="px-1" data-action="remove" title="Remove from recipe">
+                <img src="{{asset('img/icons/x.svg')}}" alt="remove" class="interactive w-4 h-4">
+            </button>
+        </li>
+    </template>
+
     <template id="item-template">
         <div class="inventory-item" draggable="true">
-            <img data-field="icon" alt="" class="inventory-icon">
+            <img data-field="icon" alt="" class="inventory-icon" draggable="false">
             <span data-field="name" class="truncate"></span>
             <span data-field="amount" class="inventory-item-amount"></span>
         </div>
     </template>
 
     <template id="storage-template">
-        <section class="inventory-storage" data-drop-target="storage">
+        {{--| The whole space can be dragged to reorder it, while drags starting on an item inside it move that item |--}}
+        <section class="inventory-storage" data-drop-target="storage" draggable="true">
             <div class="inventory-storage-background"></div>
-            <div class="inventory-storage-header">
-                <span class="inventory-storage-handle" draggable="true" title="Drag to reorder">&#8942;&#8942;</span>
+            <div class="inventory-storage-header" title="Drag to reorder">
+                <span class="inventory-storage-handle">&#8942;&#8942;</span>
                 <span data-field="name" class="font-semibold flex-1 truncate"></span>
                 <span data-field="occupancy" class="text-sm"></span>
                 <button class="px-1" data-action="delete" title="Delete storage space">
-                    <img src="{{asset('img/icons/x.svg')}}" alt="delete" class="interactive w-4 h-4">
+                    <img src="{{asset('img/icons/x.svg')}}" alt="delete" class="interactive w-4 h-4" draggable="false">
                 </button>
             </div>
             <div class="inventory-capacity-bar"><div data-field="capacity-fill"></div></div>
@@ -139,7 +152,7 @@
                 <input type="number" name="expires_in" class="underlined" min="0" value="7" required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Size">
-                <input type="number" name="size" class="underlined" min="1" value="1" required/>
+                <input type="number" name="size" class="underlined" min="0.01" step="0.01" value="1" required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Icon (optional)">
                 <x-form.input.file_uploader name="icon" accepts="image/*"/>
@@ -147,6 +160,7 @@
             <button type="submit" class="hidden"></button>
         </form>
         <x-slot:buttons>
+            <button id="ingredient-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteTypeModal('ingredient')">Delete</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('ingredient-create-modal')">Cancel</button>
             <button id="ingredient-modal-submit" class="interactive px-5 py-2.5" onclick="createIngredient()">Create</button>
         </x-slot:buttons>
@@ -160,7 +174,11 @@
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Cooking Pot" required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Category">
-                <input type="text" name="category" class="underlined" maxlength="64" placeholder="Cookware" required/>
+                <select name="category" class="underlined" required>
+                    @foreach(\App\Enum\DnD\Restaurant\EquipmentCategory::cases() as $category)
+                        <option value="{{$category->value}}">{{$category->label()}}</option>
+                    @endforeach
+                </select>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Description (optional)">
                 <textarea name="description" class="underlined" rows="2"></textarea>
@@ -176,21 +194,97 @@
                     <input type="number" name="multiplier" class="underlined" min="0" step="0.01" value="1" required/>
                 </x-form.input-wrapper>
             </div>
-            <x-form.input-wrapper label_text="Part of (optional)">
-                <select id="equipment-parent-select" name="parent_uuid" class="underlined">
-                    <option value="">None</option>
-                </select>
-            </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Storage">
                 {{--| A hidden field before the checkbox ensures an explicit 0 is sent when unchecked, instead of the field being left out |--}}
                 <input type="hidden" name="requires_storage" value="0"/>
                 <x-form.input.checkbox name="requires_storage" value="1" checked right_label="Must be placed in a storage space to be stored"/>
             </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Variant of (optional)">
+                <select id="equipment-parent-select" name="parent_uuid" class="underlined">
+                    <option value="">None</option>
+                </select>
+            </x-form.input-wrapper>
             <button type="submit" class="hidden"></button>
         </form>
         <x-slot:buttons>
+            <button id="equipment-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteTypeModal('equipment')">Delete</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('equipment-create-modal')">Cancel</button>
             <button id="equipment-modal-submit" class="interactive px-5 py-2.5" onclick="createEquipment()">Create</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Create / edit recipe modal |--}}
+    <x-modal id="recipe-modal">
+        <h3 id="recipe-modal-title" class="title py-1">New Recipe</h3>
+        @php($recipeComponentTabs = ['ingredient' => 'Ingredients', 'equipment' => 'Equipment', 'byproduct' => 'Byproducts'])
+        <form id="recipe-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveRecipe()">
+            <x-form.input-wrapper label_text="Name">
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Potato Stew" required/>
+            </x-form.input-wrapper>
+
+            {{--| Tabs |--}}
+            <div class="flex border-b">
+                <button type="button" class="inventory-tab recipe-tab active flex-1 py-2" data-recipe-tab="details" onclick="switchRecipeTab('details')">Details</button>
+                @foreach($recipeComponentTabs as $componentType => $componentLabel)
+                    <button type="button" class="inventory-tab recipe-tab flex-1 py-2" data-recipe-tab="{{$componentType}}" onclick="switchRecipeTab('{{$componentType}}')">
+                        {{$componentLabel}} <span data-recipe-count="{{$componentType}}" class="text-xs"></span>
+                    </button>
+                @endforeach
+            </div>
+
+            {{--| Details |--}}
+            <div class="recipe-panel flex flex-col gap-3" data-recipe-panel="details">
+                <div class="flex gap-3">
+                    <x-form.input-wrapper label_text="Price" cls="flex-1">
+                        <input type="number" name="price" class="underlined" min="0" step="0.01" value="0" required/>
+                    </x-form.input-wrapper>
+                    <x-form.input-wrapper label_text="Portions" cls="flex-1">
+                        <input type="number" name="portions" class="underlined" min="1" value="1" required/>
+                    </x-form.input-wrapper>
+                    <x-form.input-wrapper label_text="Difficulty" cls="flex-1">
+                        <input type="number" name="difficulty" class="underlined" min="0" value="0" required/>
+                    </x-form.input-wrapper>
+                </div>
+                <x-form.input-wrapper label_text="Description (optional)">
+                    <textarea name="description" class="underlined" rows="2"></textarea>
+                </x-form.input-wrapper>
+                <div class="flex gap-3">
+                    <x-form.input-wrapper label_text="Prep time (min)" cls="flex-1">
+                        <input type="number" name="prep_time" class="underlined" min="0" value="0" required/>
+                    </x-form.input-wrapper>
+                    <x-form.input-wrapper label_text="Cooking time (min)" cls="flex-1">
+                        <input type="number" name="cooking_time" class="underlined" min="0" value="0" required/>
+                    </x-form.input-wrapper>
+                </div>
+                <div class="flex gap-3">
+                    <x-form.input-wrapper label_text="Fresh for (min)" cls="flex-1">
+                        <input type="number" name="fresh_for" class="underlined" min="0" value="0" required/>
+                    </x-form.input-wrapper>
+                    <x-form.input-wrapper label_text="Good for (hours)" cls="flex-1">
+                        <input type="number" name="good_for" class="underlined" min="0" value="0" required/>
+                    </x-form.input-wrapper>
+                    <x-form.input-wrapper label_text="Expires in (days)" cls="flex-1">
+                        <input type="number" name="expires_in" class="underlined" min="0" value="0" required/>
+                    </x-form.input-wrapper>
+                </div>
+            </div>
+
+            {{--| Ingredients and equipment the recipe requires, and the ingredients it produces as byproducts |--}}
+            @foreach($recipeComponentTabs as $componentType => $componentLabel)
+                <div class="recipe-panel recipe-components hidden" data-recipe-panel="{{$componentType}}">
+                    <ul id="recipe-{{$componentType}}-list" class="recipe-component-list"></ul>
+                    <div class="flex gap-2 items-center">
+                        <select id="recipe-{{$componentType}}-select" class="underlined flex-1"></select>
+                        <button type="button" class="interactive px-2 text-sm" onclick="addRecipeComponent('{{$componentType}}')">+ Add</button>
+                    </div>
+                </div>
+            @endforeach
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button id="recipe-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteTypeModal('recipe')">Delete</button>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('recipe-modal')">Cancel</button>
+            <button id="recipe-modal-submit" class="interactive px-5 py-2.5" onclick="saveRecipe()">Create</button>
         </x-slot:buttons>
     </x-modal>
 
@@ -218,6 +312,19 @@
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('storage-delete-modal')">Cancel</button>
             <button class="interactive px-5 py-2.5" onclick="deleteStorage()">Delete</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Delete ingredient / equipment / recipe modal |--}}
+    <x-modal id="type-delete-modal">
+        <h3 id="type-delete-title" class="title py-1"></h3>
+        <p class="text-center">
+            Are you sure you want to delete <span id="type-delete-name" class="font-semibold"></span>?<br>
+            <span id="type-delete-warning"></span>
+        </p>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="cancelDeleteType()">Cancel</button>
+            <button class="interactive px-5 py-2.5" onclick="deleteType()">Delete</button>
         </x-slot:buttons>
     </x-modal>
 @endsection

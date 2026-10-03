@@ -32,7 +32,10 @@ interface EquipmentType {
     uuid: string;
     name: string;
     description: string | null;
+    /** The internal code of the category, used when saving */
     category: string;
+    /** The display name of the category */
+    category_label: string;
     size: number;
     cleaning_time: number;
     multiplier: number;
@@ -41,11 +44,45 @@ interface EquipmentType {
     stored: number;
 }
 
+interface RecipeComponent {
+    uuid: string;
+    amount: number;
+}
+
+interface RecipeType {
+    uuid: string;
+    name: string;
+    description: string | null;
+    price: number;
+    portions: number;
+    difficulty: number;
+    prep_time: number;
+    cooking_time: number;
+    fresh_for: number;
+    /** In hours */
+    good_for: number;
+    /** In days */
+    expires_in: number;
+    ingredients: RecipeComponent[];
+    equipment: RecipeComponent[];
+    byproducts: RecipeComponent[];
+}
+
+/** The lists of a recipe: the ingredients and equipment it requires, and the ingredients it produces as byproducts */
+type RecipeComponentKind = ItemType | 'byproduct';
+
+/** The tabs of the recipe modal */
+type RecipeTab = 'details' | RecipeComponentKind;
+
 interface Inventory {
     storages: StorageSpace[];
     ingredients: IngredientType[];
     equipment: EquipmentType[];
+    recipes: RecipeType[];
 }
+
+/** The sidebar lists the storable item types, plus recipes */
+type SidebarTab = ItemType | 'recipe';
 
 interface DraggedItem extends Item {
     from: string | null;
@@ -59,14 +96,27 @@ const STORAGE_MIME = 'application/x-inventory-storage';
 const GENERAL = 'general';
 const DISCARD = 'discard';
 
-const TYPE_LABELS: Record<ItemType, string> = {
+const TYPE_LABELS: Record<SidebarTab, string> = {
     ingredient: 'Ingredient',
     equipment:  'Equipment',
+    recipe:     'Recipe',
+};
+
+/** The recipe fields that are plain numbers, in the same order as the form */
+const RECIPE_NUMBER_FIELDS = [
+    'price', 'portions', 'difficulty', 'prep_time', 'cooking_time', 'fresh_for', 'good_for', 'expires_in',
+] as const;
+
+/** The key each recipe component kind is listed under, both in the inventory state and when saving a recipe */
+const RECIPE_COMPONENT_KEYS: Record<RecipeComponentKind, 'ingredients' | 'equipment' | 'byproducts'> = {
+    ingredient: 'ingredients',
+    equipment:  'equipment',
+    byproduct:  'byproducts',
 };
 
 let apiUrl = '';
-let inventory: Inventory = {storages: [], ingredients: [], equipment: []};
-let activeTab: ItemType = 'ingredient';
+let inventory: Inventory = {storages: [], ingredients: [], equipment: [], recipes: []};
+let activeTab: SidebarTab = 'ingredient';
 
 /** The unsaved general storage, keyed by "type:uuid". Only exists client side */
 const generalStorage = new Map<string, Item>();
@@ -79,6 +129,24 @@ let draggedStorage: HTMLElement | null = null;
 /** The uuid of the ingredient or equipment currently being edited, or null when the create modal is for a new type */
 let editingIngredientUuid: string | null = null;
 let editingEquipmentUuid: string | null = null;
+let editingRecipeUuid: string | null = null;
+
+/** The edit modal of each sidebar tab, which the delete confirmation returns to when cancelled */
+const EDIT_MODALS: Record<SidebarTab, string> = {
+    ingredient: 'ingredient-create-modal',
+    equipment:  'equipment-create-modal',
+    recipe:     'recipe-modal',
+};
+
+/** What the delete confirmation for ingredients, equipment and recipes deletes when confirmed */
+let pendingTypeDelete: {type: SidebarTab, uuid: string} | null = null;
+
+/** The component lists of the recipe open in the recipe modal, as amounts keyed by uuid */
+const recipeComponents: Record<RecipeComponentKind, Map<string, number>> = {
+    ingredient: new Map(),
+    equipment:  new Map(),
+    byproduct:  new Map(),
+};
 
 //| Initialisation
 
@@ -130,25 +198,63 @@ function render(): void {
 function renderSidebar(): void {
     const list = document.getElementById('inventory-list') as HTMLElement;
     const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
-    const template = document.getElementById('list-row-template') as HTMLTemplateElement;
 
-    const types: (IngredientType | EquipmentType)[] = activeTab === 'ingredient' ? inventory.ingredients : inventory.equipment;
+    list.replaceChildren();
+    const total = activeTab === 'recipe' ? renderRecipeRows(list, search) : renderTypeRows(activeTab, list, search);
+
+    if (list.childElementCount === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'text-center text-gray-400 py-4 text-sm';
+        empty.textContent = total === 0 ? `No ${TYPE_LABELS[activeTab].toLowerCase()} yet` : 'No results';
+        list.appendChild(empty);
+    }
+}
+
+function createListRow(): HTMLElement {
+    const template = document.getElementById('list-row-template') as HTMLTemplateElement;
+    return template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+}
+
+/** Renders the sidebar rows for recipes, returning how many recipes exist before filtering */
+function renderRecipeRows(list: HTMLElement, search: string): number {
+    for (const recipe of inventory.recipes.filter((recipe) => recipe.name.toLowerCase().includes(search))) {
+        const row = createListRow();
+        row.classList.add('clickable');
+        setIcon(row, null);
+        setField(row, 'name', recipe.name);
+        setField(row, 'stored', `${recipe.price}`);
+        row.querySelector('[data-field="stored"]')!.setAttribute('title', 'Price');
+        row.title = `${recipe.name} — ${recipe.portions} portions, ${recipe.ingredients.length} ingredients, `
+            + `${recipe.equipment.length} equipment, ${recipe.byproducts.length} byproducts`;
+
+        // Recipes are never stored, so only opening them is possible
+        row.querySelector('[data-action="add"]')!.classList.add('hidden');
+        row.querySelector('[data-action="remove"]')!.classList.add('hidden');
+        row.addEventListener('click', () => openRecipeModal(recipe.uuid));
+
+        list.appendChild(row);
+    }
+
+    return inventory.recipes.length;
+}
+
+/** Renders the sidebar rows for ingredients or equipment, returning how many types exist before filtering */
+function renderTypeRows(itemType: ItemType, list: HTMLElement, search: string): number {
+    const types: (IngredientType | EquipmentType)[] = itemType === 'ingredient' ? inventory.ingredients : inventory.equipment;
     const matches = types.filter((type) => {
-        const haystack = 'category' in type ? `${type.name} ${type.category}` : type.name;
+        const haystack = 'category_label' in type ? `${type.name} ${type.category_label}` : type.name;
         return haystack.toLowerCase().includes(search);
     });
 
-    list.replaceChildren();
     for (const type of matches) {
-        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        const row = createListRow();
         setIcon(row, 'icon' in type ? type.icon : null);
         setField(row, 'name', type.name);
 
-        const unsaved = generalStorage.get(itemKey(activeTab, type.uuid))?.amount ?? 0;
+        const unsaved = generalStorage.get(itemKey(itemType, type.uuid))?.amount ?? 0;
         setField(row, 'stored', unsaved > 0 ? `${type.stored} (+${unsaved})` : `${type.stored}`);
-        row.title = describe(activeTab, type.uuid);
+        row.title = describe(itemType, type.uuid);
 
-        const itemType = activeTab;
         const unstoredTool = itemType === 'equipment' && (type as EquipmentType).requires_storage === false;
 
         row.querySelector('[data-action="edit"]')!.addEventListener('click', () => openEditTypeModal(itemType, type.uuid));
@@ -175,12 +281,7 @@ function renderSidebar(): void {
         list.appendChild(row);
     }
 
-    if (matches.length === 0) {
-        const empty = document.createElement('li');
-        empty.className = 'text-center text-gray-400 py-4 text-sm';
-        empty.textContent = types.length === 0 ? `No ${TYPE_LABELS[activeTab].toLowerCase()} yet` : 'No results';
-        list.appendChild(empty);
-    }
+    return types.length;
 }
 
 function renderGeneralStorage(): void {
@@ -227,7 +328,7 @@ function renderStorages(): void {
 
         section.querySelector('[data-action="delete"]')!.addEventListener('click', () => openDeleteStorageModal(storage));
         setupItemDropTarget(section, storage.uuid);
-        setupStorageHandle(section);
+        setupStorageDragging(section);
 
         list.appendChild(section);
     }
@@ -281,10 +382,10 @@ function toggleSidebar(): void {
     localStorage.setItem('dnd-restaurant-sidebar-collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
 }
 
-function switchTab(tab: ItemType): void {
+function switchTab(tab: SidebarTab): void {
     activeTab = tab;
 
-    document.querySelectorAll('.inventory-tab').forEach((button) => {
+    document.querySelectorAll('.inventory-tab[data-tab]').forEach((button) => {
         button.classList.toggle('active', (button as HTMLElement).dataset.tab === tab);
     });
 
@@ -436,18 +537,20 @@ async function transfer(item: Item, amount: number, from: string | null, to: str
 
 //| Drag and drop: storage reordering
 
-function setupStorageHandle(section: HTMLElement): void {
-    const handle = section.querySelector('.inventory-storage-handle') as HTMLElement;
+function setupStorageDragging(section: HTMLElement): void {
+    // Drags of the items inside the space bubble up here too, so only handle drags of the space itself
+    section.addEventListener('dragstart', (event) => {
+        if (event.target !== section) return;
 
-    handle.addEventListener('dragstart', (event) => {
         draggedStorage = section;
         event.dataTransfer!.setData(STORAGE_MIME, section.dataset.uuid!);
         event.dataTransfer!.effectAllowed = 'move';
-        event.dataTransfer!.setDragImage(section, 20, 20);
         section.classList.add('dragging');
     });
 
-    handle.addEventListener('dragend', () => {
+    section.addEventListener('dragend', (event) => {
+        if (event.target !== section) return;
+
         section.classList.remove('dragging');
         if (draggedStorage !== null) {
             // The drag was cancelled, so restore the saved order
@@ -465,9 +568,11 @@ function setupStorageReordering(list: HTMLElement): void {
         const target = (event.target as Element).closest('.inventory-storage') as HTMLElement | null;
         if (target === null || target === draggedStorage || target.parentElement !== list) return;
 
-        const rect = target.getBoundingClientRect();
-        const before = event.clientX < rect.left + rect.width / 2;
-        list.insertBefore(draggedStorage, before ? target : target.nextSibling);
+        // The dragged space takes over the slot of the hovered one, shifting it and those in between along. As the
+        // dragged space ends up under the pointer afterwards, this doesn't flip back and forth on the next dragover
+        const siblings = Array.from(list.children);
+        const movingForward = siblings.indexOf(draggedStorage) < siblings.indexOf(target);
+        list.insertBefore(draggedStorage, movingForward ? target.nextSibling : target);
     });
 
     list.addEventListener('drop', async (event) => {
@@ -549,11 +654,17 @@ async function deleteStorage(): Promise<void> {
 //| Ingredient & equipment types
 
 function openCreateTypeModal(): void {
+    if (activeTab === 'recipe') {
+        openRecipeModal(null);
+        return;
+    }
+
     if (activeTab === 'ingredient') {
         editingIngredientUuid = null;
         (document.getElementById('ingredient-create-form') as HTMLFormElement).reset();
         document.getElementById('ingredient-modal-title')!.textContent = 'New Ingredient';
         document.getElementById('ingredient-modal-submit')!.textContent = 'Create';
+        document.getElementById('ingredient-modal-delete')!.classList.add('hidden');
         openModal('ingredient-create-modal');
         return;
     }
@@ -563,6 +674,7 @@ function openCreateTypeModal(): void {
     fillEquipmentParentSelect(null);
     document.getElementById('equipment-modal-title')!.textContent = 'New Equipment';
     document.getElementById('equipment-modal-submit')!.textContent = 'Create';
+    document.getElementById('equipment-modal-delete')!.classList.add('hidden');
     openModal('equipment-create-modal');
 }
 
@@ -580,6 +692,7 @@ function openEditTypeModal(type: ItemType, uuid: string): void {
 
         document.getElementById('ingredient-modal-title')!.textContent = 'Edit Ingredient';
         document.getElementById('ingredient-modal-submit')!.textContent = 'Save';
+        document.getElementById('ingredient-modal-delete')!.classList.remove('hidden');
         openModal('ingredient-create-modal');
         return;
     }
@@ -591,7 +704,7 @@ function openEditTypeModal(type: ItemType, uuid: string): void {
     const form = document.getElementById('equipment-create-form') as HTMLFormElement;
     form.reset();
     (form.elements.namedItem('name') as HTMLInputElement).value = equipment.name;
-    (form.elements.namedItem('category') as HTMLInputElement).value = equipment.category;
+    (form.elements.namedItem('category') as HTMLSelectElement).value = equipment.category;
     (form.elements.namedItem('description') as HTMLTextAreaElement).value = equipment.description ?? '';
     (form.elements.namedItem('size') as HTMLInputElement).value = String(equipment.size);
     (form.elements.namedItem('cleaning_time') as HTMLInputElement).value = String(equipment.cleaning_time);
@@ -604,6 +717,7 @@ function openEditTypeModal(type: ItemType, uuid: string): void {
 
     document.getElementById('equipment-modal-title')!.textContent = 'Edit Equipment';
     document.getElementById('equipment-modal-submit')!.textContent = 'Save';
+    document.getElementById('equipment-modal-delete')!.classList.remove('hidden');
     openModal('equipment-create-modal');
 }
 
@@ -686,6 +800,207 @@ async function submitForm(form: HTMLFormElement, url: string, fileFields: string
     }
 }
 
+//| Recipes
+
+function openRecipeModal(uuid: string | null): void {
+    const recipe = uuid !== null ? inventory.recipes.find((candidate) => candidate.uuid === uuid) ?? null : null;
+    if (uuid !== null && recipe === null) return;
+
+    editingRecipeUuid = uuid;
+    const form = document.getElementById('recipe-form') as HTMLFormElement;
+    form.reset();
+
+    if (recipe !== null) {
+        (form.elements.namedItem('name') as HTMLInputElement).value = recipe.name;
+        (form.elements.namedItem('description') as HTMLTextAreaElement).value = recipe.description ?? '';
+        for (const field of RECIPE_NUMBER_FIELDS) {
+            (form.elements.namedItem(field) as HTMLInputElement).value = String(recipe[field]);
+        }
+    }
+
+    for (const kind of Object.keys(recipeComponents) as RecipeComponentKind[]) {
+        recipeComponents[kind].clear();
+        recipe?.[RECIPE_COMPONENT_KEYS[kind]].forEach((component) => recipeComponents[kind].set(component.uuid, component.amount));
+        renderRecipeComponents(kind);
+    }
+
+    switchRecipeTab('details');
+    document.getElementById('recipe-modal-title')!.textContent = recipe !== null ? 'Edit Recipe' : 'New Recipe';
+    document.getElementById('recipe-modal-submit')!.textContent = recipe !== null ? 'Save' : 'Create';
+    document.getElementById('recipe-modal-delete')!.classList.toggle('hidden', recipe === null);
+    openModal('recipe-modal');
+}
+
+function switchRecipeTab(tab: RecipeTab): void {
+    document.querySelectorAll<HTMLElement>('.recipe-tab').forEach((button) => {
+        button.classList.toggle('active', button.dataset.recipeTab === tab);
+    });
+    document.querySelectorAll<HTMLElement>('.recipe-panel').forEach((panel) => {
+        panel.classList.toggle('hidden', panel.dataset.recipePanel !== tab);
+    });
+}
+
+/** Byproducts are ingredients, so they are picked from and displayed as ingredients */
+function getComponentItemType(kind: RecipeComponentKind): ItemType {
+    return kind === 'equipment' ? 'equipment' : 'ingredient';
+}
+
+function renderRecipeComponents(kind: RecipeComponentKind): void {
+    const list = document.getElementById(`recipe-${kind}-list`) as HTMLElement;
+    const template = document.getElementById('recipe-component-template') as HTMLTemplateElement;
+    const components = recipeComponents[kind];
+    const type = getComponentItemType(kind);
+
+    list.replaceChildren();
+    for (const [uuid, amount] of components) {
+        const definition = getDefinition(type, uuid);
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        setIcon(row, definition !== null && 'icon' in definition ? definition.icon : null);
+        setField(row, 'name', definition?.name ?? 'Unknown');
+
+        // Invalid amounts are left for the form's own validation to report on save
+        const input = row.querySelector('[data-field="amount"]') as HTMLInputElement;
+        input.value = String(amount);
+        input.addEventListener('input', () => {
+            const value = parseInt(input.value, 10);
+            if (!isNaN(value)) components.set(uuid, value);
+        });
+
+        row.querySelector('[data-action="remove"]')!.addEventListener('click', () => {
+            components.delete(uuid);
+            renderRecipeComponents(kind);
+        });
+
+        list.appendChild(row);
+    }
+
+    if (components.size === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'text-gray-400 text-sm px-3 py-1';
+        empty.textContent = 'None yet';
+        list.appendChild(empty);
+    }
+
+    document.querySelector(`[data-recipe-count="${kind}"]`)!.textContent = components.size > 0 ? `(${components.size})` : '';
+
+    // Only offer the types that are not part of the list yet
+    const select = document.getElementById(`recipe-${kind}-select`) as HTMLSelectElement;
+    const types: (IngredientType | EquipmentType)[] = type === 'ingredient' ? inventory.ingredients : inventory.equipment;
+    select.replaceChildren();
+    for (const definition of types) {
+        if (!components.has(definition.uuid)) {
+            select.appendChild(new Option(definition.name, definition.uuid));
+        }
+    }
+
+    select.disabled = select.options.length === 0;
+    if (select.disabled) {
+        select.appendChild(new Option(`No ${TYPE_LABELS[type].toLowerCase()} left to add`, ''));
+    }
+}
+
+function addRecipeComponent(kind: RecipeComponentKind): void {
+    const select = document.getElementById(`recipe-${kind}-select`) as HTMLSelectElement;
+    if (select.disabled || select.value === '') return;
+
+    recipeComponents[kind].set(select.value, 1);
+    renderRecipeComponents(kind);
+}
+
+async function saveRecipe(): Promise<void> {
+    const form = document.getElementById('recipe-form') as HTMLFormElement;
+
+    // Browsers can't point at an invalid field inside a hidden tab, so open the tab of the first one first
+    const invalid = form.querySelector<HTMLElement>(':invalid');
+    const panel = invalid?.closest<HTMLElement>('[data-recipe-panel]');
+    if (panel) {
+        switchRecipeTab(panel.dataset.recipePanel as RecipeTab);
+    }
+    if (!form.reportValidity()) return;
+
+    const editing = editingRecipeUuid;
+    const url = editing !== null ? `${apiUrl}/recipe/${editing}/edit` : `${apiUrl}/recipe/create`;
+
+    // Sent as JSON, so an emptied component list still arrives as an empty list
+    const payload: Record<string, unknown> = Object.fromEntries(new FormData(form));
+    for (const kind of Object.keys(recipeComponents) as RecipeComponentKind[]) {
+        payload[RECIPE_COMPONENT_KEYS[kind]] = Array.from(recipeComponents[kind], ([uuid, amount]): RecipeComponent => ({uuid, amount}));
+    }
+
+    try {
+        const response = await postData(url, JSON.stringify(payload));
+        if (!response?.ok) return;
+        response.announce();
+
+        editingRecipeUuid = null;
+        closeModal('recipe-modal');
+        setInventory(response.data.inventory);
+    } catch {
+        // The error has already been shown to the user
+    }
+}
+
+//| Deleting ingredients, equipment & recipes
+
+function getEditingUuid(type: SidebarTab): string | null {
+    switch (type) {
+        case 'ingredient': return editingIngredientUuid;
+        case 'equipment':  return editingEquipmentUuid;
+        case 'recipe':     return editingRecipeUuid;
+    }
+}
+
+function openDeleteTypeModal(type: SidebarTab): void {
+    const uuid = getEditingUuid(type);
+    if (uuid === null) return;
+
+    const name = type === 'recipe'
+        ? inventory.recipes.find((recipe) => recipe.uuid === uuid)?.name
+        : getDefinition(type, uuid)?.name;
+
+    pendingTypeDelete = {type, uuid};
+    document.getElementById('type-delete-title')!.textContent = `Delete ${TYPE_LABELS[type].toLowerCase()}`;
+    document.getElementById('type-delete-name')!.textContent = name ?? TYPE_LABELS[type];
+    document.getElementById('type-delete-warning')!.textContent = type === 'recipe'
+        ? ''
+        : 'It will also be removed from every storage space and recipe.';
+
+    // The edit modal stays filled in, so cancelling can return to it as it was
+    closeModal(EDIT_MODALS[type]);
+    openModal('type-delete-modal');
+}
+
+function cancelDeleteType(): void {
+    closeModal('type-delete-modal');
+    if (pendingTypeDelete !== null) {
+        openModal(EDIT_MODALS[pendingTypeDelete.type]);
+        pendingTypeDelete = null;
+    }
+}
+
+async function deleteType(): Promise<void> {
+    if (pendingTypeDelete === null) return;
+
+    const {type, uuid} = pendingTypeDelete;
+    pendingTypeDelete = null;
+    closeModal('type-delete-modal');
+
+    try {
+        const response = await postData(`${apiUrl}/${type}/${uuid}/delete`, new FormData());
+        if (!response?.ok) return;
+        response.announce();
+
+        if (type === 'ingredient') editingIngredientUuid = null;
+        if (type === 'equipment') editingEquipmentUuid = null;
+        if (type === 'recipe') editingRecipeUuid = null;
+
+        // Also drops any unsaved general storage stacks of a deleted ingredient or equipment
+        setInventory(response.data.inventory);
+    } catch {
+        // The error has already been shown to the user
+    }
+}
+
 //| Amount modal
 
 function openAmountModal(title: string, amount: number, max: number | null, action: (amount: number) => Promise<void> | void): void {
@@ -737,7 +1052,7 @@ function describe(type: ItemType, uuid: string): string {
         return `${definition.name} — size ${definition.size}, expires in ${definition.expires_in} days`;
     }
 
-    return `${definition.name} (${definition.category}) — size ${definition.size}`;
+    return `${definition.name} (${definition.category_label}) — size ${definition.size}`;
 }
 
 (<any>window).init                   = init;
@@ -750,6 +1065,12 @@ function describe(type: ItemType, uuid: string): string {
 (<any>window).openCreateTypeModal    = openCreateTypeModal;
 (<any>window).createIngredient       = createIngredient;
 (<any>window).createEquipment        = createEquipment;
+(<any>window).saveRecipe             = saveRecipe;
+(<any>window).addRecipeComponent     = addRecipeComponent;
+(<any>window).switchRecipeTab        = switchRecipeTab;
+(<any>window).openDeleteTypeModal    = openDeleteTypeModal;
+(<any>window).cancelDeleteType       = cancelDeleteType;
+(<any>window).deleteType             = deleteType;
 (<any>window).confirmAmount          = confirmAmount;
 (<any>window).openModal              = openModal;
 (<any>window).closeModal             = closeModal;

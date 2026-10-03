@@ -61,7 +61,23 @@ class CreateIngredientTest extends AbstractApiFeatureTester implements PostOpera
     public function test_size_validation(): void
     {
         $this->assertRequiredValidation('size');
-        $this->assertIntegerValidation('size');
+        $this->assertNumericValidation('size');
+    }
+
+    public function test_size_can_be_fractional(): void
+    {
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters(['size' => 0.25]));
+
+        $response->assertCreated();
+        $this->assertEquals(0.25, Ingredient::where('uuid', $response->json('data.uuid'))->first()->size);
+    }
+
+    public function test_size_must_be_above_zero(): void
+    {
+        $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters(['size' => 0]))
+            ->assertBadRequest();
     }
 
     //| save tests

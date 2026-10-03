@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string name The display name of the ingredient
  * @property string|null icon The path to the icon for the ingredient, if any
  * @property integer expires_in After how long the ingredient expires, in days
- * @property integer size How much storage capacity a single unit of the ingredient takes up
+ * @property float size How much storage capacity a single unit of the ingredient takes up
  */
 class Ingredient extends RestaurantDataModel
 {
@@ -22,7 +22,7 @@ class Ingredient extends RestaurantDataModel
     /** @inheritdoc */
     protected $casts = [
         'expires_in' => 'integer',
-        'size'       => 'integer',
+        'size'       => 'float',
     ];
 
     //| Relationships

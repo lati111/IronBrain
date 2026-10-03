@@ -143,6 +143,22 @@ class TransferItemTest extends AbstractApiFeatureTester implements PostOperation
         $this->assertEquals(8, $response->json('data.inventory.storages.0.used_capacity'));
     }
 
+    public function test_fractional_sizes_can_fill_a_storage_exactly(): void
+    {
+        $storage = $this->createTestStorage($this->restaurant, 1, 1, 'Jar');
+        $spice = $this->createTestIngredient($this->restaurant, 1, 'Spice');
+        $spice->size = 0.1;
+        $spice->save();
+        $this->storeIngredient($storage, $spice, 7);
+
+        // Without rounding, 0.7 + 3 * 0.1 comes out just above 1 in floating point
+        $response = $this->transfer(['item_uuid' => $spice->uuid, 'to_storage_uuid' => $storage->uuid]);
+
+        $response->assertOk();
+        $this->assertEquals(10, $this->getStoredIngredientAmount($storage, $spice));
+        $this->assertEquals(1, $response->json('data.inventory.storages.1.used_capacity'));
+    }
+
     public function test_equipment_that_does_not_require_storage_cannot_be_transferred(): void
     {
         $equipment = $this->createTestEquipment($this->restaurant, 1, 'Ladle', false);

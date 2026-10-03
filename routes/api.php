@@ -101,13 +101,24 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.inventory.ingredient.create');
             Route::post('/ingredient/{ingredient_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'editIngredient'])
                 ->name('api.dnd.restaurant.inventory.ingredient.edit');
+            Route::post('/ingredient/{ingredient_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'deleteIngredient'])
+                ->name('api.dnd.restaurant.inventory.ingredient.delete');
 
             Route::post('/equipment/create', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'createEquipment'])
                 ->name('api.dnd.restaurant.inventory.equipment.create');
             Route::post('/equipment/{equipment_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'editEquipment'])
                 ->name('api.dnd.restaurant.inventory.equipment.edit');
+            Route::post('/equipment/{equipment_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'deleteEquipment'])
+                ->name('api.dnd.restaurant.inventory.equipment.delete');
             Route::post('/equipment/{equipment_uuid}/owned', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'adjustOwnedEquipment'])
                 ->name('api.dnd.restaurant.inventory.equipment.owned');
+
+            Route::post('/recipe/create', [\App\Http\Api\Modules\DnD\Restaurant\RecipeApi::class, 'createRecipe'])
+                ->name('api.dnd.restaurant.inventory.recipe.create');
+            Route::post('/recipe/{recipe_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\RecipeApi::class, 'editRecipe'])
+                ->name('api.dnd.restaurant.inventory.recipe.edit');
+            Route::post('/recipe/{recipe_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\RecipeApi::class, 'deleteRecipe'])
+                ->name('api.dnd.restaurant.inventory.recipe.delete');
         });
     });
 

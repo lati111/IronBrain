@@ -2,10 +2,14 @@
 
 namespace Tests\Traits\DnD;
 
+use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\OwnedEquipment;
+use App\Models\DnD\Restaurant\Recipe;
+use App\Models\DnD\Restaurant\RecipeByproduct;
+use App\Models\DnD\Restaurant\RecipeIngredient;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\RestaurantUser;
 use App\Models\DnD\Restaurant\Storage;
@@ -59,13 +63,50 @@ trait RestaurantTestHelper
         $equipment = new Equipment();
         $equipment->restaurant_uuid = $restaurant->uuid;
         $equipment->name = $name;
-        $equipment->category = 'Cookware';
+        $equipment->category = EquipmentCategory::COOKWARE;
         $equipment->cleaning_time = 5;
         $equipment->multiplier = 1.0;
         $equipment->size = $size;
         $equipment->requires_storage = $requiresStorage;
         $equipment->save();
         return $equipment;
+    }
+
+    protected function createTestRecipe(Restaurant $restaurant, string $name = 'Test Recipe'): Recipe
+    {
+        $recipe = new Recipe();
+        $recipe->restaurant_uuid = $restaurant->uuid;
+        $recipe->name = $name;
+        $recipe->price = 5.0;
+        $recipe->portions = 1;
+        $recipe->difficulty = 0;
+        $recipe->prep_time = 10;
+        $recipe->cooking_time = 20;
+        $recipe->fresh_for = 30;
+        $recipe->good_for = 6;
+        $recipe->expires_in = 2;
+        $recipe->save();
+        return $recipe;
+    }
+
+    protected function addRecipeIngredient(Recipe $recipe, Ingredient $ingredient, int $amount): RecipeIngredient
+    {
+        $link = new RecipeIngredient();
+        $link->recipe_uuid = $recipe->uuid;
+        $link->ingredient_uuid = $ingredient->uuid;
+        $link->amount = $amount;
+        $link->save();
+        return $link;
+    }
+
+    protected function addRecipeByproduct(Recipe $recipe, Ingredient $ingredient, int $amount): RecipeByproduct
+    {
+        $link = new RecipeByproduct();
+        $link->recipe_uuid = $recipe->uuid;
+        $link->ingredient_uuid = $ingredient->uuid;
+        $link->amount = $amount;
+        $link->save();
+        return $link;
     }
 
     protected function storeIngredient(Storage $storage, Ingredient $ingredient, int $amount): StorageIngredient

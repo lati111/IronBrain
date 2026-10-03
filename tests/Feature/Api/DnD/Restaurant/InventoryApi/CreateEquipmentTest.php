@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\DnD\Restaurant\InventoryApi;
 
+use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Restaurant;
 use Tests\Feature\Api\AbstractApiFeatureTester;
@@ -36,7 +37,7 @@ class CreateEquipmentTest extends AbstractApiFeatureTester implements PostOperat
     {
         return array_merge([
             'name'          => 'Cooking Pot',
-            'category'      => 'Cookware',
+            'category'      => 'cookware',
             'cleaning_time' => 10,
             'multiplier'    => 1.25,
             'size'          => 3,
@@ -54,7 +55,19 @@ class CreateEquipmentTest extends AbstractApiFeatureTester implements PostOperat
     public function test_category_validation(): void
     {
         $this->assertRequiredValidation('category');
-        $this->assertMaxValidation('string', 'category', 64);
+        $this->assertInArrayValidation('category', 'spaceship');
+    }
+
+    public function test_category_is_saved_as_its_code_and_listed_with_its_label(): void
+    {
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters(['category' => 'tableware']));
+
+        $response->assertCreated();
+        $equipment = Equipment::where('uuid', $response->json('data.uuid'))->first();
+        $this->assertSame(EquipmentCategory::TABLEWARE, $equipment->category);
+        $this->assertEquals('tableware', $response->json('data.inventory.equipment.0.category'));
+        $this->assertEquals('Tableware', $response->json('data.inventory.equipment.0.category_label'));
     }
 
     public function test_numeric_field_validation(): void

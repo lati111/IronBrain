@@ -11,11 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string name The display name of the recipe
  * @property string|null description The description of the recipe
  * @property float price The price the recipe sells for
+ * @property integer portions How many portions making the recipe once produces
+ * @property integer difficulty How difficult the recipe is to make
  * @property integer prep_time How long the recipe takes to prepare, in minutes
  * @property integer cooking_time How long the recipe takes to cook, in minutes
  * @property integer fresh_for How long the dish stays fresh, in minutes
- * @property integer good_for How long the dish stays good, in minutes
- * @property integer expires_in After how long the dish expires, in minutes
+ * @property integer good_for How long the dish stays good, in hours
+ * @property integer expires_in After how long the dish expires, in days
  */
 class Recipe extends RestaurantDataModel
 {
@@ -26,12 +28,14 @@ class Recipe extends RestaurantDataModel
 
     /** @inheritdoc */
     protected $casts = [
-        'price'        => 'float',
-        'prep_time'    => 'integer',
-        'cooking_time' => 'integer',
-        'fresh_for'    => 'integer',
-        'good_for'     => 'integer',
-        'expires_in'   => 'integer',
+        'price'             => 'float',
+        'portions'          => 'integer',
+        'difficulty'        => 'integer',
+        'prep_time'         => 'integer',
+        'cooking_time'      => 'integer',
+        'fresh_for'         => 'integer',
+        'good_for'          => 'integer',
+        'expires_in'        => 'integer',
     ];
 
     //| Relationships
@@ -51,6 +55,25 @@ class Recipe extends RestaurantDataModel
     public function Ingredients(): BelongsToMany {
         return $this->belongsToMany(Ingredient::class, RecipeIngredient::TABLE_NAME, 'recipe_uuid', 'ingredient_uuid', 'uuid', 'uuid')
             ->using(RecipeIngredient::class)
+            ->withPivot('uuid', 'amount')
+            ->withTimestamps();
+    }
+
+    /**
+     * The relationship for the byproduct entries of this recipe
+     * @return HasMany
+     */
+    public function RecipeByproducts(): HasMany {
+        return $this->hasMany(RecipeByproduct::class, 'recipe_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the ingredients produced as byproducts of this recipe, with the amount on the pivot
+     * @return BelongsToMany
+     */
+    public function Byproducts(): BelongsToMany {
+        return $this->belongsToMany(Ingredient::class, RecipeByproduct::TABLE_NAME, 'recipe_uuid', 'ingredient_uuid', 'uuid', 'uuid')
+            ->using(RecipeByproduct::class)
             ->withPivot('uuid', 'amount')
             ->withTimestamps();
     }
