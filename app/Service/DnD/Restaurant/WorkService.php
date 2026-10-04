@@ -291,7 +291,8 @@ class WorkService
      */
     private function queueEquipment(Restaurant $restaurant, Equipment $equipment, int $amount): void
     {
-        $minutes = $equipment->cleaning_time * $amount;
+        // Cleaning times can be fractions of a minute, and work is kept with two decimals
+        $minutes = round($equipment->cleaning_time * $amount, 2);
         if ($minutes <= 0) {
             $equipment->amount_dirty = max(0, $equipment->amount_dirty - $amount);
             $equipment->save();

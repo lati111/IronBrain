@@ -273,9 +273,9 @@ class InventoryApi extends AbstractApi
             'name'             => 'required|string|max:64',
             'description'      => 'nullable|string',
             'category'         => ['required', 'string', Rule::in(EquipmentCategory::values())],
-            'cleaning_time'    => 'required|integer|min:0',
+            'cleaning_time'    => 'required|numeric|min:0|max:999999',
             'multiplier'       => 'required|numeric|min:0',
-            'size'             => 'required|integer|min:1',
+            'size'             => 'required|numeric|gt:0|max:999999',
             'parent_uuid'      => 'nullable|string|max:255',
             'requires_storage' => 'nullable|boolean',
         ]);
@@ -300,9 +300,9 @@ class InventoryApi extends AbstractApi
         $equipment->name             = $request->get('name');
         $equipment->description      = $request->get('description');
         $equipment->category         = EquipmentCategory::from($request->get('category'));
-        $equipment->cleaning_time    = (int) $request->get('cleaning_time');
+        $equipment->cleaning_time    = round((float) $request->get('cleaning_time'), 2);
         $equipment->multiplier       = (float) $request->get('multiplier');
-        $equipment->size             = (int) $request->get('size');
+        $equipment->size             = round((float) $request->get('size'), 2);
         // Equipment needs storage unless explicitly said otherwise
         $equipment->requires_storage = $request->has('requires_storage') ? $request->boolean('requires_storage') : true;
         $equipment->save();
@@ -376,9 +376,9 @@ class InventoryApi extends AbstractApi
             'name'             => 'nullable|string|max:64',
             'description'      => 'nullable|string',
             'category'         => ['nullable', 'string', Rule::in(EquipmentCategory::values())],
-            'cleaning_time'    => 'nullable|integer|min:0',
+            'cleaning_time'    => 'nullable|numeric|min:0|max:999999',
             'multiplier'       => 'nullable|numeric|min:0',
-            'size'             => 'nullable|integer|min:1',
+            'size'             => 'nullable|numeric|gt:0|max:999999',
             'parent_uuid'      => 'nullable|string|max:255',
             'requires_storage' => 'nullable|boolean',
         ]);
@@ -419,9 +419,9 @@ class InventoryApi extends AbstractApi
         $equipment->name          = $request->get('name', $equipment->name);
         $equipment->description   = $request->has('description') ? $request->get('description') : $equipment->description;
         $equipment->category      = $request->filled('category') ? EquipmentCategory::from($request->get('category')) : $equipment->category;
-        $equipment->cleaning_time = $request->has('cleaning_time') ? (int) $request->get('cleaning_time') : $equipment->cleaning_time;
+        $equipment->cleaning_time = $request->has('cleaning_time') ? round((float) $request->get('cleaning_time'), 2) : $equipment->cleaning_time;
         $equipment->multiplier    = $request->has('multiplier') ? (float) $request->get('multiplier') : $equipment->multiplier;
-        $equipment->size          = $request->has('size') ? (int) $request->get('size') : $equipment->size;
+        $equipment->size          = $request->has('size') ? round((float) $request->get('size'), 2) : $equipment->size;
         $equipment->save();
 
         return $this->respond(Response::HTTP_OK, 'Equipment updated', [

@@ -217,10 +217,10 @@
             </x-form.input-wrapper>
             <div class="flex gap-3">
                 <x-form.input-wrapper label_text="Size" cls="flex-1">
-                    <input type="number" name="size" class="underlined" min="1" value="1" required/>
+                    <input type="number" name="size" class="underlined" min="0.01" step="0.01" value="1" required/>
                 </x-form.input-wrapper>
                 <x-form.input-wrapper label_text="Cleaning time (min)" cls="flex-1">
-                    <input type="number" name="cleaning_time" class="underlined" min="0" value="0" required/>
+                    <input type="number" name="cleaning_time" class="underlined" min="0" step="0.01" value="0" required/>
                 </x-form.input-wrapper>
                 <x-form.input-wrapper label_text="Multiplier" cls="flex-1">
                     <input type="number" name="multiplier" class="underlined" min="0" step="0.01" value="1" required/>

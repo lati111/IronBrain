@@ -72,12 +72,30 @@ class CreateEquipmentTest extends AbstractApiFeatureTester implements PostOperat
 
     public function test_numeric_field_validation(): void
     {
-        $this->assertIntegerValidation('cleaning_time', 'cleaning time');
+        $this->assertNumericValidation('cleaning_time', 'cleaning time');
         $this->assertNumericValidation('multiplier');
-        $this->assertIntegerValidation('size');
+        $this->assertNumericValidation('size');
     }
 
     //| save tests
+
+    public function test_size_and_cleaning_time_can_be_fractions(): void
+    {
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters(['size' => 0.5, 'cleaning_time' => 2.5]));
+
+        $response->assertCreated();
+        $equipment = Equipment::where('restaurant_uuid', $this->restaurant->uuid)->latest()->first();
+        $this->assertEquals(0.5, $equipment->size);
+        $this->assertEquals(2.5, $equipment->cleaning_time);
+    }
+
+    public function test_size_must_be_above_zero(): void
+    {
+        $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), $this->getPostParameters(['size' => 0]))
+            ->assertBadRequest();
+    }
 
     public function test_equipment_is_saved_with_parent(): void
     {
