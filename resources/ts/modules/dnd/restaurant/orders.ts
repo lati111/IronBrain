@@ -1,8 +1,11 @@
 import {openModal, closeModal} from "../../../components/modal";
 import {formatMinutes, getServiceState, KitchenRecipe, Order, post} from "./kitchen";
-import {formatMoney} from "./shared";
+import {formatMoney, refreshMoneyInputs, setupMoneyInput} from "./shared";
 
-/** Taking orders at a table, and looking at the details of one */
+/**
+ * Taking and editing orders at a table, and looking after one once it is placed: its portions being eaten, a tip or
+ * discount, and finishing or cancelling it. An order is paid into the shift total once it is finished
+ */
 
 export interface OrderTable {
     uuid: string;
@@ -14,31 +17,54 @@ export interface SeatedCustomer {
     name: string;
 }
 
-/** A single portion added to the order being taken, for one customer or, when null, for the table */
+/** A single portion on the order being taken or edited, for one customer or, when null, for the table */
 interface DraftItem {
-    recipe: KitchenRecipe;
+    /** The uuid of the item when it is already on the order, or null for a new one */
+    uuid: string | null;
+    /** The recipe of a new item. Existing items keep the recipe they were ordered as */
+    recipeUuid: string | null;
+    name: string;
+    price: number;
     customerUuid: string | null;
+    /** Served items can't be taken off the order */
+    served: boolean;
 }
 
 let orderTable: OrderTable | null = null;
 let orderCustomers: SeatedCustomer[] = [];
 let draftItems: DraftItem[] = [];
-let detailsOrder: Order | null = null;
+/** The order being edited in the order modal, or null while taking a new one */
+let editingOrder: Order | null = null;
 
-//| Taking an order
+/** The order open in the details modal, along with its table and who sits there, for editing it from there */
+let details: {order: Order, table: OrderTable, customers: SeatedCustomer[]} | null = null;
+let moneyInputsReady = false;
+
+//| Taking & editing an order
 
 /**
  * Opens the order modal for a table. Recipes are picked from the list on the left, each adding a single portion to
  * the order on the right, where it is assigned to one of the customers seated at the table
  * @param table The table ordering
  * @param customers The customers seated at the table
+ * @param order The order to edit, or null to take a new one
  */
-export function openOrderModal(table: OrderTable, customers: SeatedCustomer[]): void {
+export function openOrderModal(table: OrderTable, customers: SeatedCustomer[], order: Order | null = null): void {
     orderTable = table;
     orderCustomers = customers;
-    draftItems = [];
+    editingOrder = order;
+    draftItems = (order?.items ?? []).map((item) => ({
+        uuid: item.uuid,
+        recipeUuid: item.recipe_uuid,
+        name: item.name,
+        price: item.price,
+        customerUuid: item.customer_uuid,
+        // A plate on its way can't be taken off the order either
+        served: item.served || item.on_the_way,
+    }));
 
-    document.getElementById('order-modal-title')!.textContent = `Order for ${table.name}`;
+    document.getElementById('order-modal-title')!.textContent = order !== null ? `Edit order for ${table.name}` : `Order for ${table.name}`;
+    document.getElementById('order-place')!.textContent = order !== null ? 'Save order' : 'Place order';
     (document.getElementById('order-recipe-search') as HTMLInputElement).value = '';
 
     renderOrderRecipes();
@@ -56,43 +82,39 @@ function renderOrderRecipes(): void {
     for (const recipe of recipes) {
         const row = document.createElement('li');
         row.className = 'order-recipe';
+        row.append(
+            createSpan(recipe.name, 'flex-1 truncate'),
+            createSpan(formatMoney(recipe.price), 'text-xs text-gray-500 whitespace-nowrap'),
+            createSpan('+', 'interactive font-semibold'),
+        );
 
-        const name = document.createElement('span');
-        name.className = 'flex-1 truncate';
-        name.textContent = recipe.name;
-
-        const price = document.createElement('span');
-        price.className = 'text-xs text-gray-500 whitespace-nowrap';
-        price.textContent = formatMoney(recipe.price);
-
-        const add = document.createElement('span');
-        add.className = 'interactive font-semibold';
-        add.textContent = '+';
-
-        row.append(name, price, add);
         row.addEventListener('click', () => {
             // Each click adds another portion, for the first customer without one yet, so a round is quick to take
-            draftItems.push({recipe, customerUuid: suggestCustomer(recipe)});
+            draftItems.push({
+                uuid: null,
+                recipeUuid: recipe.uuid,
+                name: recipe.name,
+                price: recipe.price,
+                customerUuid: suggestCustomer(recipe),
+                served: false,
+            });
             renderOrderItems();
         });
         list.appendChild(row);
     }
 
     if (list.childElementCount === 0) {
-        const empty = document.createElement('li');
-        empty.className = 'text-gray-400 text-sm text-center py-2';
-        empty.textContent = (getServiceState()?.recipes ?? []).length === 0 ? 'No recipes yet' : 'No results';
-        list.appendChild(empty);
+        appendEmptyRow(list, (getServiceState()?.recipes ?? []).length === 0 ? 'No recipes yet' : 'No results', 'py-2');
     }
 }
 
 /** Suggests the first seated customer that hasn't been given this recipe yet, or the table when everyone has */
 function suggestCustomer(recipe: KitchenRecipe): string | null {
-    const given = new Set(draftItems.filter((item) => item.recipe.uuid === recipe.uuid).map((item) => item.customerUuid));
+    const given = new Set(draftItems.filter((item) => item.recipeUuid === recipe.uuid).map((item) => item.customerUuid));
     return orderCustomers.find((customer) => !given.has(customer.uuid))?.uuid ?? null;
 }
 
-/** Lists the portions added to the order, each with the one customer it is for */
+/** Lists the portions on the order, each with the one customer it is for */
 function renderOrderItems(): void {
     const list = document.getElementById('order-items') as HTMLElement;
     list.replaceChildren();
@@ -100,10 +122,7 @@ function renderOrderItems(): void {
     draftItems.forEach((item, index) => {
         const row = document.createElement('li');
         row.className = 'order-item';
-
-        const name = document.createElement('span');
-        name.className = 'flex-1 truncate';
-        name.textContent = item.recipe.name;
+        row.classList.toggle('served', item.served);
 
         const customer = document.createElement('select');
         customer.className = 'underlined text-sm w-32';
@@ -114,44 +133,52 @@ function renderOrderItems(): void {
         customer.value = item.customerUuid ?? '';
         customer.addEventListener('change', () => item.customerUuid = customer.value === '' ? null : customer.value);
 
-        const price = document.createElement('span');
-        price.className = 'min-w-14 text-right text-sm whitespace-nowrap';
-        price.textContent = formatMoney(item.recipe.price);
-
+        // What has been brought to the table stays on the order
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'px-1';
         remove.title = 'Remove from the order';
         remove.innerHTML = '&times;';
+        remove.classList.toggle('invisible', item.served);
         remove.addEventListener('click', () => {
             draftItems.splice(index, 1);
             renderOrderItems();
         });
 
-        row.append(name, customer, price, remove);
+        row.append(
+            createSpan(item.served ? `✓ ${item.name}` : item.name, 'flex-1 truncate'),
+            customer,
+            createSpan(formatMoney(item.price), 'min-w-14 text-right text-sm whitespace-nowrap'),
+            remove,
+        );
         list.appendChild(row);
     });
 
     if (draftItems.length === 0) {
-        const empty = document.createElement('li');
-        empty.className = 'text-gray-400 text-sm text-center py-6';
-        empty.textContent = 'No items yet';
-        list.appendChild(empty);
+        appendEmptyRow(list, 'No items yet', 'py-6');
     }
 
-    const total = draftItems.reduce((sum, item) => sum + item.recipe.price, 0);
+    const total = draftItems.reduce((sum, item) => sum + item.price, 0);
     const portions = draftItems.length;
     document.getElementById('order-total')!.textContent = `${portions} ${portions === 1 ? 'portion' : 'portions'}, ${formatMoney(total)}`;
     (document.getElementById('order-place') as HTMLButtonElement).disabled = portions === 0;
 }
 
+/** Places the order being taken, or saves the one being edited */
 async function placeOrder(): Promise<void> {
     if (orderTable === null || draftItems.length === 0) return;
 
-    const items = draftItems.map((item) => ({recipe_uuid: item.recipe.uuid, customer_uuid: item.customerUuid}));
+    // Sent as JSON, as the items are nested. Existing items are sent by their uuid, new ones by their recipe
+    const items = draftItems.map((item) => item.uuid !== null
+        ? {uuid: item.uuid, customer_uuid: item.customerUuid}
+        : {recipe_uuid: item.recipeUuid, customer_uuid: item.customerUuid});
 
-    // Sent as JSON, as the items are nested
-    if (await post('/order', JSON.stringify({table_uuid: orderTable.uuid, items}))) {
+    const saved = editingOrder !== null
+        ? await post(`/order/${editingOrder.uuid}/edit`, JSON.stringify({items}))
+        : await post('/order', JSON.stringify({table_uuid: orderTable.uuid, items}));
+
+    if (saved) {
+        editingOrder = null;
         closeModal('order-modal');
     }
 }
@@ -159,16 +186,31 @@ async function placeOrder(): Promise<void> {
 //| Order details
 
 /**
- * Opens the details of an order, from where a fully served order can be finished once its meal is eaten
+ * Opens the details of an order, from where its portions are marked as eaten, a tip or discount is given, and the
+ * order is edited, finished or cancelled
  * @param order The order
- * @param tableName The name of the table it was placed at
+ * @param table The table it was placed at
+ * @param customers The customers seated at the table, for editing the order
  */
-export function openOrderDetails(order: Order, tableName: string): void {
-    detailsOrder = order;
+export function openOrderDetails(order: Order, table: OrderTable, customers: SeatedCustomer[]): void {
+    details = {order, table, customers};
+    setupDetailMoneyInputs();
 
-    document.getElementById('order-details-title')!.textContent = `${tableName}, ordered at ${order.ordered_at}`;
+    (document.getElementById('order-tip') as HTMLInputElement).value = String(order.tip);
+    (document.getElementById('order-discount') as HTMLInputElement).value = String(order.discount);
+    refreshMoneyInputs(document.getElementById('order-details-modal')!);
+
+    renderOrderDetails();
+    openModal('order-details-modal');
+}
+
+/** Fills the details modal with the order as it currently is */
+function renderOrderDetails(): void {
+    if (details === null) return;
+    const {order, table} = details;
+
+    document.getElementById('order-details-title')!.textContent = `${table.name}, ordered at ${order.ordered_at}`;
     document.getElementById('order-details-status')!.textContent = describeOrder(order);
-    document.getElementById('order-details-total')!.textContent = formatMoney(order.total_price);
 
     const list = document.getElementById('order-details-items') as HTMLElement;
     list.replaceChildren();
@@ -176,29 +218,41 @@ export function openOrderDetails(order: Order, tableName: string): void {
         const row = document.createElement('li');
         row.className = 'order-details-item';
         row.classList.toggle('served', item.served);
+        row.classList.toggle('consumed', item.consumed);
 
-        const name = document.createElement('span');
-        name.className = 'flex-1 truncate';
-        name.textContent = item.served ? `✓ ${item.name}` : item.name;
+        const actions = document.createElement('span');
+        actions.className = 'w-20 text-right';
+        if (item.served && !item.consumed) {
+            const consume = document.createElement('button');
+            consume.className = 'interactive text-xs';
+            consume.textContent = 'Consumed';
+            consume.addEventListener('click', () => orderAction(`/item/${item.uuid}/consume`));
+            actions.appendChild(consume);
+        }
 
-        const customer = document.createElement('span');
-        customer.className = 'text-gray-500';
-        customer.textContent = item.customer_name ?? 'Table';
-
-        const price = document.createElement('span');
-        price.className = 'min-w-16 text-right whitespace-nowrap';
-        price.textContent = formatMoney(item.price);
-
-        row.append(name, customer, price);
+        const name = item.served ? `✓ ${item.name}` : item.on_the_way ? `${item.name} (on its way)` : item.name;
+        row.append(
+            createSpan(name, 'flex-1 truncate'),
+            createSpan(item.customer_name ?? 'Table', 'text-gray-500'),
+            createSpan(formatMoney(item.price), 'min-w-16 text-right whitespace-nowrap'),
+            actions,
+        );
         list.appendChild(row);
     }
 
-    document.getElementById('order-consume')!.classList.toggle('hidden', order.status !== 'fulfilled');
-    openModal('order-details-modal');
+    document.getElementById('order-details-subtotal')!.textContent = formatMoney(order.total_price);
+    document.getElementById('order-details-total')!.textContent = formatMoney(order.payable);
+
+    const uneaten = order.items.some((item) => item.served && !item.consumed);
+    document.getElementById('order-consume')!.classList.toggle('hidden', !uneaten);
 }
 
 /** Describes how far along an order is, with how long ago it was placed or fully served */
 export function describeOrder(order: Order): string {
+    if (order.status === 'taking') {
+        return `Being taken, ordered ${formatMinutes(order.ordered_minutes_ago)} ago`;
+    }
+
     const served = order.items.filter((item) => item.served).length;
     if (order.status === 'fulfilled') {
         return `All ${order.items.length} served ${formatMinutes(order.fulfilled_minutes_ago ?? 0)} ago`;
@@ -207,15 +261,109 @@ export function describeOrder(order: Order): string {
     return `${served}/${order.items.length} served, ordered ${formatMinutes(order.ordered_minutes_ago)} ago`;
 }
 
-async function consumeOrder(): Promise<void> {
-    if (detailsOrder === null) return;
+/** The tip and discount fields show coins while not being edited, set up the first time the details open */
+function setupDetailMoneyInputs(): void {
+    if (moneyInputsReady) return;
+    moneyInputsReady = true;
 
-    if (await post(`/order/${detailsOrder.uuid}/consume`)) {
-        detailsOrder = null;
-        closeModal('order-details-modal');
+    for (const id of ['order-tip', 'order-discount']) {
+        const input = document.getElementById(id) as HTMLInputElement;
+        setupMoneyInput(input);
+        input.addEventListener('change', saveTipAndDiscount);
     }
 }
 
-(<any>window).placeOrder         = placeOrder;
-(<any>window).renderOrderRecipes = renderOrderRecipes;
-(<any>window).consumeOrder = consumeOrder;
+async function saveTipAndDiscount(): Promise<void> {
+    if (details === null) return;
+
+    const tip = document.getElementById('order-tip') as HTMLInputElement;
+    const discount = document.getElementById('order-discount') as HTMLInputElement;
+    if (!tip.reportValidity() || !discount.reportValidity()) return;
+
+    const formData = new FormData();
+    formData.append('tip', tip.value === '' ? '0' : tip.value);
+    formData.append('discount', discount.value === '' ? '0' : discount.value);
+    await orderAction('/adjust', formData, false);
+}
+
+function editOrder(): void {
+    if (details === null) return;
+
+    const {order, table, customers} = details;
+    closeModal('order-details-modal');
+    openOrderModal(table, customers, order);
+}
+
+function consumeOrder(): void {
+    orderAction('/consume');
+}
+
+function finishOrder(): void {
+    orderAction('/finish');
+}
+
+function openCancelOrderModal(): void {
+    if (details === null) return;
+
+    closeModal('order-details-modal');
+    openModal('order-cancel-modal');
+}
+
+/** Goes back to the details of the order, as cancelling it was called off */
+function keepOrder(): void {
+    closeModal('order-cancel-modal');
+    if (details !== null) openModal('order-details-modal');
+}
+
+async function cancelOrder(): Promise<void> {
+    closeModal('order-cancel-modal');
+    await orderAction('/cancel');
+}
+
+/**
+ * Performs an action on the order open in the details modal, then shows it as it is now, or closes the details once
+ * the order is done
+ * @param path The path of the action, after the order's own path
+ * @param formData The parameters of the action
+ * @param announce Whether to show the result as a toast
+ */
+async function orderAction(path: string, formData: FormData = new FormData(), announce: boolean = true): Promise<void> {
+    if (details === null) return;
+
+    if (!await post(`/order/${details.order.uuid}${path}`, formData, announce)) return;
+
+    const order = getServiceState()?.orders.find((candidate) => candidate.uuid === details?.order.uuid) ?? null;
+    if (order === null) {
+        details = null;
+        closeModal('order-details-modal');
+        return;
+    }
+
+    details.order = order;
+    renderOrderDetails();
+}
+
+//| Helpers
+
+function createSpan(text: string, className: string): HTMLElement {
+    const span = document.createElement('span');
+    span.className = className;
+    span.textContent = text;
+    return span;
+}
+
+function appendEmptyRow(list: HTMLElement, text: string, padding: string): void {
+    const empty = document.createElement('li');
+    empty.className = `text-gray-400 text-sm text-center ${padding}`;
+    empty.textContent = text;
+    list.appendChild(empty);
+}
+
+(<any>window).placeOrder           = placeOrder;
+(<any>window).renderOrderRecipes   = renderOrderRecipes;
+(<any>window).editOrder            = editOrder;
+(<any>window).consumeOrder         = consumeOrder;
+(<any>window).finishOrder          = finishOrder;
+(<any>window).openCancelOrderModal = openCancelOrderModal;
+(<any>window).keepOrder            = keepOrder;
+(<any>window).cancelOrder          = cancelOrder;

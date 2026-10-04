@@ -70,6 +70,10 @@ interface Meal {
     expires_in_minutes: number | null;
     spoiled: boolean;
     portions_left: number;
+    /** How well the meal turned out, asked for once it is finished */
+    quality: number | null;
+    /** Whether the meal is done cooking or ready to serve */
+    finished: boolean;
 }
 
 /** A plated portion waiting to be brought to a table */
@@ -77,6 +81,11 @@ export interface Plate {
     uuid: string;
     recipe_uuid: string;
     name: string;
+    /** The quality of the meal it was plated from */
+    quality: number | null;
+    /** Minutes until the portion spoils, as the meal would in the serving area */
+    expires_in_minutes: number | null;
+    spoiled: boolean;
 }
 
 export interface OrderItem {
@@ -87,14 +96,23 @@ export interface OrderItem {
     customer_name: string | null;
     price: number;
     served: boolean;
+    /** Whether a plate was set aside for it, which the waiter is bringing */
+    on_the_way: boolean;
+    consumed: boolean;
 }
 
 /** An order that is still being served or eaten */
 export interface Order {
     uuid: string;
     table_uuid: string | null;
-    status: 'open' | 'fulfilled';
+    /** Taking while the waiter takes it, then open until everything is served */
+    status: 'taking' | 'open' | 'fulfilled';
+    /** What the items are worth together */
     total_price: number;
+    tip: number;
+    discount: number;
+    /** What the table pays once the order is finished: the items, less the discount, plus the tip */
+    payable: number;
     ordered_at: string;
     ordered_minutes_ago: number;
     fulfilled_minutes_ago: number | null;
@@ -104,12 +122,14 @@ export interface Order {
 /** The work areas employees can work in */
 type WorkStationCode = 'prep' | 'cleaning';
 
-interface Employee {
+export interface Employee {
     uuid: string;
     name: string;
     icon: string | null;
-    /** The work area the employee works in, or null while idle */
+    /** The work area the employee works in, or null while idle or waiting tables */
     station: WorkStationCode | null;
+    /** The uuids of the tables the employee waits, when waiting tables rather than working in a work area */
+    tables: string[];
     /** The task the employee is on, such as "Prepping Stew" */
     task: string;
 }
@@ -146,11 +166,28 @@ export interface ServiceState {
     plates: Plate[];
     employees: Employee[];
     stations: Record<WorkStationCode, WorkStationState>;
+    /** The jobs of the waiters: taking orders and bringing plates */
+    waiting: WaitingJob[];
     orders: Order[];
 }
 
+/** A job of a table's waiter: taking an order there, or bringing a plated portion */
+export interface WaitingJob {
+    uuid: string;
+    table_uuid: string;
+    order_uuid: string | null;
+    served_meal_uuid: string | null;
+    /** Such as "Taking an order at Booth" or "Bringing Stew to Booth" */
+    task: string;
+    /** How far along the job is, from 0 to 1 */
+    progress: number;
+    /** Minutes until the job is done, counting the waiter's jobs before it, or null while nobody waits the table */
+    minutes_left: number | null;
+}
+
 const MEAL_MIME = 'application/x-restaurant-meal';
-const EMPLOYEE_MIME = 'application/x-restaurant-employee';
+/** Drag type for employees, which are dropped on a work area, on a table to wait it, or back with the staff */
+export const EMPLOYEE_MIME = 'application/x-restaurant-employee';
 /** Drag type for plated portions, which are dropped on tables */
 export const PLATE_MIME = 'application/x-restaurant-plate';
 
@@ -166,12 +203,20 @@ let draggedPlate: Plate | null = null;
 let draggedEmployee: Employee | null = null;
 let pendingScrap: Meal | null = null;
 
+/** The meal the quality modal is asking about, and the meals whose question was put off until the page reloads */
+let qualityMeal: Meal | null = null;
+const qualityPutOff = new Set<string>();
+
 export function getServiceState(): ServiceState | null {
     return state;
 }
 
 export function getDraggedPlate(): Plate | null {
     return draggedPlate;
+}
+
+export function getDraggedEmployee(): Employee | null {
+    return draggedEmployee;
 }
 
 export function onServiceState(listener: (state: ServiceState) => void): void {
@@ -198,7 +243,7 @@ export async function initKitchen(url: string): Promise<void> {
     ];
     for (const [id, station] of areas) {
         setupDropTarget(document.getElementById(id) as HTMLElement, EMPLOYEE_MIME, (uuid) => assignEmployee(uuid, station),
-            () => draggedEmployee !== null && draggedEmployee.station !== station);
+            () => draggedEmployee !== null && (draggedEmployee.station !== station || draggedEmployee.tables.length > 0));
     }
 
     const response = await getData(serviceUrl);
@@ -217,6 +262,7 @@ function setState(data: ServiceState): void {
     renderStaff();
     renderStationProgress();
     stateListeners.forEach((listener) => listener(data));
+    askForQuality();
 }
 
 //| Clock
@@ -363,7 +409,8 @@ function createPlateChip(plate: Plate): HTMLElement {
     const chip = document.createElement('div');
     chip.className = 'inventory-item kitchen-plate';
     chip.draggable = true;
-    chip.textContent = plate.name;
+    chip.classList.toggle('spoiled', plate.spoiled);
+    chip.textContent = describePlate(plate);
 
     chip.addEventListener('dragstart', (event) => {
         draggedPlate = plate;
@@ -377,6 +424,19 @@ function createPlateChip(plate: Plate): HTMLElement {
     }));
 
     return chip;
+}
+
+/** Describes a plated portion with its quality and how long it stays fresh, such as "Stew · Q12 · 25m" */
+function describePlate(plate: Plate): string {
+    const parts = [plate.name];
+    if (plate.quality !== null) parts.push(`Q${plate.quality}`);
+    if (plate.spoiled) {
+        parts.push('spoiled');
+    } else if (plate.expires_in_minutes !== null) {
+        parts.push(formatMinutes(plate.expires_in_minutes));
+    }
+
+    return parts.join(' · ');
 }
 
 //| Equipment
@@ -430,6 +490,10 @@ function renderEquipment(): void {
             row.appendChild(createProgressBar(work > 0 ? done / work : 0));
         }
         row.addEventListener('click', () => toggleEquipmentMenu(piece, row));
+        if (queue.length > 0) {
+            // Prioritising one piece moves every piece of the equipment, so the first stands for all
+            onRightClick(row, () => openPrioritizeMenu(row, `${piece.name}: cleaning`, [queue[0].uuid]));
+        }
         list.appendChild(row);
     }
 
@@ -551,7 +615,7 @@ function createEmployeeElement(employee: Employee): HTMLElement {
 }
 
 /** The employee's icon, or the first letter of their name when they have none */
-function createEmployeeIcon(employee: Employee): HTMLElement {
+export function createEmployeeIcon(employee: Employee): HTMLElement {
     const icon = document.createElement('div');
     icon.className = 'kitchen-employee-icon';
     if (employee.icon !== null) {
@@ -560,14 +624,17 @@ function createEmployeeIcon(employee: Employee): HTMLElement {
         icon.textContent = employee.name.charAt(0).toUpperCase();
     }
 
+    // The ring around the icon shows where they work, with waiting tables counting as a place of its own
     if (employee.station !== null) {
         icon.dataset.station = employee.station;
+    } else if (employee.tables.length > 0) {
+        icon.dataset.station = 'tables';
     }
 
     return icon;
 }
 
-function setupEmployeeDrag(element: HTMLElement, employee: Employee): void {
+export function setupEmployeeDrag(element: HTMLElement, employee: Employee): void {
     element.addEventListener('dragstart', (event) => {
         draggedEmployee = employee;
         event.dataTransfer!.setData(EMPLOYEE_MIME, employee.uuid);
@@ -591,6 +658,7 @@ function createMealCard(meal: Meal): HTMLElement {
     const actions = card.querySelector('[data-actions]') as HTMLElement;
 
     setField(card, 'name', meal.name);
+    setField(card, 'quality', meal.quality !== null ? `Q${meal.quality}` : '');
     setField(card, 'timer', describeTimer(meal));
     card.classList.toggle('spoiled', meal.spoiled);
     card.dataset.status = meal.status;
@@ -603,6 +671,7 @@ function createMealCard(meal: Meal): HTMLElement {
                 card.dataset.queued = '';
                 setField(card, 'timer', job.minutes_left !== null ? `${formatMinutes(job.minutes_left)} left` : 'queued');
                 card.appendChild(createProgressBar(job.progress));
+                onRightClick(card, () => openPrioritizeMenu(card, meal.name, [job.uuid]));
             } else {
                 addAction(actions, `Prep (${formatMinutes(meal.prep_time)})`, () => post(`/meal/${meal.uuid}/prepare`));
             }
@@ -692,6 +761,9 @@ function toggleMealMenu(meal: Meal, anchor: HTMLElement): void {
             const left = meal.portions_left === 1 ? 'last portion' : `${meal.portions_left} portions left`;
             option(`Plate a portion (${left})`, () => post(`/meal/${meal.uuid}/plate`));
         }
+        if (meal.finished) {
+            option(meal.quality === null ? 'Set quality' : `Change quality (Q${meal.quality})`, () => openQualityModal(meal));
+        }
         option('Scrap meal', () => openScrapModal(meal));
     });
 }
@@ -737,6 +809,53 @@ function setupMealMenuClosing(): void {
     document.addEventListener('scroll', closeMealMenu, true);
     window.addEventListener('resize', closeMealMenu);
 }
+
+//| Quality
+
+/** Asks how a finished meal turned out, for the first one that hasn't got a quality yet */
+function askForQuality(): void {
+    if (qualityMeal !== null) return;
+
+    const meal = state!.meals.find((candidate) => candidate.finished && candidate.quality === null && !qualityPutOff.has(candidate.uuid));
+    if (meal !== undefined) {
+        openQualityModal(meal);
+    }
+}
+
+function openQualityModal(meal: Meal): void {
+    qualityMeal = meal;
+    document.getElementById('meal-quality-title')!.textContent = `${meal.name} is ready`;
+
+    const input = document.getElementById('meal-quality-input') as HTMLInputElement;
+    input.value = meal.quality !== null ? String(meal.quality) : '';
+    openModal('meal-quality-modal');
+    input.focus();
+}
+
+async function saveQuality(): Promise<void> {
+    const form = document.getElementById('meal-quality-form') as HTMLFormElement;
+    if (qualityMeal === null || !form.reportValidity()) return;
+
+    const meal = qualityMeal;
+    closeModal('meal-quality-modal');
+    qualityMeal = null;
+
+    if (!await post(`/meal/${meal.uuid}/quality`, new FormData(form), false)) {
+        // Asked again, so the quality isn't lost to a failed save
+        openQualityModal(meal);
+    }
+}
+
+/** Puts the question off until the page reloads, after which it can still be set from the meal's menu */
+function putOffQuality(): void {
+    if (qualityMeal !== null) qualityPutOff.add(qualityMeal.uuid);
+
+    qualityMeal = null;
+    closeModal('meal-quality-modal');
+    askForQuality();
+}
+
+//| Scrapping
 
 function openScrapModal(meal: Meal): void {
     pendingScrap = meal;
@@ -812,6 +931,40 @@ function renderStationProgress(): void {
     });
 }
 
+//| Prioritising
+
+/**
+ * Calls an action when an element is right clicked, instead of the browser's own menu
+ * @param element The element
+ * @param action The action
+ */
+export function onRightClick(element: HTMLElement, action: () => void): void {
+    element.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        action();
+    });
+}
+
+/**
+ * Opens the menu over a job, from where it is moved to the front of its queue so it is worked on next
+ * @param anchor The element the menu hovers over
+ * @param status A line describing the job
+ * @param jobUuids The jobs that can be prioritised, labelled by the given labels when there are several
+ * @param labels The label of each job, when there are several to choose from
+ */
+export function openPrioritizeMenu(anchor: HTMLElement, status: string, jobUuids: string[], labels: string[] = []): void {
+    toggleMenu(anchor, status, (option) => {
+        jobUuids.forEach((uuid, index) => {
+            option(labels[index] !== undefined ? `Prioritize ${labels[index]}` : 'Prioritize', () => prioritizeWork(uuid));
+        });
+    });
+}
+
+async function prioritizeWork(uuid: string): Promise<void> {
+    await post(`/work/${uuid}/prioritize`, new FormData(), false);
+}
+
 function addAction(container: HTMLElement, label: string, action: () => void): void {
     const button = document.createElement('button');
     button.className = 'interactive';
@@ -841,4 +994,6 @@ export function formatMinutes(minutes: number): string {
 (<any>window).openPlanMealModal = openPlanMealModal;
 (<any>window).planMeal          = planMeal;
 (<any>window).confirmScrapMeal  = confirmScrapMeal;
+(<any>window).saveQuality       = saveQuality;
+(<any>window).putOffQuality     = putOffQuality;
 (<any>window).cleanAllEquipment = cleanAllEquipment;

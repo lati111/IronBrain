@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string recipe_uuid The uuid of the recipe the meal is made from
  * @property string status The stored status: planned, prepped, cooking or serving
  * @property integer portions_left How many portions are left to be plated once cooked
+ * @property integer|null quality How well the meal turned out, set once it is finished
  * @property string|null cooker_uuid The uuid of the cooker equipment the meal is in, while cooking
  * @property integer|null cooker_slot Which piece of the cooker equipment the meal occupies, from 1
  * @property Carbon|null cooking_ends_at When the meal is done cooking, in the restaurant's time
@@ -42,6 +43,7 @@ class Meal extends RestaurantDataModel
     /** @inheritdoc */
     protected $casts = [
         'portions_left'   => 'integer',
+        'quality'         => 'integer',
         'cooker_slot'     => 'integer',
         'cooking_ends_at' => 'datetime',
         'expires_at'      => 'datetime',
@@ -62,6 +64,16 @@ class Meal extends RestaurantDataModel
         }
 
         return $this->status;
+    }
+
+    /**
+     * Checks whether the meal is finished at a moment in the restaurant: done cooking, or ready to serve
+     * @param Carbon $now The restaurant's current time
+     * @return bool Whether it is finished
+     */
+    public function isFinishedAt(Carbon $now): bool
+    {
+        return in_array($this->getStatusAt($now), [self::STATUS_DONE, self::STATUS_SERVING], true);
     }
 
     /**

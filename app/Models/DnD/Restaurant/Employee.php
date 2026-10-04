@@ -4,9 +4,11 @@ namespace App\Models\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\DnD\Restaurant\Interfaces\RestaurantDataModel;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * An employee of the restaurant, who can be put to work in a work area of the kitchen during service
+ * An employee of the restaurant, who during service can be put to work in a work area of the kitchen, or wait tables.
+ * They do one or the other
  * @inheritdoc
  * @property string name The name of the employee
  * @property string|null icon The path of the employee's icon
@@ -38,6 +40,18 @@ class Employee extends RestaurantDataModel
         return match ($station) {
             WorkStation::PREP     => $this->prep_speed,
             WorkStation::CLEANING => $this->cleaning_speed,
+            // Waiters walk at the same pace
+            WorkStation::WAITING  => 1.0,
         };
+    }
+
+    //| Relationships
+
+    /**
+     * The relationship for the tables the employee waits
+     * @return HasMany
+     */
+    public function Tables(): HasMany {
+        return $this->hasMany(Table::class, 'employee_uuid', 'uuid');
     }
 }

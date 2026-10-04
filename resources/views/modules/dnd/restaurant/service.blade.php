@@ -165,11 +165,18 @@
     {{--| Clicking a table, outside its seats, opens its menu to take or look at orders |--}}
     <template id="table-template">
         <div class="service-table">
-            <div class="flex justify-between gap-2">
-                <span data-field="name" class="font-semibold truncate"></span>
+            <div class="flex items-center gap-2">
+                <span data-field="name" class="font-semibold truncate flex-1"></span>
                 <span data-field="occupancy" class="text-sm text-gray-500"></span>
+                {{--| The employee waiting the table, dropped on it from the staff |--}}
+                <span class="service-table-waiter" data-waiter></span>
             </div>
             <span data-field="order" class="service-table-order"></span>
+            {{--| The job the waiter is on at the table, such as taking its order or bringing a plate |--}}
+            <div data-waiter-job class="service-table-job hidden">
+                <span data-field="job" class="truncate"></span>
+                <div class="service-table-job-bar"><div data-waiter-job-fill></div></div>
+            </div>
             {{--| How many of the ordered portions have been served |--}}
             <div data-order-progress class="service-table-progress hidden">
                 <div class="service-table-progress-bar"><div data-order-progress-fill class="service-table-progress-fill"></div></div>
@@ -189,6 +196,7 @@
     <template id="meal-card-template">
         <div class="kitchen-meal">
             <span data-field="name" class="font-semibold truncate flex-1 min-w-0"></span>
+            <span data-field="quality" class="kitchen-meal-quality"></span>
             <span data-field="timer" class="text-xs text-gray-500 whitespace-nowrap"></span>
             <div class="kitchen-meal-actions flex gap-2 text-xs whitespace-nowrap" data-actions></div>
         </div>
@@ -231,6 +239,20 @@
         <div id="meal-menu-options" class="flex flex-col"></div>
     </div>
 
+    {{--| How well a meal turned out, asked for once it is done cooking or ready to serve |--}}
+    <x-modal id="meal-quality-modal">
+        <h3 id="meal-quality-title" class="title py-1"></h3>
+        <form id="meal-quality-form" class="w-full" onsubmit="event.preventDefault(); saveQuality()">
+            <x-form.input-wrapper label_text="Quality">
+                <input id="meal-quality-input" type="number" name="quality" class="underlined" min="-9999" max="9999" step="1" required/>
+            </x-form.input-wrapper>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="putOffQuality()">Later</button>
+            <button class="interactive px-5 py-2.5" dusk="meal-quality-save" onclick="saveQuality()">Save</button>
+        </x-slot:buttons>
+    </x-modal>
+
     {{--| Confirmation before wasting a meal's ingredients |--}}
     <x-modal id="meal-scrap-modal">
         <h3 class="title py-1">Scrap meal</h3>
@@ -264,15 +286,39 @@
         </x-slot:buttons>
     </x-modal>
 
-    {{--| Order details, from where a fully served order is finished once its meal has been eaten |--}}
+    {{--| Order details, where portions are marked as eaten, a tip or discount is given, and the order is finished |--}}
     <x-modal id="order-details-modal">
         <h3 id="order-details-title" class="title py-1"></h3>
         <p id="order-details-status" class="text-center text-sm text-gray-500"></p>
         <ul id="order-details-items" class="w-full"></ul>
-        <p class="w-full text-right">Total: <span id="order-details-total" class="font-semibold"></span></p>
+        <div class="flex gap-3 w-full">
+            <x-form.input-wrapper label_text="Discount" cls="flex-1">
+                <input id="order-discount" type="number" class="underlined" min="0" step="0.01" data-money/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Tip" cls="flex-1">
+                <input id="order-tip" type="number" class="underlined" min="0" step="0.01" data-money/>
+            </x-form.input-wrapper>
+        </div>
+        <div class="order-details-totals w-full">
+            <span>Items</span><span id="order-details-subtotal"></span>
+            <span class="font-semibold">Total</span><span id="order-details-total" class="font-semibold"></span>
+        </div>
         <x-slot:buttons>
+            <button class="interactive px-5 py-2.5" dusk="order-cancel" onclick="openCancelOrderModal()">Cancel order</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('order-details-modal')">Close</button>
-            <button id="order-consume" class="interactive px-5 py-2.5 hidden" dusk="order-consume" onclick="consumeOrder()">Meal consumed</button>
+            <button class="interactive px-5 py-2.5" dusk="order-edit" onclick="editOrder()">Edit</button>
+            <button id="order-consume" class="interactive px-5 py-2.5 hidden" dusk="order-consume" onclick="consumeOrder()">All consumed</button>
+            <button class="interactive px-5 py-2.5" dusk="order-finish" onclick="finishOrder()">Finish order</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Confirmation before cancelling an order |--}}
+    <x-modal id="order-cancel-modal">
+        <h3 class="title py-1">Cancel order</h3>
+        <p class="text-center">Are you sure you want to cancel this order?</p>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="keepOrder()">Keep</button>
+            <button class="interactive px-5 py-2.5" dusk="order-cancel-confirm" onclick="cancelOrder()">Cancel order</button>
         </x-slot:buttons>
     </x-modal>
 

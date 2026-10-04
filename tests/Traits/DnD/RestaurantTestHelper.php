@@ -90,6 +90,15 @@ trait RestaurantTestHelper
         return $employee;
     }
 
+    /** Has a new employee wait a table, so orders can be taken there */
+    protected function assignTestWaiter(Table $table, string $name = 'Waiter'): Employee
+    {
+        $waiter = $this->createTestEmployee($table->getRestaurant(), null, $name);
+        $table->employee_uuid = $waiter->uuid;
+        $table->save();
+        return $waiter;
+    }
+
     protected function createTestStorage(Restaurant $restaurant, int $capacity = 100, int $order = 0, string $name = 'Test Storage'): Storage
     {
         $storage = new Storage();

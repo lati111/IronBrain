@@ -89,6 +89,9 @@ class KitchenService
                     'uuid' => $plate->uuid,
                     'recipe_uuid' => $plate->recipe_uuid,
                     'name' => $plate->Recipe->name,
+                    'quality' => $plate->quality,
+                    'expires_in_minutes' => $plate->expires_at !== null ? $this->minutesUntil($now, $plate->expires_at) : null,
+                    'spoiled' => $plate->expires_at !== null && $now->gte($plate->expires_at),
                 ])->values()->all(),
         ];
     }
@@ -96,8 +99,9 @@ class KitchenService
     //| Plating
 
     /**
-     * Plates a portion of a cooked meal, putting the recipe's serving equipment in use. Plating the last portion
-     * finishes the meal, which makes its containers dirty
+     * Plates a portion of a cooked meal, putting the recipe's serving equipment in use. The portion keeps the meal's
+     * quality, and spoils as the meal would once in the serving area. Plating the last portion finishes the meal,
+     * which makes its containers dirty
      * @param Restaurant $restaurant The restaurant
      * @param Meal $meal The meal
      * @return ServedMeal The plated portion
@@ -119,6 +123,10 @@ class KitchenService
             $plate = new ServedMeal();
             $plate->restaurant_uuid = $restaurant->uuid;
             $plate->recipe_uuid = $meal->recipe_uuid;
+            $plate->quality = $meal->quality;
+            $plate->expires_at = $meal->status === Meal::STATUS_SERVING
+                ? $meal->expires_at
+                : $this->getServedExpiry($meal, $restaurant->getNow());
             $plate->equipment = array_values(array_map(
                 fn (array $entry) => ['equipment_uuid' => $entry['equipment_uuid'], 'amount' => $entry['amount']],
                 array_filter($meal->equipment ?? [], fn (array $entry) => $entry['stage'] === EquipmentStage::SERVING->value)
@@ -284,23 +292,63 @@ class KitchenService
 
     /**
      * Finishes prepping a planned meal, once the prep area has worked through it. The prep equipment becomes dirty,
-     * except containers, which hold the prepped meal until it cooks
+     * except containers, which hold the prepped meal until it cooks. A recipe without cooking time skips the cooker,
+     * and is ready to serve straight away
      * @param Restaurant $restaurant The restaurant
      * @param Meal $meal The meal
+     * @param Carbon|null $at When the prep finished, in the restaurant's time, or null for now
      * @throws InvalidArgumentException Thrown when the meal isn't planned
      */
-    public function finishPrep(Restaurant $restaurant, Meal $meal): void
+    public function finishPrep(Restaurant $restaurant, Meal $meal, ?Carbon $at = null): void
     {
         if ($meal->status !== Meal::STATUS_PLANNED) {
             throw new InvalidArgumentException('Only planned meals can be prepped');
         }
 
-        DB::transaction(function () use ($restaurant, $meal) {
+        DB::transaction(function () use ($restaurant, $meal, $at) {
             $this->releaseEquipment($restaurant, $this->filterEquipment($meal, EquipmentStage::PREP, container: false), dirty: true);
 
             $meal->status = Meal::STATUS_PREPPED;
             $meal->save();
+
+            if ($meal->getRecipe()->cooking_time <= 0) {
+                $this->skipCooking($restaurant, $meal, $at ?? $restaurant->getNow());
+            }
         });
+    }
+
+    /**
+     * Makes a prepped meal that needs no cooking ready to serve. Its prep containers are emptied, as they would be
+     * into a cooker, and it stays good as a served meal does
+     * @param Restaurant $restaurant The restaurant
+     * @param Meal $meal The prepped meal
+     * @param Carbon $now When it became ready, in the restaurant's time
+     */
+    private function skipCooking(Restaurant $restaurant, Meal $meal, Carbon $now): void
+    {
+        $this->releaseEquipment($restaurant, $this->filterEquipment($meal, EquipmentStage::PREP, container: true), dirty: true);
+
+        $meal->expires_at = $now->copy()->addHours($meal->getRecipe()->good_for);
+        $meal->expires_at = $this->getServedExpiry($meal, $now);
+        $meal->status = Meal::STATUS_SERVING;
+        $meal->save();
+    }
+
+    /**
+     * Sets how well a finished meal turned out
+     * @param Restaurant $restaurant The restaurant
+     * @param Meal $meal The meal
+     * @param int $quality The quality
+     * @throws InvalidArgumentException Thrown when the meal isn't finished yet
+     */
+    public function setQuality(Restaurant $restaurant, Meal $meal, int $quality): void
+    {
+        if (!$meal->isFinishedAt($restaurant->getNow())) {
+            throw new InvalidArgumentException('Only finished meals have a quality');
+        }
+
+        $meal->quality = $quality;
+        $meal->save();
     }
 
     /**
@@ -388,13 +436,24 @@ class KitchenService
             throw new InvalidArgumentException('Only meals that are done cooking can be served');
         }
 
-        $freshUntil = $now->copy()->addMinutes($meal->getRecipe()->fresh_for);
-
         $meal->status = Meal::STATUS_SERVING;
         $meal->cooker_uuid = null;
         $meal->cooker_slot = null;
-        $meal->expires_at = $meal->expires_at !== null && $meal->expires_at->lt($freshUntil) ? $meal->expires_at : $freshUntil;
+        $meal->expires_at = $this->getServedExpiry($meal, $now);
         $meal->save();
+    }
+
+    /**
+     * Gets when a meal spoils once it is in the serving area: after the recipe's fresh for time from now, unless it
+     * would have spoiled sooner anyway
+     * @param Meal $meal The meal
+     * @param Carbon $now The restaurant's current time
+     * @return Carbon When it spoils
+     */
+    private function getServedExpiry(Meal $meal, Carbon $now): Carbon
+    {
+        $freshUntil = $now->copy()->addMinutes($meal->getRecipe()->fresh_for);
+        return $meal->expires_at !== null && $meal->expires_at->lt($freshUntil) ? $meal->expires_at->copy() : $freshUntil;
     }
 
     //| Equipment
@@ -551,6 +610,9 @@ class KitchenService
             'expires_in_minutes' => $meal->expires_at !== null ? $this->minutesUntil($now, $meal->expires_at) : null,
             'spoiled' => $meal->isSpoiledAt($now),
             'portions_left' => $meal->portions_left,
+            'quality' => $meal->quality,
+            // A finished meal without a quality yet asks for it
+            'finished' => $meal->isFinishedAt($now),
         ];
     }
 

@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null meal_uuid The uuid of the meal being prepped
  * @property string|null equipment_uuid The uuid of the equipment being cleaned
  * @property integer amount How many pieces of the equipment are being cleaned
+ * @property string|null table_uuid The uuid of the table a waiter's job is for, done by whoever waits it
+ * @property string|null order_uuid The uuid of the order the waiter is taking
+ * @property string|null served_meal_uuid The uuid of the plated portion the waiter is bringing
  * @property float work How many minutes the job takes in total at normal speed
  * @property float progress How many minutes of the job have been done at normal speed
  * @property integer order The place of the job in the queue of its work area
@@ -60,6 +63,30 @@ class Work extends RestaurantDataModel
      */
     public function Meal(): BelongsTo {
         return $this->belongsTo(Meal::class, 'meal_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the table a waiter's job is for
+     * @return BelongsTo
+     */
+    public function Table(): BelongsTo {
+        return $this->belongsTo(Table::class, 'table_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the order the waiter is taking
+     * @return BelongsTo
+     */
+    public function Order(): BelongsTo {
+        return $this->belongsTo(Order::class, 'order_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the plated portion the waiter is bringing
+     * @return BelongsTo
+     */
+    public function ServedMeal(): BelongsTo {
+        return $this->belongsTo(ServedMeal::class, 'served_meal_uuid', 'uuid');
     }
 
     /**

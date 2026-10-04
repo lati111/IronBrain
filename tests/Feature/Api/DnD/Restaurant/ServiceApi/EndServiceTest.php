@@ -31,6 +31,7 @@ class EndServiceTest extends AbstractFeatureTester
         $this->stew = $this->createTestRecipe($this->restaurant, 'Stew');
         $this->pie = $this->createTestRecipe($this->restaurant, 'Pie');
         $this->table = $this->createTestTable($this->restaurant, null, 4, 'Booth');
+        $this->assignTestWaiter($this->table);
 
         app(ShiftService::class)->startService($this->restaurant, '09:00');
         $this->restaurant->refresh();
@@ -59,7 +60,8 @@ class EndServiceTest extends AbstractFeatureTester
         $response->assertOk();
         $this->assertEquals('09:00', $response->json('data.started_at'));
         $this->assertEquals('10:30', $response->json('data.time'));
-        $this->assertEquals(15.0, $response->json('data.profit'));
+        // The orders aren't finished yet, so nothing has been paid
+        $this->assertEquals(0.0, $response->json('data.profit'));
         $this->assertEquals([
             ['name' => 'Pie', 'amount' => 1, 'total' => 5],
             ['name' => 'Stew', 'amount' => 2, 'total' => 10],

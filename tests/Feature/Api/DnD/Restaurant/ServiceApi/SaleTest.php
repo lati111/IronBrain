@@ -27,6 +27,7 @@ class SaleTest extends AbstractFeatureTester
         $this->restaurant = $this->createTestRestaurant($this->getAdminUser());
         $this->recipe = $this->createTestRecipe($this->restaurant, 'Stew');
         $this->table = $this->createTestTable($this->restaurant, null, 4, 'Booth');
+        $this->assignTestWaiter($this->table);
 
         app(ShiftService::class)->startService($this->restaurant, '09:00');
     }
@@ -68,7 +69,7 @@ class SaleTest extends AbstractFeatureTester
 
         $response->assertCreated();
         $this->assertEquals(3.5, $response->json('data.orders.0.total_price'));
-        $this->assertEquals(3.5, $response->json('data.clock.shift_total'));
+        $this->assertEquals(3.5, $response->json('data.orders.0.payable'));
         // The recipe itself keeps its usual price
         $this->assertEquals(5.0, $this->recipe->fresh()->price);
     }
@@ -91,6 +92,8 @@ class SaleTest extends AbstractFeatureTester
         $shifts = app(ShiftService::class);
         $shifts->endService($this->restaurant->fresh());
         $shifts->startService($this->restaurant->fresh(), '09:00');
+        // The staff went home at the end of the service
+        $this->assignTestWaiter($this->table->fresh());
 
         $response = $this->order();
 

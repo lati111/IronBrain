@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string name The name of the recipe when it was ordered
  * @property float price The price of the recipe when it was ordered
  * @property Carbon|null served_at When the portion was brought to the table, in the restaurant's time
+ * @property Carbon|null consumed_at When the portion was eaten, in the restaurant's time
  */
 class OrderItem extends DndRestaurantModel
 {
@@ -27,7 +28,8 @@ class OrderItem extends DndRestaurantModel
     /** @inheritdoc */
     protected $casts = [
         'price'     => 'float',
-        'served_at' => 'datetime',
+        'served_at'   => 'datetime',
+        'consumed_at' => 'datetime',
     ];
 
     //| Relationships

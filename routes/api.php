@@ -109,6 +109,8 @@ Route::prefix('/dnd/restaurant')
             Route::post('/meal/{meal_uuid}/cancel', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'cancelMeal'])
                 ->name('api.dnd.restaurant.service.meal.cancel');
 
+            Route::post('/meal/{meal_uuid}/quality', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'setMealQuality'])
+                ->name('api.dnd.restaurant.service.meal.quality');
             Route::post('/meal/{meal_uuid}/plate', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'plateMeal'])
                 ->name('api.dnd.restaurant.service.meal.plate');
             Route::post('/plate/{plate_uuid}/deliver', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'deliverPlate'])
@@ -120,6 +122,16 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.service.order.place');
             Route::post('/order/{order_uuid}/consume', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'consumeOrder'])
                 ->name('api.dnd.restaurant.service.order.consume');
+            Route::post('/order/{order_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'editOrder'])
+                ->name('api.dnd.restaurant.service.order.edit');
+            Route::post('/order/{order_uuid}/adjust', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'adjustOrder'])
+                ->name('api.dnd.restaurant.service.order.adjust');
+            Route::post('/order/{order_uuid}/item/{item_uuid}/consume', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'consumeOrderItem'])
+                ->name('api.dnd.restaurant.service.order.item.consume');
+            Route::post('/order/{order_uuid}/finish', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'finishOrder'])
+                ->name('api.dnd.restaurant.service.order.finish');
+            Route::post('/order/{order_uuid}/cancel', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'cancelOrder'])
+                ->name('api.dnd.restaurant.service.order.cancel');
 
             Route::post('/sale/{recipe_uuid}', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'setSale'])
                 ->name('api.dnd.restaurant.service.sale.set');
@@ -129,6 +141,10 @@ Route::prefix('/dnd/restaurant')
             Route::post('/ingredient/{ingredient_uuid}/add', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'addIngredient'])
                 ->name('api.dnd.restaurant.service.ingredient.add');
 
+            Route::post('/work/{work_uuid}/prioritize', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'prioritizeWork'])
+                ->name('api.dnd.restaurant.service.work.prioritize');
+            Route::post('/table/{table_uuid}/waiter', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'assignWaiter'])
+                ->name('api.dnd.restaurant.service.table.waiter');
             Route::post('/employee/{employee_uuid}/assign', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'assignEmployee'])
                 ->name('api.dnd.restaurant.service.employee.assign');
 

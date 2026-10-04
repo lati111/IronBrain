@@ -15,6 +15,7 @@ use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\ServedMeal;
 use App\Models\DnD\Restaurant\Table;
+use App\Models\DnD\Restaurant\Work;
 use App\Service\DnD\Restaurant\InventoryService;
 use App\Service\DnD\Restaurant\KitchenService;
 use App\Service\DnD\Restaurant\OrderService;
@@ -210,6 +211,27 @@ class ServiceApi extends AbstractApi
     }
 
     /**
+     * Sets how well a finished meal turned out
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $meal_uuid The uuid of the meal
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function setMealQuality(Request $request, string $restaurant_uuid, string $meal_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'quality' => 'required|integer|min:-9999|max:9999',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Quality saved',
+            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->setQuality($restaurant, $meal, (int) $request->get('quality')));
+    }
+
+    /**
      * Queues dirty pieces of a piece of equipment to be cleaned in the cleaning area
      * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant
@@ -254,6 +276,47 @@ class ServiceApi extends AbstractApi
         }
 
         return $this->attempt($restaurant, 'Queued all dirty equipment for cleaning', fn () => $this->workService->queueAllCleaning($restaurant));
+    }
+
+    /**
+     * Has an employee wait a table, taking its orders, or leaves the table without a waiter when none is given
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $table_uuid The uuid of the table
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function assignWaiter(Request $request, string $restaurant_uuid, string $table_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'employee_uuid' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $table = Table::where('uuid', $table_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($table === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Table not found');
+        }
+
+        $employee = null;
+        if ($request->filled('employee_uuid')) {
+            $employee = Employee::where('uuid', $request->get('employee_uuid'))->where('restaurant_uuid', $restaurant->uuid)->first();
+            if ($employee === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Employee not found');
+            }
+        }
+
+        $this->workService->assignWaiter($table, $employee);
+
+        $message = $employee !== null ? sprintf('%s is waiting %s', $employee->name, $table->name) : $table->name . ' has no waiter';
+        return $this->respond(Response::HTTP_OK, $message, $this->getState($restaurant));
     }
 
     //| Ingredients
@@ -352,6 +415,28 @@ class ServiceApi extends AbstractApi
         return $action($restaurant, $recipe);
     }
 
+    /**
+     * Moves a job to the front of its queue, so it is worked on next
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $work_uuid The uuid of the job
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function prioritizeWork(string $restaurant_uuid, string $work_uuid): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $job = Work::where('uuid', $work_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($job === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Job not found');
+        }
+
+        $this->workService->prioritize($job);
+        return $this->respond(Response::HTTP_OK, 'Prioritized', $this->getState($restaurant));
+    }
+
     //| Staff
 
     /**
@@ -436,7 +521,7 @@ class ServiceApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Table not found');
         }
 
-        return $this->attempt($restaurant, 'Served at ' . $table->name, fn () => $this->orderService->deliverPlate($restaurant, $plate, $table));
+        return $this->attempt($restaurant, 'On its way to ' . $table->name, fn () => $this->orderService->deliverPlate($restaurant, $plate, $table));
     }
 
     /**
@@ -490,34 +575,135 @@ class ServiceApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Table not found');
         }
 
-        $items = [];
-        foreach ($request->get('items') as $entry) {
-            $recipe = Recipe::where('uuid', $entry['recipe_uuid'])->where('restaurant_uuid', $restaurant->uuid)->first();
-            if ($recipe === null) {
-                return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
-            }
-
-            $customer = null;
-            if (($entry['customer_uuid'] ?? null) !== null) {
-                $customer = Customer::where('uuid', $entry['customer_uuid'])->where('restaurant_uuid', $restaurant->uuid)->first();
-                if ($customer === null) {
-                    return $this->respond(Response::HTTP_NOT_FOUND, 'Customer not found');
-                }
-            }
-
-            $items[] = ['recipe' => $recipe, 'customer' => $customer];
+        $items = $this->resolveOrderItems($restaurant, null, $request->get('items'));
+        if ($items instanceof JsonResponse) {
+            return $items;
         }
 
         return $this->attempt($restaurant, 'Order placed', fn () => $this->orderService->placeOrder($restaurant, $table, $items), Response::HTTP_CREATED);
     }
 
     /**
-     * Finishes a fully served order once its meal has been eaten, making its serving equipment dirty
+     * Edits the items of an order. Sent as JSON, with every item the order should have: existing ones by their uuid,
+     * and new ones by their recipe, each with the one customer it is for. Unserved items that are left out are removed
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $order_uuid The uuid of the order
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function editOrder(Request $request, string $restaurant_uuid, string $order_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'items'                 => 'required|array|min:1|max:200',
+            'items.*.uuid'          => 'nullable|string|max:255',
+            'items.*.recipe_uuid'   => 'required_without:items.*.uuid|nullable|string|max:255',
+            'items.*.customer_uuid' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        return $this->withOrder($restaurant_uuid, $order_uuid, function (Restaurant $restaurant, Order $order) use ($request) {
+            $items = $this->resolveOrderItems($restaurant, $order, $request->get('items'));
+            if ($items instanceof JsonResponse) {
+                return $items;
+            }
+
+            return $this->attempt($restaurant, 'Order updated', fn () => $this->orderService->editOrder($restaurant, $order, $items));
+        });
+    }
+
+    /**
+     * Sets the tip and the discount of an order, which change what is paid once it is finished
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $order_uuid The uuid of the order
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function adjustOrder(Request $request, string $restaurant_uuid, string $order_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'tip'      => 'required|numeric|min:0|max:99999999',
+            'discount' => 'required|numeric|min:0|max:99999999',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        return $this->withOrder($restaurant_uuid, $order_uuid, fn (Restaurant $restaurant, Order $order) => $this->attempt(
+            $restaurant, 'Tip and discount saved',
+            fn () => $this->orderService->setTipAndDiscount($order, (float) $request->get('tip'), (float) $request->get('discount'))
+        ));
+    }
+
+    /**
+     * Marks every served portion of an order that isn't eaten yet as eaten, returning their serving equipment dirty
      * @param string $restaurant_uuid The uuid of the restaurant
      * @param string $order_uuid The uuid of the order
      * @return JsonResponse The updated service state in JSON format
      */
     public function consumeOrder(string $restaurant_uuid, string $order_uuid): JsonResponse
+    {
+        return $this->withOrder($restaurant_uuid, $order_uuid, fn (Restaurant $restaurant, Order $order) => $this->attempt(
+            $restaurant, 'Meal consumed', fn () => $this->orderService->consumeOrder($restaurant, $order)
+        ));
+    }
+
+    /**
+     * Marks a single served portion of an order as eaten, returning its serving equipment dirty
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $order_uuid The uuid of the order
+     * @param string $item_uuid The uuid of the portion
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function consumeOrderItem(string $restaurant_uuid, string $order_uuid, string $item_uuid): JsonResponse
+    {
+        return $this->withOrder($restaurant_uuid, $order_uuid, function (Restaurant $restaurant, Order $order) use ($item_uuid) {
+            $item = $order->Items()->where('uuid', $item_uuid)->first();
+            if ($item === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
+            }
+
+            return $this->attempt($restaurant, $item->name . ' consumed', fn () => $this->orderService->consumeItem($restaurant, $item));
+        });
+    }
+
+    /**
+     * Finishes an order, paying it into the shift total
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $order_uuid The uuid of the order
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function finishOrder(string $restaurant_uuid, string $order_uuid): JsonResponse
+    {
+        return $this->withOrder($restaurant_uuid, $order_uuid, fn (Restaurant $restaurant, Order $order) => $this->attempt(
+            $restaurant, 'Order finished', fn () => $this->orderService->finishOrder($restaurant, $order)
+        ));
+    }
+
+    /**
+     * Cancels an order, so nothing is paid for it
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $order_uuid The uuid of the order
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function cancelOrder(string $restaurant_uuid, string $order_uuid): JsonResponse
+    {
+        return $this->withOrder($restaurant_uuid, $order_uuid, fn (Restaurant $restaurant, Order $order) => $this->attempt(
+            $restaurant, 'Order cancelled', fn () => $this->orderService->cancelOrder($restaurant, $order)
+        ));
+    }
+
+    /**
+     * Resolves the restaurant and one of its orders, then responds with what the action gives
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $order_uuid The uuid of the order
+     * @param Closure $action The action, given the restaurant and order, returning the response
+     * @return JsonResponse The response, or an error, in JSON format
+     */
+    private function withOrder(string $restaurant_uuid, string $order_uuid, Closure $action): JsonResponse
     {
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
@@ -529,7 +715,48 @@ class ServiceApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Order not found');
         }
 
-        return $this->attempt($restaurant, 'Meal consumed', fn () => $this->orderService->consumeOrder($restaurant, $order));
+        return $action($restaurant, $order);
+    }
+
+    /**
+     * Resolves the items given for an order: existing items of the order by their uuid, and new ones by their recipe,
+     * each with the customer it is for
+     * @param Restaurant $restaurant The restaurant
+     * @param Order|null $order The order the existing items belong to, or null when placing a new order
+     * @param array $entries The items as sent
+     * @return array|JsonResponse The items, each with an item or a recipe and a customer, or an error when one isn't found
+     */
+    private function resolveOrderItems(Restaurant $restaurant, ?Order $order, array $entries): array|JsonResponse
+    {
+        $items = [];
+        foreach ($entries as $entry) {
+            $customer = null;
+            if (($entry['customer_uuid'] ?? null) !== null) {
+                $customer = Customer::where('uuid', $entry['customer_uuid'])->where('restaurant_uuid', $restaurant->uuid)->first();
+                if ($customer === null) {
+                    return $this->respond(Response::HTTP_NOT_FOUND, 'Customer not found');
+                }
+            }
+
+            if ($order !== null && ($entry['uuid'] ?? null) !== null) {
+                $item = $order->Items()->where('uuid', $entry['uuid'])->first();
+                if ($item === null) {
+                    return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
+                }
+
+                $items[] = ['item' => $item, 'customer' => $customer];
+                continue;
+            }
+
+            $recipe = Recipe::where('uuid', $entry['recipe_uuid'])->where('restaurant_uuid', $restaurant->uuid)->first();
+            if ($recipe === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
+            }
+
+            $items[] = ['recipe' => $recipe, 'customer' => $customer];
+        }
+
+        return $items;
     }
 
     //| Ending the service

@@ -5,8 +5,9 @@ import {
     submitForm, toggleSidebar,
 } from "./shared";
 import {
-    formatMinutes, getDraggedPlate, getServiceState, initKitchen, KitchenRecipe, onServiceState, Order, PLATE_MIME,
-    post as postService, ServiceIngredient, toggleMenu,
+    createEmployeeIcon, Employee, EMPLOYEE_MIME, formatMinutes, getDraggedEmployee, getDraggedPlate, getServiceState,
+    initKitchen, KitchenRecipe, onRightClick, onServiceState, openPrioritizeMenu, Order, PLATE_MIME,
+    post as postService, ServiceIngredient, setupEmployeeDrag, toggleMenu,
 } from "./kitchen";
 import {describeOrder, openOrderDetails, openOrderModal} from "./orders";
 import "./shift";
@@ -358,6 +359,8 @@ function createTableElement(table: Table): HTMLElement {
 
     const orders = getTableOrders(table);
     renderOrderIndicator(element, orders);
+    renderWaiter(element, table);
+    renderWaiterJob(element, table);
 
     // Clicking the table, rather than one of its seats, opens its menu
     element.addEventListener('click', (event) => {
@@ -371,12 +374,67 @@ function createTableElement(table: Table): HTMLElement {
         formData.append('table_uuid', table.uuid);
         postService(`/plate/${uuid}/deliver`, formData);
     }, () => {
+        // Only items without a plate on its way yet, and only when someone waits the table to bring it
         const plate = getDraggedPlate();
-        return plate !== null && orders.some((order) => order.status === 'open'
-            && order.items.some((item) => !item.served && item.recipe_uuid === plate.recipe_uuid));
+        return plate !== null && getWaiter(table) !== null && orders.some((order) => order.status === 'open'
+            && order.items.some((item) => !item.served && !item.on_the_way && item.recipe_uuid === plate.recipe_uuid));
+    });
+
+    // An employee dropped on the table waits it, taking its orders
+    setupDropTarget(element, EMPLOYEE_MIME, (uuid) => assignWaiter(table, uuid), () => {
+        const employee = getDraggedEmployee();
+        return employee !== null && !employee.tables.includes(table.uuid);
     });
 
     return element;
+}
+
+//| Waiters
+
+/** The employee waiting a table, who takes its orders */
+function getWaiter(table: Table): Employee | null {
+    return getServiceState()?.employees.find((employee) => employee.tables.includes(table.uuid)) ?? null;
+}
+
+/** Shows who waits the table, whose icon can be dragged to another table or back to the staff */
+function renderWaiter(element: HTMLElement, table: Table): void {
+    const slot = element.querySelector('[data-waiter]') as HTMLElement;
+    slot.replaceChildren();
+
+    const waiter = getWaiter(table);
+    if (waiter !== null) {
+        const icon = createEmployeeIcon(waiter);
+        icon.title = waiter.name;
+        icon.draggable = true;
+        setupEmployeeDrag(icon, waiter);
+        slot.appendChild(icon);
+    }
+}
+
+/** Shows the job the waiter is on at the table, with its progress and how long it takes until it is done */
+function renderWaiterJob(element: HTMLElement, table: Table): void {
+    const container = element.querySelector('[data-waiter-job]') as HTMLElement;
+    const jobs = (getServiceState()?.waiting ?? []).filter((job) => job.table_uuid === table.uuid);
+    container.classList.toggle('hidden', jobs.length === 0);
+    if (jobs.length === 0) return;
+
+    const job = jobs[0];
+    const more = jobs.length > 1 ? ` (+${jobs.length - 1})` : '';
+    const time = job.minutes_left !== null ? formatMinutes(job.minutes_left) : 'no waiter';
+    setField(container, 'job', `${job.task.replace(/ (at|to) .*$/, '')}${more} · ${time}`);
+    container.title = jobs.map((candidate) => candidate.task).join('\n');
+    (container.querySelector('[data-waiter-job-fill]') as HTMLElement).style.width = `${Math.round(job.progress * 100)}%`;
+
+    // Any of the table's jobs can be moved to the front of its waiter's queue
+    onRightClick(container, () => openPrioritizeMenu(container, `${table.name}: waiter`,
+        jobs.map((candidate) => candidate.uuid),
+        jobs.length > 1 ? jobs.map((candidate) => candidate.task.replace(/ (at|to) .*$/, '').toLowerCase()) : []));
+}
+
+async function assignWaiter(table: Table, employeeUuid: string | null): Promise<void> {
+    const formData = new FormData();
+    if (employeeUuid !== null) formData.append('employee_uuid', employeeUuid);
+    await postService(`/table/${table.uuid}/waiter`, formData, false);
 }
 
 //| Orders
@@ -390,7 +448,8 @@ function getTableOrders(table: Table): Order[] {
  */
 function renderOrderIndicator(element: HTMLElement, orders: Order[]): void {
     const indicator = element.querySelector('[data-field="order"]') as HTMLElement;
-    const waiting = orders.filter((order) => order.status === 'open');
+    // Orders still being taken wait as well
+    const waiting = orders.filter((order) => order.status === 'open' || order.status === 'taking');
     const fulfilled = orders.filter((order) => order.status === 'fulfilled');
 
     indicator.classList.toggle('waiting', waiting.length > 0);
@@ -429,19 +488,29 @@ function openTableMenu(table: Table, anchor: HTMLElement): void {
     const orders = getTableOrders(table);
     const status = orders.length === 0 ? table.name : `${table.name}: ${orders.length} ${orders.length === 1 ? 'order' : 'orders'}`;
 
-    toggleMenu(anchor, status, (option) => {
-        option('Take order', () => {
-            const customers = floor.customers
-                .filter((customer) => customer.table_uuid === table.uuid)
-                .sort((a, b) => (a.seat ?? 0) - (b.seat ?? 0))
-                .map((customer) => ({uuid: customer.uuid, name: customer.name}));
-            openOrderModal({uuid: table.uuid, name: table.name}, customers);
-        });
+    const orderTable = {uuid: table.uuid, name: table.name};
+    const waiter = getWaiter(table);
+
+    toggleMenu(anchor, waiter !== null ? `${status} · ${waiter.name}` : `${status} · no waiter`, (option) => {
+        // Orders are taken by the table's waiter
+        if (waiter !== null) {
+            option('Take order', () => openOrderModal(orderTable, getSeatedCustomers(table)));
+            option(`Remove ${waiter.name}`, () => assignWaiter(table, null));
+        }
 
         for (const order of orders) {
-            option(`Order of ${order.ordered_at} — ${describeOrder(order)}`, () => openOrderDetails(order, table.name));
+            option(`Order of ${order.ordered_at} — ${describeOrder(order)}`,
+                () => openOrderDetails(order, orderTable, getSeatedCustomers(table)));
         }
     });
+}
+
+/** The customers seated at a table, in the order of their seats */
+function getSeatedCustomers(table: Table): {uuid: string, name: string}[] {
+    return floor.customers
+        .filter((customer) => customer.table_uuid === table.uuid)
+        .sort((a, b) => (a.seat ?? 0) - (b.seat ?? 0))
+        .map((customer) => ({uuid: customer.uuid, name: customer.name}));
 }
 
 function createSeatElement(table: Table, number: number, occupant: Customer | null): HTMLElement {
