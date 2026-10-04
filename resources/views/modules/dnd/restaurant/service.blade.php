@@ -54,6 +54,7 @@
                     <div class="inventory-sidebar-body flex flex-1">
                         <button class="inventory-tab active flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="sale" onclick="switchTab('sale')">Sales</button>
                     </div>
                 </div>
@@ -197,6 +198,7 @@
         <div class="kitchen-meal">
             <span data-field="name" class="font-semibold truncate flex-1 min-w-0"></span>
             <span data-field="quality" class="kitchen-meal-quality"></span>
+            <span data-field="needs" class="kitchen-meal-needs" title="Meals still to be put in"></span>
             <span data-field="timer" class="text-xs text-gray-500 whitespace-nowrap"></span>
             <div class="kitchen-meal-actions flex gap-2 text-xs whitespace-nowrap" data-actions></div>
         </div>
@@ -223,10 +225,17 @@
         <h3 class="title py-1">Plan a meal</h3>
         <form id="meal-plan-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); planMeal()">
             <x-form.input-wrapper label_text="Recipe">
-                <select id="meal-plan-recipe" name="recipe_uuid" class="underlined" required></select>
+                <select id="meal-plan-recipe" name="recipe_uuid" class="underlined" required onchange="renderMealPlanChoices()"></select>
             </x-form.input-wrapper>
+            {{-- Which ingredient to use for each category the recipe takes --}}
+            <div id="meal-plan-choices" class="contents"></div>
             <button type="submit" class="hidden"></button>
         </form>
+        <template id="meal-plan-choice-template">
+            <x-form.input-wrapper label_text="">
+                <select class="underlined" required></select>
+            </x-form.input-wrapper>
+        </template>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-plan-modal')">Cancel</button>
             <button class="interactive px-5 py-2.5" dusk="confirm" onclick="planMeal()">Plan</button>
@@ -262,6 +271,16 @@
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-scrap-modal')">Keep</button>
             <button class="interactive px-5 py-2.5" onclick="confirmScrapMeal()">Scrap</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Put a meal into another, plating the portions left over |--}}
+    <x-modal id="meal-supply-modal">
+        <h3 class="title py-1">Plate the leftovers?</h3>
+        <p id="meal-supply-text" class="text-center"></p>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-supply-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="confirm" onclick="confirmSupplyMeal()">Put in &amp; plate</button>
         </x-slot:buttons>
     </x-modal>
 
@@ -335,6 +354,21 @@
     </x-modal>
 
     {{--| Adding an ingredient brought in during service to the pile |--}}
+    {{--| Queue a conversion in the prep area |--}}
+    <x-modal id="conversion-modal">
+        <h3 id="conversion-modal-title" class="title py-1"></h3>
+        <form id="conversion-form" class="w-full" onsubmit="event.preventDefault(); queueConversion()">
+            <x-form.input-wrapper label_text="Amount">
+                <input id="conversion-amount" type="number" name="amount" class="underlined" min="0.01" step="0.01" value="1" required/>
+            </x-form.input-wrapper>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('conversion-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="conversion-confirm" onclick="queueConversion()">Convert</button>
+        </x-slot:buttons>
+    </x-modal>
+
     <x-modal id="pile-modal">
         <h3 id="pile-modal-title" class="title py-1"></h3>
         <form id="pile-form" class="w-full" onsubmit="event.preventDefault(); addToPile()">

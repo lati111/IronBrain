@@ -22,7 +22,14 @@
                 <a href="{{route('dnd.restaurant.overview')}}" class="interactive">&larr; Restaurants</a>
                 <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
             </div>
-            <h1 class="title">Inventory</h1>
+            <div class="flex flex-col items-center">
+                <h1 class="title">Inventory</h1>
+                {{--| The restaurant's date, which ages the stored ingredients as it moves on |--}}
+                <div class="flex items-center gap-2 text-sm text-gray-500">
+                    <span id="inventory-date"></span>
+                    <button class="service-clock-step interactive" onclick="advanceDay()" dusk="advance-day">+1 day</button>
+                </div>
+            </div>
             <div class="w-72 flex justify-end gap-4 whitespace-nowrap">
                 <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
                 @if($restaurant->isInService())
@@ -45,6 +52,7 @@
                         <button class="inventory-tab active flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="equipment" onclick="switchTab('equipment')">Equipment</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="recipe" onclick="switchTab('recipe')">Recipes</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
                     </div>
                 </div>
 
@@ -129,6 +137,8 @@
             <img data-field="icon" alt="" class="inventory-icon" draggable="false">
             <span data-field="name" class="truncate"></span>
             <span data-field="amount" class="inventory-item-amount"></span>
+            {{--| How many days the stack has left before it expires |--}}
+            <span data-field="expiry" class="inventory-item-expiry"></span>
         </div>
     </template>
 
@@ -179,6 +189,10 @@
         <form id="ingredient-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createIngredient()">
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Category (optional)">
+                <input type="text" name="category" class="underlined" maxlength="64" placeholder="Category..." list="ingredient-category-options" autocomplete="off"/>
+                <datalist id="ingredient-category-options"></datalist>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Expires in (days)">
                 <input type="number" name="expires_in" class="underlined" min="0" value="7" required/>
@@ -248,7 +262,7 @@
     {{--| Create / edit recipe modal |--}}
     <x-modal id="recipe-modal">
         <h3 id="recipe-modal-title" class="title py-1">New Recipe</h3>
-        @php($recipeComponentTabs = ['ingredient' => 'Ingredients', 'equipment' => 'Equipment', 'byproduct' => 'Byproducts'])
+        @php($recipeComponentTabs = ['ingredient' => 'Ingredients', 'meal' => 'Meals', 'equipment' => 'Equipment', 'byproduct' => 'Byproducts'])
         <form id="recipe-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveRecipe()">
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
@@ -266,6 +280,16 @@
 
             {{--| Details |--}}
             <div class="recipe-panel flex flex-col gap-3" data-recipe-panel="details">
+                <div class="flex gap-3">
+                    <x-form.input-wrapper label_text="Type" cls="flex-1">
+                        <input type="text" name="type" class="underlined" maxlength="64" value="meal" list="recipe-type-options" autocomplete="off" required/>
+                        <datalist id="recipe-type-options"></datalist>
+                    </x-form.input-wrapper>
+                    <x-form.input-wrapper label_text="Category (optional)" cls="flex-1">
+                        <input type="text" name="category" class="underlined" maxlength="64" placeholder="Category..." list="recipe-category-options" autocomplete="off"/>
+                        <datalist id="recipe-category-options"></datalist>
+                    </x-form.input-wrapper>
+                </div>
                 <div class="flex gap-3">
                     <x-form.input-wrapper label_text="Price" cls="flex-1">
                         <input type="number" name="price" class="underlined" min="0" step="0.01" value="0" data-money required/>
@@ -301,7 +325,7 @@
                 </div>
             </div>
 
-            {{--| Ingredients and equipment the recipe requires, and the ingredients it produces as byproducts |--}}
+            {{--| Ingredients, other meals and equipment the recipe requires, and the ingredients it produces as byproducts |--}}
             @foreach($recipeComponentTabs as $componentType => $componentLabel)
                 <div class="recipe-panel recipe-components hidden" data-recipe-panel="{{$componentType}}">
                     <ul id="recipe-{{$componentType}}-list" class="recipe-component-list"></ul>
@@ -351,6 +375,15 @@
     </x-modal>
 
     {{--| Delete storage modal |--}}
+    {{--| The stored ingredients that expired as the date moved on, which have been thrown away |--}}
+    <x-modal id="expired-modal">
+        <h3 class="title py-1">Expired</h3>
+        <ul id="expired-items" class="w-full"></ul>
+        <x-slot:buttons>
+            <button class="interactive px-5 py-2.5" onclick="closeModal('expired-modal')">Throw away</button>
+        </x-slot:buttons>
+    </x-modal>
+
     <x-modal id="storage-delete-modal">
         <h3 class="title py-1">Delete storage space</h3>
         <p class="text-center">
@@ -362,7 +395,34 @@
         </x-slot:buttons>
     </x-modal>
 
-    {{--| Delete ingredient / equipment / recipe modal |--}}
+    {{--| Create / edit conversion modal |--}}
+    <x-modal id="conversion-modal">
+        <h3 id="conversion-modal-title" class="title py-1">New Conversion</h3>
+        <form id="conversion-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveConversion()">
+            <x-form.input-wrapper label_text="Converts">
+                <select name="input_uuid" class="underlined" required></select>
+            </x-form.input-wrapper>
+            <div class="flex gap-3">
+                <x-form.input-wrapper label_text="Into" cls="flex-1">
+                    <select name="output_uuid" class="underlined" required></select>
+                </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Amount per piece" cls="w-32">
+                    <input type="number" name="output_amount" class="underlined" min="0.01" step="0.01" value="1" required/>
+                </x-form.input-wrapper>
+            </div>
+            <x-form.input-wrapper label_text="Minutes per piece during service">
+                <input type="number" name="minutes" class="underlined" min="0" step="0.01" value="0" required/>
+            </x-form.input-wrapper>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button id="conversion-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteTypeModal('conversion')">Delete</button>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('conversion-modal')">Cancel</button>
+            <button id="conversion-modal-submit" class="interactive px-5 py-2.5" onclick="saveConversion()">Create</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Delete ingredient / equipment / recipe / conversion modal |--}}
     <x-modal id="type-delete-modal">
         <h3 id="type-delete-title" class="title py-1"></h3>
         <p class="text-center">

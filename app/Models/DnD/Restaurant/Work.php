@@ -7,7 +7,7 @@ use App\Models\DnD\Restaurant\Interfaces\RestaurantDataModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A job queued in a work area: prepping a meal, or cleaning pieces of equipment. Jobs are worked on in order, by all
+ * A job queued in a work area: prepping a meal, converting an ingredient, or cleaning pieces of equipment. Jobs are worked on in order, by all
  * employees in the work area together
  * @inheritdoc
  * @property WorkStation station The work area the job is queued in
@@ -17,6 +17,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null table_uuid The uuid of the table a waiter's job is for, done by whoever waits it
  * @property string|null order_uuid The uuid of the order the waiter is taking
  * @property string|null served_meal_uuid The uuid of the plated portion the waiter is bringing
+ * @property string|null input_uuid The uuid of the ingredient being converted in the prep area
+ * @property float|null input_amount How much of the ingredient is being converted
+ * @property string|null output_uuid The uuid of the ingredient it is converted into
+ * @property float|null output_amount How much of that ingredient it makes
+ * @property array|null consumed The ingredients the conversion took, as given by InventoryService::takeForCooking
  * @property float work How many minutes the job takes in total at normal speed
  * @property float progress How many minutes of the job have been done at normal speed
  * @property integer order The place of the job in the queue of its work area
@@ -32,6 +37,9 @@ class Work extends RestaurantDataModel
     protected $casts = [
         'station'  => WorkStation::class,
         'amount'   => 'integer',
+        'input_amount'  => 'float',
+        'output_amount' => 'float',
+        'consumed' => 'array',
         'work'     => 'float',
         'progress' => 'float',
         'order'    => 'integer',
@@ -63,6 +71,22 @@ class Work extends RestaurantDataModel
      */
     public function Meal(): BelongsTo {
         return $this->belongsTo(Meal::class, 'meal_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the ingredient being converted
+     * @return BelongsTo
+     */
+    public function Input(): BelongsTo {
+        return $this->belongsTo(Ingredient::class, 'input_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the ingredient it is converted into
+     * @return BelongsTo
+     */
+    public function Output(): BelongsTo {
+        return $this->belongsTo(Ingredient::class, 'output_uuid', 'uuid');
     }
 
     /**

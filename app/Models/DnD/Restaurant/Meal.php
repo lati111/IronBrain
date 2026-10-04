@@ -20,6 +20,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property Carbon|null expires_at When the meal spoils, in the restaurant's time
  * @property array|null consumed The ingredients taken from storage, as storage_uuid, ingredient_uuid and amount
  * @property array|null equipment The recipe's equipment when planned, as equipment_uuid, amount, stage and container
+ * @property array|null supplied How many portions of other meals have been put in, keyed by the uuid of the recipe's
+ *                                requirement they fulfil
+ * @property array|null carried_equipment Equipment carried over from meals put in, kept in use for this meal's cooking,
+ *                                        as amounts keyed by equipment uuid
  * @property bool cooking_settled Whether the equipment used for cooking has been released after the cooking finished
  */
 class Meal extends RestaurantDataModel
@@ -49,6 +53,8 @@ class Meal extends RestaurantDataModel
         'expires_at'      => 'datetime',
         'consumed'        => 'array',
         'equipment'       => 'array',
+        'supplied'        => 'array',
+        'carried_equipment' => 'array',
         'cooking_settled' => 'boolean',
     ];
 

@@ -108,6 +108,8 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.service.meal.serve');
             Route::post('/meal/{meal_uuid}/cancel', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'cancelMeal'])
                 ->name('api.dnd.restaurant.service.meal.cancel');
+            Route::post('/meal/{meal_uuid}/supply', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'supplyMeal'])
+                ->name('api.dnd.restaurant.service.meal.supply');
 
             Route::post('/meal/{meal_uuid}/quality', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'setMealQuality'])
                 ->name('api.dnd.restaurant.service.meal.quality');
@@ -143,6 +145,10 @@ Route::prefix('/dnd/restaurant')
 
             Route::post('/work/{work_uuid}/prioritize', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'prioritizeWork'])
                 ->name('api.dnd.restaurant.service.work.prioritize');
+            Route::post('/conversion/{conversion_uuid}/queue', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'queueConversion'])
+                ->name('api.dnd.restaurant.service.conversion.queue');
+            Route::post('/work/{work_uuid}/cancel', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'cancelConversion'])
+                ->name('api.dnd.restaurant.service.conversion.cancel');
             Route::post('/table/{table_uuid}/waiter', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'assignWaiter'])
                 ->name('api.dnd.restaurant.service.table.waiter');
             Route::post('/employee/{employee_uuid}/assign', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'assignEmployee'])
@@ -196,6 +202,8 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.inventory.get');
             Route::post('/transfer', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'transferItem'])
                 ->name('api.dnd.restaurant.inventory.transfer');
+            Route::post('/advance-day', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'advanceDay'])
+                ->name('api.dnd.restaurant.inventory.advance-day');
 
             Route::post('/storage/create', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'createStorage'])
                 ->name('api.dnd.restaurant.inventory.storage.create');
@@ -226,6 +234,15 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.inventory.recipe.edit');
             Route::post('/recipe/{recipe_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\RecipeApi::class, 'deleteRecipe'])
                 ->name('api.dnd.restaurant.inventory.recipe.delete');
+
+            Route::post('/conversion/create', [\App\Http\Api\Modules\DnD\Restaurant\ConversionApi::class, 'createConversion'])
+                ->name('api.dnd.restaurant.inventory.conversion.create');
+            Route::post('/conversion/{conversion_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\ConversionApi::class, 'editConversion'])
+                ->name('api.dnd.restaurant.inventory.conversion.edit');
+            Route::post('/conversion/{conversion_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\ConversionApi::class, 'deleteConversion'])
+                ->name('api.dnd.restaurant.inventory.conversion.delete');
+            Route::post('/conversion/{conversion_uuid}/convert', [\App\Http\Api\Modules\DnD\Restaurant\ConversionApi::class, 'convert'])
+                ->name('api.dnd.restaurant.inventory.conversion.convert');
         });
     });
 

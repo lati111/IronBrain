@@ -261,6 +261,27 @@
     color: rgb(75 85 99);
 }
 
+/* How many days an ingredient stack has left before it expires */
+.inventory-item-expiry {
+    font-size: 0.7rem;
+    color: rgb(107 114 128);
+    white-space: nowrap;
+}
+
+.inventory-item-expiry:empty {
+    display: none;
+}
+
+/* Stacks with a day or less left */
+.inventory-item.expiring {
+    border-color: rgb(249 115 22);
+}
+
+.inventory-item.expiring .inventory-item-expiry {
+    color: rgb(194 65 12);
+    font-weight: 600;
+}
+
 /*| Service |*/
 
 .service-room {
@@ -597,6 +618,20 @@
 }
 
 .kitchen-meal-actions:empty {
+    display: none;
+}
+
+/* The other meals a meal still waits on */
+.kitchen-meal-needs {
+    font-size: 0.75rem;
+    color: rgb(180 83 9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.kitchen-meal-needs:empty {
     display: none;
 }
 

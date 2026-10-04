@@ -62,6 +62,9 @@ class InventoryApi extends AbstractApi
             'amount'            => 'required|numeric|gt:0|max:999999',
             'from_storage_uuid' => 'nullable|string|max:255',
             'to_storage_uuid'   => 'nullable|string|max:255|different:from_storage_uuid',
+            // The stack of an ingredient to move, or the days left of one coming from general storage
+            'stack_uuid'        => 'nullable|string|max:255',
+            'days_left'         => 'nullable|numeric|gt:0|max:999999',
         ]);
 
         if ($validator->fails()) {
@@ -96,12 +99,33 @@ class InventoryApi extends AbstractApi
         }
 
         try {
-            $this->inventoryService->transfer($item, (float) $request->get('amount'), $from, $to);
+            $daysLeft = $request->filled('days_left') ? (float) $request->get('days_left') : null;
+            $this->inventoryService->transfer($item, (float) $request->get('amount'), $from, $to, $request->get('stack_uuid'), $daysLeft);
         } catch (InvalidArgumentException $exception) {
             return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
         }
 
         return $this->respond(Response::HTTP_OK, 'Item moved', [
+            'inventory' => $this->inventoryService->getInventory($restaurant),
+        ]);
+    }
+
+    /**
+     * Moves the restaurant's date a day forward, which ages its stored ingredients and throws away those that expire
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @return JsonResponse The ingredients that expired, and the updated inventory state, in JSON format
+     */
+    public function advanceDay(string $restaurant_uuid): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $expired = $this->inventoryService->advanceDay($restaurant);
+
+        return $this->respond(Response::HTTP_OK, 'A day has passed', [
+            'expired' => $expired,
             'inventory' => $this->inventoryService->getInventory($restaurant),
         ]);
     }
@@ -229,6 +253,7 @@ class InventoryApi extends AbstractApi
     {
         $validator = Validator::make($request->all(), [
             'name'       => 'required|string|max:64',
+            'category'   => 'nullable|string|max:64',
             'expires_in' => 'required|integer|min:0',
             'size'       => 'required|numeric|gt:0|max:999999',
             'icon'       => 'nullable|image|max:2048',
@@ -246,6 +271,7 @@ class InventoryApi extends AbstractApi
         $ingredient = new Ingredient();
         $ingredient->restaurant_uuid = $restaurant->uuid;
         $ingredient->name            = $request->get('name');
+        $ingredient->category        = $this->normalizeCategory($request->get('category'));
         $ingredient->expires_in      = (int) $request->get('expires_in');
         $ingredient->size            = round((float) $request->get('size'), 2);
 
@@ -324,6 +350,7 @@ class InventoryApi extends AbstractApi
     {
         $validator = Validator::make($request->all(), [
             'name'       => 'nullable|string|max:64',
+            'category'   => 'nullable|string|max:64',
             'expires_in' => 'nullable|integer|min:0',
             'size'       => 'nullable|numeric|gt:0|max:999999',
             'icon'       => 'nullable|image|max:2048',
@@ -344,6 +371,7 @@ class InventoryApi extends AbstractApi
         }
 
         $ingredient->name       = $request->get('name', $ingredient->name);
+        $ingredient->category   = $request->has('category') ? $this->normalizeCategory($request->get('category')) : $ingredient->category;
         $ingredient->expires_in = $request->has('expires_in') ? (int) $request->get('expires_in') : $ingredient->expires_in;
         $ingredient->size       = $request->has('size') ? round((float) $request->get('size'), 2) : $ingredient->size;
 
@@ -538,5 +566,16 @@ class InventoryApi extends AbstractApi
     private function getStorage(Restaurant $restaurant, string $uuid): ?Storage
     {
         return Storage::where('uuid', $uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+    }
+
+    /**
+     * Tidies up a category as entered, where an empty one means no category
+     * @param string|null $category The category as entered
+     * @return string|null The category, or null for none
+     */
+    private function normalizeCategory(?string $category): ?string
+    {
+        $category = trim($category ?? '');
+        return $category === '' ? null : $category;
     }
 }

@@ -34,6 +34,15 @@ export interface KitchenRecipe {
     on_sale: boolean;
     prep_time: number;
     cooking_time: number;
+    /** Ingredients taken by category, of which the one to use is chosen when planning the meal */
+    categories: KitchenRecipeCategory[];
+}
+
+interface KitchenRecipeCategory {
+    category: string;
+    amount: number;
+    /** The ingredients of the category, with how much of each is in storage and the pile together */
+    options: {uuid: string, name: string, available: number}[];
 }
 
 interface Cooker {
@@ -60,6 +69,8 @@ interface Meal {
     uuid: string;
     recipe_uuid: string;
     name: string;
+    /** The category of the meal's recipe, by which other recipes can require it */
+    recipe_category: string | null;
     status: MealStatus;
     prep_time: number;
     cooker_uuid: string | null;
@@ -74,6 +85,16 @@ interface Meal {
     quality: number | null;
     /** Whether the meal is done cooking or ready to serve */
     finished: boolean;
+    /** Other meals still to be put in before it can be cooked */
+    missing_meals: MissingMeal[];
+}
+
+/** Another meal a meal still waits on: of a specific recipe, or of any recipe of a category */
+interface MissingMeal {
+    recipe_uuid: string | null;
+    category: string | null;
+    name: string;
+    portions: number;
 }
 
 /** A plated portion waiting to be brought to a table */
@@ -139,6 +160,8 @@ interface WorkJob {
     uuid: string;
     meal_uuid: string | null;
     equipment_uuid: string | null;
+    /** A conversion of an ingredient done in the prep area */
+    conversion: ConversionJob | null;
     amount: number;
     /** How many minutes the job takes at normal speed */
     work: number;
@@ -146,6 +169,26 @@ interface WorkJob {
     progress: number;
     /** Minutes until the job is done, counting the jobs before it, or null while nobody works in the area */
     minutes_left: number | null;
+}
+
+interface ConversionJob {
+    input_name: string;
+    input_amount: number;
+    output_name: string;
+    output_amount: number;
+}
+
+/** A conversion of an ingredient into another, done in the prep area during service */
+export interface ServiceConversion {
+    uuid: string;
+    input_name: string;
+    output_name: string;
+    /** How much of the output each piece of the input becomes */
+    output_amount: number;
+    /** How many minutes converting a piece takes at normal speed */
+    minutes: number;
+    /** How much of the input is stored and in the pile */
+    available: number;
 }
 
 interface WorkStationState {
@@ -159,6 +202,7 @@ interface WorkStationState {
 export interface ServiceState {
     clock: Clock;
     ingredients: ServiceIngredient[];
+    conversions: ServiceConversion[];
     recipes: KitchenRecipe[];
     cookers: Cooker[];
     equipment: KitchenEquipment[];
@@ -352,9 +396,33 @@ function renderPreparation(): void {
         container.appendChild(createMealCard(meal));
     }
 
-    if (meals.length === 0) {
+    // Conversions are worked on in the prep area alongside the meals
+    const conversions = state!.stations.prep.jobs.filter((job) => job.conversion !== null);
+    for (const job of conversions) {
+        container.appendChild(createConversionCard(job));
+    }
+
+    if (meals.length === 0 && conversions.length === 0) {
         container.appendChild(createNote('No meals being prepared'));
     }
+}
+
+/** Shows a conversion being done in the prep area, which can be cancelled to get its ingredients back */
+function createConversionCard(job: WorkJob): HTMLElement {
+    const template = document.getElementById('meal-card-template') as HTMLTemplateElement;
+    const card = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    const conversion = job.conversion!;
+    const name = `${conversion.input_amount} ${conversion.input_name} → ${conversion.output_amount} ${conversion.output_name}`;
+
+    setField(card, 'name', name);
+    setField(card, 'timer', job.minutes_left !== null ? `${formatMinutes(job.minutes_left)} left` : 'queued');
+    card.dataset.status = 'planned';
+    card.dataset.queued = '';
+    card.appendChild(createProgressBar(job.progress));
+    addAction(card.querySelector('[data-actions]') as HTMLElement, 'Cancel', () => post(`/work/${job.uuid}/cancel`));
+    onRightClick(card, () => openPrioritizeMenu(card, name, [job.uuid]));
+
+    return card;
 }
 
 function openPlanMealModal(): void {
@@ -369,7 +437,39 @@ function openPlanMealModal(): void {
         select.appendChild(new Option('No recipes yet', ''));
     }
 
+    renderMealPlanChoices();
     openModal('meal-plan-modal');
+}
+
+/** Asks which ingredient to use for each category the chosen recipe takes, listing those with enough in stock first */
+function renderMealPlanChoices(): void {
+    const container = document.getElementById('meal-plan-choices') as HTMLElement;
+    const template = document.getElementById('meal-plan-choice-template') as HTMLTemplateElement;
+    const recipeUuid = (document.getElementById('meal-plan-recipe') as HTMLSelectElement).value;
+    const recipe = state!.recipes.find((candidate) => candidate.uuid === recipeUuid);
+
+    container.replaceChildren();
+    for (const requirement of recipe?.categories ?? []) {
+        const field = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        field.querySelector('label')!.textContent = `${requirement.category} (${formatAmount(requirement.amount)})`;
+
+        const select = field.querySelector('select') as HTMLSelectElement;
+        select.name = `choices[${requirement.category}]`;
+        select.appendChild(new Option(`Choose a ${requirement.category.toLowerCase()}...`, ''));
+        const options = [...requirement.options].sort((a, b) => Number(b.available >= requirement.amount) - Number(a.available >= requirement.amount));
+        for (const option of options) {
+            const element = new Option(`${option.name} (${formatAmount(option.available)} in stock)`, option.uuid);
+            element.disabled = option.available < requirement.amount;
+            select.appendChild(element);
+        }
+
+        container.appendChild(field);
+    }
+}
+
+/** Shows an ingredient amount with at most two decimals */
+function formatAmount(amount: number): string {
+    return String(Math.round(amount * 100) / 100);
 }
 
 async function planMeal(): Promise<void> {
@@ -660,8 +760,15 @@ function createMealCard(meal: Meal): HTMLElement {
     setField(card, 'name', meal.name);
     setField(card, 'quality', meal.quality !== null ? `Q${meal.quality}` : '');
     setField(card, 'timer', describeTimer(meal));
+    setField(card, 'needs', meal.missing_meals.map((missing) => `${missing.name} ×${missing.portions}`).join(', '));
     card.classList.toggle('spoiled', meal.spoiled);
     card.dataset.status = meal.status;
+
+    // Meals still waiting on other meals take a finished one dropped on them
+    if (meal.missing_meals.length > 0) {
+        setupDropTarget(card, MEAL_MIME, (uuid) => supplyMeal(meal, uuid),
+            () => draggedMeal !== null && findMissingMeal(meal, draggedMeal) !== null);
+    }
 
     switch (meal.status) {
         case 'planned': {
@@ -692,8 +799,8 @@ function createMealCard(meal: Meal): HTMLElement {
             card.addEventListener('click', () => toggleMealMenu(meal, card));
     }
 
-    // Prepped meals go into a cooker, done meals into the serving area
-    if (meal.status === 'prepped' || meal.status === 'done') {
+    // Prepped meals go into a cooker, done meals into the serving area, and finished meals into a meal taking them
+    if (meal.status === 'prepped' || meal.status === 'done' || meal.status === 'serving') {
         card.draggable = true;
         card.addEventListener('dragstart', (event) => {
             draggedMeal = meal;
@@ -704,6 +811,56 @@ function createMealCard(meal: Meal): HTMLElement {
     }
 
     return card;
+}
+
+//| Meals in meals
+
+/** The meal waiting to have another put in and the meal to put in, while asking whether to plate the leftovers */
+let pendingSupply: {meal: Meal, source: Meal, leftover: number} | null = null;
+
+/** Finds what a meal still waits on that a finished meal can be put in for */
+function findMissingMeal(meal: Meal, source: Meal): MissingMeal | null {
+    if (source.uuid === meal.uuid || !source.finished || source.spoiled) return null;
+
+    // Specific recipes come first, as the server matches them first as well
+    return meal.missing_meals.find((missing) => missing.recipe_uuid === source.recipe_uuid)
+        ?? meal.missing_meals.find((missing) => missing.recipe_uuid === null && missing.category === source.recipe_category)
+        ?? null;
+}
+
+/** Puts a finished meal into a meal taking it, first asking to plate the portions that would be left over */
+function supplyMeal(meal: Meal, sourceUuid: string): void {
+    const source = state!.meals.find((candidate) => candidate.uuid === sourceUuid) ?? null;
+    const missing = source !== null ? findMissingMeal(meal, source) : null;
+    if (source === null || missing === null) return;
+
+    const leftover = source.portions_left - missing.portions;
+    if (leftover > 0) {
+        pendingSupply = {meal, source, leftover};
+        document.getElementById('meal-supply-text')!.textContent = `${missing.portions} of the ${source.portions_left} portions of `
+            + `${source.name} go into ${meal.name}. The ${leftover === 1 ? 'remaining portion' : `remaining ${leftover} portions`} will be plated.`;
+        openModal('meal-supply-modal');
+        return;
+    }
+
+    // Too few portions are left for the server to explain
+    postSupply(meal, source, false);
+}
+
+async function confirmSupplyMeal(): Promise<void> {
+    if (pendingSupply === null) return;
+
+    const {meal, source} = pendingSupply;
+    pendingSupply = null;
+    closeModal('meal-supply-modal');
+    await postSupply(meal, source, true);
+}
+
+async function postSupply(meal: Meal, source: Meal, plateRemaining: boolean): Promise<void> {
+    const formData = new FormData();
+    formData.append('source_uuid', source.uuid);
+    if (plateRemaining) formData.append('plate_remaining', '1');
+    await post(`/meal/${meal.uuid}/supply`, formData);
 }
 
 //| Meal menu
@@ -993,6 +1150,8 @@ export function formatMinutes(minutes: number): string {
 (<any>window).setServiceTime    = setServiceTime;
 (<any>window).openPlanMealModal = openPlanMealModal;
 (<any>window).planMeal          = planMeal;
+(<any>window).renderMealPlanChoices = renderMealPlanChoices;
+(<any>window).confirmSupplyMeal = confirmSupplyMeal;
 (<any>window).confirmScrapMeal  = confirmScrapMeal;
 (<any>window).saveQuality       = saveQuality;
 (<any>window).putOffQuality     = putOffQuality;

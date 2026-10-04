@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @inheritdoc
  * @property string name The display name of the recipe
+ * @property string type What kind of recipe it is, such as a meal
+ * @property string|null category The category of the recipe, which other recipes can require any meal of
  * @property string|null description The description of the recipe
  * @property float price The price the recipe sells for
  * @property integer portions How many portions making the recipe once produces
@@ -57,6 +59,22 @@ class Recipe extends RestaurantDataModel
             ->using(RecipeIngredient::class)
             ->withPivot('uuid', 'amount')
             ->withTimestamps();
+    }
+
+    /**
+     * The relationship for the ingredients this recipe takes by category, any ingredient of which will do
+     * @return HasMany
+     */
+    public function RecipeCategories(): HasMany {
+        return $this->hasMany(RecipeCategory::class, 'recipe_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the other meals this recipe takes, of a specific recipe or of any recipe of a category
+     * @return HasMany
+     */
+    public function RecipeMeals(): HasMany {
+        return $this->hasMany(RecipeMeal::class, 'recipe_uuid', 'uuid');
     }
 
     /**

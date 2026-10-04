@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @inheritdoc
  * @property string ingredient_uuid The uuid of the ingredient
  * @property float amount How much of the ingredient is in the pile
+ * @property float days_left How many days the stack has left before it expires. Stacks of the same ingredient with
+ *                           different days left are kept apart
  */
 class PileIngredient extends RestaurantDataModel
 {
@@ -20,7 +22,8 @@ class PileIngredient extends RestaurantDataModel
 
     /** @inheritdoc */
     protected $casts = [
-        'amount' => 'float',
+        'amount'    => 'float',
+        'days_left' => 'float',
     ];
 
     //| Relationships

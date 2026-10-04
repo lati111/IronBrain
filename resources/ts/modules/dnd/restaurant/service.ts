@@ -7,7 +7,7 @@ import {
 import {
     createEmployeeIcon, Employee, EMPLOYEE_MIME, formatMinutes, getDraggedEmployee, getDraggedPlate, getServiceState,
     initKitchen, KitchenRecipe, onRightClick, onServiceState, openPrioritizeMenu, Order, PLATE_MIME,
-    post as postService, ServiceIngredient, setupEmployeeDrag, toggleMenu,
+    post as postService, ServiceConversion, ServiceIngredient, setupEmployeeDrag, toggleMenu,
 } from "./kitchen";
 import {describeOrder, openOrderDetails, openOrderModal} from "./orders";
 import "./shift";
@@ -47,12 +47,16 @@ interface DraggedCustomer {
 
 const CUSTOMER_MIME = 'application/x-restaurant-customer';
 
-/** The sidebar lists the customers, the ingredients that can be brought in during service, and the recipes' sales */
-type SidebarTab = 'customer' | 'ingredient' | 'sale';
+/** The sidebar lists the customers, the ingredients that can be brought in during service, the conversions that can be
+ * done in the prep area, and the recipes' sales */
+type SidebarTab = 'customer' | 'ingredient' | 'conversion' | 'sale';
 let activeTab: SidebarTab = 'customer';
 
 /** The ingredient the pile modal is adding */
 let pileIngredient: ServiceIngredient | null = null;
+
+/** The conversion the conversion modal queues */
+let pendingConversion: ServiceConversion | null = null;
 
 /** The recipe the sale modal is for */
 let saleRecipe: KitchenRecipe | null = null;
@@ -139,6 +143,11 @@ function renderSidebar(): void {
         return;
     }
 
+    if (activeTab === 'conversion') {
+        renderConversionRows();
+        return;
+    }
+
     const list = document.getElementById('inventory-list') as HTMLElement;
     const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
     const template = document.getElementById('list-row-template') as HTMLTemplateElement;
@@ -194,6 +203,59 @@ function renderIngredientRows(): void {
         empty.className = 'text-center text-gray-400 py-4 text-sm';
         empty.textContent = ingredients.length === 0 ? 'No ingredients yet' : 'No results';
         list.appendChild(empty);
+    }
+}
+
+/** Lists the conversions, each of which can be queued in the prep area */
+function renderConversionRows(): void {
+    const list = document.getElementById('inventory-list') as HTMLElement;
+    const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
+    const template = document.getElementById('list-row-template') as HTMLTemplateElement;
+    const conversions = getServiceState()?.conversions ?? [];
+
+    list.replaceChildren();
+    for (const conversion of conversions) {
+        const name = `${conversion.input_name} → ${conversion.output_amount} ${conversion.output_name}`;
+        if (!name.toLowerCase().includes(search)) continue;
+
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        setField(row, 'name', name);
+        setField(row, 'meta', `${conversion.available} stored · ${formatMinutes(conversion.minutes)} each`);
+
+        const addButton = row.querySelector('[data-action="add"]') as HTMLElement;
+        addButton.title = 'Convert';
+        addButton.addEventListener('click', () => openConversionModal(conversion));
+
+        list.appendChild(row);
+    }
+
+    if (list.childElementCount === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'text-center text-gray-400 py-4 text-sm';
+        empty.textContent = conversions.length === 0 ? 'No conversions yet' : 'No results';
+        list.appendChild(empty);
+    }
+}
+
+function openConversionModal(conversion: ServiceConversion): void {
+    pendingConversion = conversion;
+    document.getElementById('conversion-modal-title')!.textContent = `Convert ${conversion.input_name} into ${conversion.output_name}`;
+
+    const input = document.getElementById('conversion-amount') as HTMLInputElement;
+    input.value = '1';
+    input.max = conversion.available > 0 ? String(conversion.available) : '';
+    openModal('conversion-modal');
+    input.focus();
+    input.select();
+}
+
+async function queueConversion(): Promise<void> {
+    const form = document.getElementById('conversion-form') as HTMLFormElement;
+    if (pendingConversion === null || !form.reportValidity()) return;
+
+    if (await postService(`/conversion/${pendingConversion.uuid}/queue`, new FormData(form))) {
+        pendingConversion = null;
+        closeModal('conversion-modal');
     }
 }
 
@@ -635,6 +697,7 @@ function describeLocation(customer: Customer): string {
 (<any>window).renderSidebar           = renderSidebar;
 (<any>window).switchTab               = switchTab;
 (<any>window).addToPile               = addToPile;
+(<any>window).queueConversion         = queueConversion;
 (<any>window).saveSale                = saveSale;
 (<any>window).removeSale              = removeSale;
 (<any>window).toggleSidebar           = toggleSidebar;

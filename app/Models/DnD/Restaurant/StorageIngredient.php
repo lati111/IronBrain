@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\Concerns\AsPivot;
  * @property string storage_uuid The uuid of the storage space
  * @property string ingredient_uuid The uuid of the ingredient
  * @property float amount How much of the ingredient is stored
+ * @property float days_left How many days the stack has left before it expires. Stacks of the same ingredient with
+ *                           different days left are kept apart
  */
 class StorageIngredient extends DndRestaurantModel
 {
@@ -26,7 +28,8 @@ class StorageIngredient extends DndRestaurantModel
 
     /** @inheritdoc */
     protected $casts = [
-        'amount' => 'float',
+        'amount'    => 'float',
+        'days_left' => 'float',
     ];
 
     //| Relationships

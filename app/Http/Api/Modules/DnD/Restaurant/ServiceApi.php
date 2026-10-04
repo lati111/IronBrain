@@ -5,6 +5,7 @@ use App\Enum\DnD\Restaurant\WorkStation;
 use App\Enum\ErrorEnum;
 use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
+use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
@@ -103,6 +104,9 @@ class ServiceApi extends AbstractApi
     {
         $validator = Validator::make($request->all(), [
             'recipe_uuid' => 'required|string|max:255',
+            // The ingredient chosen for each category the recipe takes, keyed by category
+            'choices'     => 'nullable|array',
+            'choices.*'   => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -119,7 +123,20 @@ class ServiceApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
         }
 
-        return $this->attempt($restaurant, 'Meal planned', fn () => $this->kitchenService->planMeal($restaurant, $recipe), Response::HTTP_CREATED);
+        $choices = [];
+        foreach ($request->get('choices') ?? [] as $category => $ingredientUuid) {
+            if ($ingredientUuid === null || $ingredientUuid === '') {
+                continue;
+            }
+
+            $ingredient = Ingredient::where('uuid', $ingredientUuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+            if ($ingredient === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Ingredient not found');
+            }
+            $choices[$category] = $ingredient;
+        }
+
+        return $this->attempt($restaurant, 'Meal planned', fn () => $this->kitchenService->planMeal($restaurant, $recipe, $choices), Response::HTTP_CREATED);
     }
 
     /**
@@ -437,6 +454,58 @@ class ServiceApi extends AbstractApi
         return $this->respond(Response::HTTP_OK, 'Prioritized', $this->getState($restaurant));
     }
 
+    /**
+     * Queues an ingredient to be converted in the prep area, which takes time for every piece converted
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $conversion_uuid The uuid of the conversion
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function queueConversion(Request $request, string $restaurant_uuid, string $conversion_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => 'required|numeric|gt:0|max:999999',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $conversion = Conversion::where('uuid', $conversion_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($conversion === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Conversion not found');
+        }
+
+        return $this->attempt($restaurant, 'Conversion queued',
+            fn () => $this->workService->queueConversion($restaurant, $conversion, (float) $request->get('amount')));
+    }
+
+    /**
+     * Cancels a conversion in the prep area, putting the ingredients it took back
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $work_uuid The uuid of the conversion's job
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function cancelConversion(string $restaurant_uuid, string $work_uuid): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $job = Work::where('uuid', $work_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($job === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Job not found');
+        }
+
+        return $this->attempt($restaurant, 'Conversion cancelled', fn () => $this->workService->cancelConversion($restaurant, $job));
+    }
+
     //| Staff
 
     /**
@@ -473,6 +542,36 @@ class ServiceApi extends AbstractApi
             ? sprintf('%s is working at %s', $employee->name, strtolower($station->label()))
             : $employee->name . ' stopped working';
         return $this->respond(Response::HTTP_OK, $message, $this->getState($restaurant));
+    }
+
+    /**
+     * Puts a finished meal into a meal being prepared whose recipe takes it. Portions of the finished meal left over
+     * are plated, which has to be allowed explicitly
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $meal_uuid The uuid of the meal being prepared
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function supplyMeal(Request $request, string $restaurant_uuid, string $meal_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'source_uuid'     => 'required|string|max:255',
+            'plate_remaining' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Meal put in', function (Restaurant $restaurant, Meal $meal) use ($request) {
+            $source = $this->getMeal($restaurant, $request->get('source_uuid'));
+            if ($source === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Meal not found');
+            }
+
+            $this->kitchenService->supplyMeal($restaurant, $meal, $source, $request->boolean('plate_remaining'));
+            return null;
+        });
     }
 
     //| Plates & orders

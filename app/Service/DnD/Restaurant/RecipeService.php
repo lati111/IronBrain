@@ -7,8 +7,10 @@ use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\RecipeByproduct;
+use App\Models\DnD\Restaurant\RecipeCategory;
 use App\Models\DnD\Restaurant\RecipeEquipment;
 use App\Models\DnD\Restaurant\RecipeIngredient;
+use App\Models\DnD\Restaurant\RecipeMeal;
 use App\Models\DnD\Restaurant\Restaurant;
 
 class RecipeService
@@ -99,5 +101,49 @@ class RecipeService
             }
             $entry->save();
         }
+    }
+
+    /**
+     * Replaces the ingredients a recipe takes by category, removing those that are no longer listed
+     * @param Recipe $recipe The recipe
+     * @param array<string, float> $categories The amounts keyed by category
+     */
+    public function syncCategories(Recipe $recipe, array $categories): void
+    {
+        RecipeCategory::where('recipe_uuid', $recipe->uuid)->whereNotIn('category', array_keys($categories))->delete();
+
+        foreach ($categories as $category => $amount) {
+            $link = RecipeCategory::where('recipe_uuid', $recipe->uuid)->where('category', $category)->first() ?? new RecipeCategory();
+            $link->recipe_uuid = $recipe->uuid;
+            $link->category = $category;
+            $link->amount = $amount;
+            $link->save();
+        }
+    }
+
+    /**
+     * Replaces the other meals a recipe takes, removing those that are no longer listed. Those still listed keep
+     * their entry, so meals already being made keep track of what has been put in
+     * @param Recipe $recipe The recipe
+     * @param array $meals The meals, each as recipe_uuid or category with portions
+     */
+    public function syncMeals(Recipe $recipe, array $meals): void
+    {
+        $existing = RecipeMeal::where('recipe_uuid', $recipe->uuid)->get()
+            ->keyBy(fn (RecipeMeal $entry) => $entry->required_recipe_uuid !== null ? 'recipe:' . $entry->required_recipe_uuid : 'category:' . $entry->category);
+
+        $kept = [];
+        foreach ($meals as $meal) {
+            $key = $meal['recipe_uuid'] !== null ? 'recipe:' . $meal['recipe_uuid'] : 'category:' . $meal['category'];
+            $entry = $existing->get($key) ?? new RecipeMeal();
+            $entry->recipe_uuid = $recipe->uuid;
+            $entry->required_recipe_uuid = $meal['recipe_uuid'];
+            $entry->category = $meal['category'];
+            $entry->portions = $meal['portions'];
+            $entry->save();
+            $kept[] = $entry->uuid;
+        }
+
+        RecipeMeal::where('recipe_uuid', $recipe->uuid)->whereNotIn('uuid', $kept)->delete();
     }
 }

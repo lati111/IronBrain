@@ -31,6 +31,9 @@ class RecipeApi extends AbstractApi
     /** @var int How many portions a recipe produces when not specified */
     private const int DEFAULT_PORTIONS = 1;
 
+    /** @var string What kind of recipe a recipe is when not specified */
+    private const string DEFAULT_TYPE = 'meal';
+
     public function __construct(
         private readonly RecipeService $recipeService,
         private readonly InventoryService $inventoryService,
@@ -48,6 +51,8 @@ class RecipeApi extends AbstractApi
     {
         $validator = Validator::make($request->all(), array_merge([
             'name'        => 'required|string|max:64',
+            'type'        => 'nullable|string|max:64',
+            'category'    => 'nullable|string|max:64',
             'description' => 'nullable|string',
             'price'       => 'required|numeric|min:0',
             'portions'    => 'nullable|integer|min:1',
@@ -67,9 +72,16 @@ class RecipeApi extends AbstractApi
             return $components;
         }
 
+        $meals = $this->resolveMeals($request, $restaurant, null);
+        if ($meals instanceof JsonResponse) {
+            return $meals;
+        }
+
         $recipe = new Recipe();
         $recipe->restaurant_uuid = $restaurant->uuid;
         $recipe->name            = $request->get('name');
+        $recipe->type            = $this->normalizeText($request->get('type')) ?? self::DEFAULT_TYPE;
+        $recipe->category        = $this->normalizeText($request->get('category'));
         $recipe->description     = $request->get('description');
         $recipe->price           = (float) $request->get('price');
         $recipe->portions        = (int) ($request->get('portions') ?? self::DEFAULT_PORTIONS);
@@ -77,7 +89,7 @@ class RecipeApi extends AbstractApi
             $recipe->{$field} = (int) $request->get($field);
         }
 
-        $this->saveRecipe($recipe, $components);
+        $this->saveRecipe($recipe, $components, $this->getCategories($request), $meals);
 
         return $this->respond(Response::HTTP_CREATED, 'Recipe created', [
             'uuid' => $recipe->uuid,
@@ -97,6 +109,8 @@ class RecipeApi extends AbstractApi
     {
         $validator = Validator::make($request->all(), array_merge([
             'name'        => 'nullable|string|max:64',
+            'type'        => 'nullable|string|max:64',
+            'category'    => 'nullable|string|max:64',
             'description' => 'nullable|string',
             'price'       => 'nullable|numeric|min:0',
             'portions'    => 'nullable|integer|min:1',
@@ -121,7 +135,14 @@ class RecipeApi extends AbstractApi
             return $components;
         }
 
+        $meals = $this->resolveMeals($request, $restaurant, $recipe);
+        if ($meals instanceof JsonResponse) {
+            return $meals;
+        }
+
         $recipe->name        = $request->get('name', $recipe->name);
+        $recipe->type        = $request->has('type') ? $this->normalizeText($request->get('type')) ?? self::DEFAULT_TYPE : $recipe->type;
+        $recipe->category    = $request->has('category') ? $this->normalizeText($request->get('category')) : $recipe->category;
         $recipe->description = $request->has('description') ? $request->get('description') : $recipe->description;
         $recipe->price       = $request->has('price') ? (float) $request->get('price') : $recipe->price;
         $recipe->portions    = $request->has('portions') ? (int) $request->get('portions') : $recipe->portions;
@@ -129,7 +150,7 @@ class RecipeApi extends AbstractApi
             $recipe->{$field} = $request->has($field) ? (int) $request->get($field) : $recipe->{$field};
         }
 
-        $this->saveRecipe($recipe, $components);
+        $this->saveRecipe($recipe, $components, $this->getCategories($request), $meals);
 
         return $this->respond(Response::HTTP_OK, 'Recipe updated', [
             'uuid' => $recipe->uuid,
@@ -182,7 +203,89 @@ class RecipeApi extends AbstractApi
         $rules[RecipeService::EQUIPMENT . '.*.stage']     = ['nullable', 'string', Rule::in(EquipmentStage::values())];
         $rules[RecipeService::EQUIPMENT . '.*.container'] = 'nullable|boolean';
 
+        // Ingredients can also be taken by category, any ingredient of which will do
+        $rules['categories']            = 'nullable|array';
+        $rules['categories.*.category'] = 'required|string|max:64|distinct';
+        $rules['categories.*.amount']   = 'required|numeric|gt:0|max:999999';
+
+        // Other meals the recipe takes, of a specific recipe or of any recipe of a category
+        $rules['meals']               = 'nullable|array';
+        $rules['meals.*.recipe_uuid'] = 'nullable|required_without:meals.*.category|string|max:255';
+        $rules['meals.*.category']    = 'nullable|required_without:meals.*.recipe_uuid|string|max:64';
+        $rules['meals.*.portions']    = 'required|integer|min:1|max:999999';
+
         return $rules;
+    }
+
+    /**
+     * Gets the ingredients a recipe takes by category from the request, with their amounts
+     * @param Request $request The request parameters as given by Laravel
+     * @return array<string, float>|null The amounts keyed by category, or null when the list was left out, meaning the
+     *                                   recipe's current ones are kept
+     */
+    private function getCategories(Request $request): ?array
+    {
+        if ($request->has('categories') === false) {
+            return null;
+        }
+
+        $categories = [];
+        foreach ($request->get('categories') ?? [] as $entry) {
+            $categories[trim($entry['category'])] = round((float) $entry['amount'], 2);
+        }
+
+        return $categories;
+    }
+
+    /**
+     * Resolves the other meals a recipe takes from the request, checking that every required recipe belongs to the
+     * restaurant and isn't the recipe itself
+     * @param Request $request The request parameters as given by Laravel
+     * @param Restaurant $restaurant The restaurant the required recipes must belong to
+     * @param Recipe|null $recipe The recipe being edited, or null when it is new
+     * @return array|JsonResponse|null The meals, as recipe_uuid or category with portions, null when the list was left
+     *                                 out, meaning the recipe's current ones are kept, or an error response
+     */
+    private function resolveMeals(Request $request, Restaurant $restaurant, ?Recipe $recipe): array|JsonResponse|null
+    {
+        if ($request->has('meals') === false) {
+            return null;
+        }
+
+        // Keyed by what is required, so the same meal listed twice is only required once
+        $meals = [];
+        foreach ($request->get('meals') ?? [] as $entry) {
+            $recipeUuid = $this->normalizeText($entry['recipe_uuid'] ?? null);
+            $category = $recipeUuid === null ? $this->normalizeText($entry['category'] ?? null) : null;
+            if ($recipeUuid === null && $category === null) {
+                return $this->respond(Response::HTTP_BAD_REQUEST, 'Choose a recipe or category for each meal');
+            }
+
+            $key = $recipeUuid !== null ? 'recipe:' . $recipeUuid : 'category:' . $category;
+            $meals[$key] = ['recipe_uuid' => $recipeUuid, 'category' => $category, 'portions' => (int) $entry['portions']];
+        }
+
+        $recipeUuids = array_values(array_filter(array_column($meals, 'recipe_uuid')));
+        if ($recipe !== null && in_array($recipe->uuid, $recipeUuids, true)) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, 'A recipe can\'t require itself');
+        }
+
+        if (Recipe::where('restaurant_uuid', $restaurant->uuid)->whereIn('uuid', $recipeUuids)->count() !== count($recipeUuids)) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
+        }
+
+        return array_values($meals);
+    }
+
+    /**
+     * Tidies up text as entered, where empty text means none
+     * @param string|null $text The text as entered
+     * @return string|null The text, or null for none
+     */
+    private function normalizeText(?string $text): ?string
+    {
+        $text = trim($text ?? '');
+        return $text === '' ? null : $text;
     }
 
     /**
@@ -242,16 +345,27 @@ class RecipeApi extends AbstractApi
      * Saves a recipe together with whichever component lists were given
      * @param Recipe $recipe The recipe to save
      * @param array $components The resolved component amounts per kind, where null means unchanged
+     * @param array<string, float>|null $categories The amounts of the ingredients taken by category, keyed by
+     *                                              category, or null when unchanged
+     * @param array|null $meals The other meals the recipe takes, as given by resolveMeals, or null when unchanged
      */
-    private function saveRecipe(Recipe $recipe, array $components): void
+    private function saveRecipe(Recipe $recipe, array $components, ?array $categories, ?array $meals): void
     {
-        DB::transaction(function () use ($recipe, $components) {
+        DB::transaction(function () use ($recipe, $components, $categories, $meals) {
             $recipe->save();
 
             foreach ($components as $kind => $amounts) {
                 if ($amounts !== null) {
                     $this->recipeService->syncComponents($recipe, $kind, $amounts);
                 }
+            }
+
+            if ($categories !== null) {
+                $this->recipeService->syncCategories($recipe, $categories);
+            }
+
+            if ($meals !== null) {
+                $this->recipeService->syncMeals($recipe, $meals);
             }
         });
     }

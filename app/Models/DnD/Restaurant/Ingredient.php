@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * @inheritdoc
  * @property string name The display name of the ingredient
+ * @property string|null category The category of the ingredient, which recipes can take any ingredient of
  * @property string|null icon The path to the icon for the ingredient, if any
- * @property integer expires_in After how long the ingredient expires, in days
+ * @property integer expires_in After how long the ingredient expires, in days, where 0 never expires
  * @property float size How much storage capacity a single unit of the ingredient takes up
  */
 class Ingredient extends RestaurantDataModel
@@ -24,6 +25,15 @@ class Ingredient extends RestaurantDataModel
         'expires_in' => 'integer',
         'size'       => 'float',
     ];
+
+    /**
+     * Whether the ingredient goes off at all, as one that expires in 0 days keeps forever
+     * @return bool Whether it expires
+     */
+    public function expires(): bool
+    {
+        return $this->expires_in > 0;
+    }
 
     //| Relationships
 

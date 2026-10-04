@@ -206,12 +206,14 @@ trait RestaurantTestHelper
         return $link;
     }
 
-    protected function storeIngredient(Storage $storage, Ingredient $ingredient, float $amount): StorageIngredient
+    /** Stores a stack of an ingredient, fresh unless the days it has left are given */
+    protected function storeIngredient(Storage $storage, Ingredient $ingredient, float $amount, ?float $daysLeft = null): StorageIngredient
     {
         $link = new StorageIngredient();
         $link->storage_uuid = $storage->uuid;
         $link->ingredient_uuid = $ingredient->uuid;
         $link->amount = $amount;
+        $link->days_left = $daysLeft ?? $ingredient->expires_in;
         $link->save();
         return $link;
     }
@@ -226,11 +228,12 @@ trait RestaurantTestHelper
         return $link;
     }
 
+    /** Gets how much of an ingredient a storage space holds, across all its stacks */
     protected function getStoredIngredientAmount(Storage $storage, Ingredient $ingredient): float
     {
         return (float) StorageIngredient::where('storage_uuid', $storage->uuid)
             ->where('ingredient_uuid', $ingredient->uuid)
-            ->value('amount');
+            ->sum('amount');
     }
 
     protected function ownEquipment(Restaurant $restaurant, Equipment $equipment, int $amount): OwnedEquipment

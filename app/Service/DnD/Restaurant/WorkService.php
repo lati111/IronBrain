@@ -3,6 +3,7 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Meal;
@@ -18,7 +19,7 @@ use InvalidArgumentException;
 
 /**
  * The work that takes time as the clock moves, done in the order it was queued unless a job is prioritised:
- * - Prep is worked through one meal at a time, by everyone at prep together at their combined speed
+ * - Prep is worked through one meal or conversion at a time, by everyone at prep together at their combined speed
  * - Cleaning is done a piece at a time, each piece by a single cleaner at their own speed, so several cleaners clean
  *   several pieces side by side
  * - Waiters work through the jobs of the tables they wait one at a time: taking orders and bringing plated portions
@@ -27,8 +28,10 @@ use InvalidArgumentException;
  */
 class WorkService
 {
-    public function __construct(private readonly KitchenService $kitchenService)
-    {
+    public function __construct(
+        private readonly KitchenService $kitchenService,
+        private readonly InventoryService $inventoryService,
+    ) {
     }
 
     /**
@@ -84,6 +87,13 @@ class WorkService
                     'uuid' => $job->uuid,
                     'meal_uuid' => $job->meal_uuid,
                     'equipment_uuid' => $job->equipment_uuid,
+                    // A conversion: how much of which ingredient becomes how much of which
+                    'conversion' => $job->output_uuid !== null ? [
+                        'input_name' => $job->Input?->name,
+                        'input_amount' => $job->input_amount,
+                        'output_name' => $job->Output?->name,
+                        'output_amount' => $job->output_amount,
+                    ] : null,
                     'amount' => $job->amount,
                     'work' => $job->work,
                     'progress' => $job->work > 0 ? round($job->progress / $job->work, 4) : 0,
@@ -219,6 +229,68 @@ class WorkService
             }
 
             $this->createJob($restaurant, WorkStation::PREP, $minutes, meal: $meal);
+        });
+    }
+
+    /**
+     * Queues an ingredient to be converted in the prep area, taking it from the stacks closest to expiring first.
+     * What it becomes goes in the pile once done, straight away when converting takes no time
+     * @param Restaurant $restaurant The restaurant
+     * @param Conversion $conversion The conversion
+     * @param float $amount How much of the input to convert
+     * @throws InvalidArgumentException Thrown when it would make nothing, or too little of the input is stored
+     */
+    public function queueConversion(Restaurant $restaurant, Conversion $conversion, float $amount): void
+    {
+        $amount = round($amount, 2);
+        $output = $conversion->getOutputFor($amount);
+        if ($output <= 0) {
+            throw new InvalidArgumentException('Too little to convert');
+        }
+
+        DB::transaction(function () use ($restaurant, $conversion, $amount, $output) {
+            $consumed = $this->inventoryService->takeForCooking($restaurant, $conversion->Input, $amount);
+
+            $minutes = round($amount * $conversion->minutes, 2);
+            if ($minutes <= 0) {
+                $this->inventoryService->addToPile($restaurant, $conversion->Output, $output);
+                return;
+            }
+
+            $job = $this->createJob($restaurant, WorkStation::PREP, $minutes);
+            $job->input_uuid = $conversion->input_uuid;
+            $job->input_amount = $amount;
+            $job->output_uuid = $conversion->output_uuid;
+            $job->output_amount = $output;
+            $job->consumed = $consumed;
+            $job->save();
+        });
+    }
+
+    /**
+     * Cancels a conversion that isn't done yet, putting the ingredients it took back where they came from
+     * @param Restaurant $restaurant The restaurant
+     * @param Work $job The conversion's job
+     * @throws InvalidArgumentException Thrown when the job isn't a conversion, or is already done
+     */
+    public function cancelConversion(Restaurant $restaurant, Work $job): void
+    {
+        if ($job->output_uuid === null) {
+            throw new InvalidArgumentException('Only conversions can be cancelled');
+        }
+
+        if ($job->isFinished()) {
+            throw new InvalidArgumentException('This conversion is already done');
+        }
+
+        DB::transaction(function () use ($restaurant, $job) {
+            $this->inventoryService->putBack($restaurant, $job->consumed ?? []);
+            $job->delete();
+
+            // Without anything left to do, the finished jobs are cleared, starting the total over
+            if ($this->getQueue($restaurant, WorkStation::PREP)->isEmpty()) {
+                Work::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::PREP->value)->delete();
+            }
         });
     }
 
@@ -589,7 +661,7 @@ class WorkService
     }
 
     /**
-     * Finishes a job: the meal is prepped, or the pieces of equipment are clean. The job stays, marked as finished,
+     * Finishes a job: the meal is prepped, the converted ingredient goes in the pile, or the pieces of equipment are clean. The job stays, marked as finished,
      * until the rest of its area's queue is done
      * @param Restaurant $restaurant The restaurant
      * @param Work $job The job
@@ -597,7 +669,11 @@ class WorkService
      */
     private function finishJob(Restaurant $restaurant, Work $job, Carbon $at): void
     {
-        if ($job->station === WorkStation::PREP) {
+        if ($job->station === WorkStation::PREP && $job->output_uuid !== null) {
+            if ($job->Output !== null) {
+                $this->inventoryService->addToPile($restaurant, $job->Output, $job->output_amount);
+            }
+        } elseif ($job->station === WorkStation::PREP) {
             $meal = $job->Meal;
             if ($meal !== null && $meal->status === Meal::STATUS_PLANNED) {
                 $this->kitchenService->finishPrep($restaurant, $meal, $at);
@@ -670,7 +746,7 @@ class WorkService
     {
         $query = Work::where('restaurant_uuid', $restaurant->uuid)
             ->where('station', $station->value)
-            ->with(['Meal.Recipe', 'Equipment'])
+            ->with(['Meal.Recipe', 'Equipment', 'Input', 'Output'])
             ->orderBy('order')
             ->orderBy('created_at');
 
@@ -748,7 +824,9 @@ class WorkService
     private function describeTask(Work $job): string
     {
         return match ($job->station) {
-            WorkStation::PREP => 'Prepping ' . ($job->Meal?->Recipe?->name ?? 'a meal'),
+            WorkStation::PREP => $job->output_uuid !== null
+                ? sprintf('Converting %s %s', $job->input_amount + 0, $job->Input?->name ?? 'ingredients')
+                : 'Prepping ' . ($job->Meal?->Recipe?->name ?? 'a meal'),
             WorkStation::CLEANING => sprintf('Cleaning %d %s', $job->amount, $job->Equipment?->name ?? 'equipment'),
             WorkStation::WAITING => $job->order_uuid !== null
                 ? 'Taking an order at ' . ($job->Table?->name ?? 'a table')
