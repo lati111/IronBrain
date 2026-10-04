@@ -1093,3 +1093,107 @@
     background-color: rgb(245 158 11);
     transition: width 0.3s ease;
 }
+
+/*| Finances */
+
+.finance-list {
+    display: flex;
+    flex-direction: column;
+    max-width: 48rem;
+    margin: 0 auto;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+}
+
+.finance-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+}
+
+.finance-row + .finance-row {
+    border-top: 1px solid rgb(229 231 235);
+}
+
+.finance-row:hover,
+.finance-row:focus-visible {
+    background-color: rgb(249 250 251);
+}
+
+.finance-row-date {
+    width: 12rem;
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+    white-space: nowrap;
+}
+
+.finance-amount {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.finance-amount.positive {
+    color: rgb(21 128 61);
+}
+
+.finance-amount.negative {
+    color: rgb(185 28 28);
+}
+
+/* Wide enough for the order table, while staying within the screen */
+.finance-details {
+    width: min(48rem, 85vw);
+}
+
+.finance-section-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.finance-table {
+    width: 100%;
+    font-size: 0.875rem;
+    border-collapse: collapse;
+}
+
+.finance-table th {
+    text-align: left;
+    font-weight: 500;
+    color: rgb(107 114 128);
+    border-bottom: 1px solid rgb(229 231 235);
+}
+
+.finance-table th,
+.finance-table td {
+    padding: 0.25rem 0.5rem;
+}
+
+.finance-table tbody tr + tr td {
+    border-top: 1px solid rgb(243 244 246);
+}
+
+/* Amounts line up on the right */
+.finance-table th:last-child,
+.finance-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.finance-table tr.muted td {
+    color: rgb(156 163 175);
+}
+
+/* The description of a transaction, which can be read in full but not edited */
+.finance-description {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.25rem;
+    background-color: rgb(249 250 251);
+    resize: vertical;
+}

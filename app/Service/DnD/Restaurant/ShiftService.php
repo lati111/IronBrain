@@ -10,6 +10,7 @@ use App\Models\DnD\Restaurant\OrderItem;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\ServiceHistory;
 use App\Models\DnD\Restaurant\Table;
+use App\Models\DnD\Restaurant\Transaction;
 use App\Models\DnD\Restaurant\Work;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -114,6 +115,16 @@ class ShiftService
             $service->ended_at = $now;
             $service->profit = $restaurant->shift_total;
             $service->save();
+
+            // The profit is paid into the restaurant, which is logged as the day's finances
+            $transaction = new Transaction();
+            $transaction->restaurant_uuid = $restaurant->uuid;
+            $transaction->type = Transaction::TYPE_SERVICE;
+            $transaction->title = 'Daily finances';
+            $transaction->amount = $restaurant->shift_total;
+            $transaction->service_uuid = $service->uuid;
+            $transaction->occurred_at = $now;
+            $transaction->save();
 
             // Everything is washed up after closing, which takes no time off the clock as the service is over
             Equipment::where('restaurant_uuid', $restaurant->uuid)->update(['amount_dirty' => 0]);

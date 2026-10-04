@@ -21,6 +21,7 @@
             <div class="w-72 flex gap-4 whitespace-nowrap">
                 <a href="{{route('dnd.restaurant.overview')}}" class="interactive">&larr; Restaurants</a>
                 <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
+                <a href="{{route('dnd.restaurant.finances', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-finances">Finances</a>
             </div>
             <div class="flex flex-col items-center">
                 <h1 class="title">Inventory</h1>

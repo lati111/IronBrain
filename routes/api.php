@@ -197,6 +197,15 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.floor.customer.delete');
         });
 
+        Route::prefix('/{restaurant_uuid}/finances')->group(function() {
+            Route::get('/', [\App\Http\Api\Modules\DnD\Restaurant\FinanceApi::class, 'getTransactions'])
+                ->name('api.dnd.restaurant.finances.get');
+            Route::post('/create', [\App\Http\Api\Modules\DnD\Restaurant\FinanceApi::class, 'createTransaction'])
+                ->name('api.dnd.restaurant.finances.create');
+            Route::get('/{transaction_uuid}', [\App\Http\Api\Modules\DnD\Restaurant\FinanceApi::class, 'getTransaction'])
+                ->name('api.dnd.restaurant.finances.transaction');
+        });
+
         Route::prefix('/{restaurant_uuid}/inventory')->group(function() {
             Route::get('/', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'getInventory'])
                 ->name('api.dnd.restaurant.inventory.get');

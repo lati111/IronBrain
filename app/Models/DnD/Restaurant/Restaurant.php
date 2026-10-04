@@ -8,6 +8,7 @@ use App\Models\DnD\Restaurant\Interfaces\DndRestaurantModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use InvalidArgumentException;
 
 /**
  * @inheritdoc
@@ -139,6 +140,39 @@ class Restaurant extends DndRestaurantModel
     public function getTotalBits(): int
     {
         return $this->gold * 1000 + $this->silver * 100 + $this->copper * 10 + $this->bits;
+    }
+
+    /**
+     * Takes an amount off the restaurant's money. Each digit comes off its own coin, so 1234 bits takes a gold, two
+     * silver, three copper and four bits. A coin that runs short is made up by breaking one of the next coin up into
+     * ten. Does not save
+     * @param float $bits The amount in bits, rounded to whole bits
+     * @throws InvalidArgumentException Thrown when the restaurant has less money than that
+     */
+    public function spendMoney(float $bits): void
+    {
+        $amount = (int) round($bits);
+        if ($amount <= 0) {
+            return;
+        }
+
+        if ($amount > $this->getTotalBits()) {
+            throw new InvalidArgumentException(sprintf('Not enough money: %s needed, %s available',
+                self::formatMoney($amount), self::formatMoney($this->getTotalBits())));
+        }
+
+        $this->bits -= $amount % 10;
+        $this->copper -= intdiv($amount, 10) % 10;
+        $this->silver -= intdiv($amount, 100) % 10;
+        $this->gold -= intdiv($amount, 1000);
+
+        // Short coins borrow from the next one up, which may in turn borrow from the one above it
+        foreach ([['bits', 'copper'], ['copper', 'silver'], ['silver', 'gold']] as [$coin, $next]) {
+            while ($this->{$coin} < 0) {
+                $this->{$coin} += 10;
+                $this->{$next}--;
+            }
+        }
     }
 
     /**

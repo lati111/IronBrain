@@ -50,6 +50,18 @@ class DndRestaurantController extends Controller
     }
 
     /**
+     * Shows the finances of a restaurant: the log of money going in and out
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @return View Returns a View of the page
+     */
+    public function showFinances(string $restaurant_uuid): View
+    {
+        return $this->view('modules.dnd.restaurant.finances', [
+            'restaurant' => $this->getRestaurant($restaurant_uuid),
+        ]);
+    }
+
+    /**
      * Shows the service page of a restaurant. Its time is left as is, so reloading the page doesn't undo time
      * that has passed during the service. Without an ongoing service, this leads back to the management page
      * @param string $restaurant_uuid The uuid of the restaurant
