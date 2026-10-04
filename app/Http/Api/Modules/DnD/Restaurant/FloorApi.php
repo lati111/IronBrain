@@ -467,6 +467,7 @@ class FloorApi extends AbstractApi
             'icon'           => 'nullable|image|max:2048',
             'cleaning_speed' => 'nullable|numeric|min:0|max:100',
             'prep_speed'     => 'nullable|numeric|min:0|max:100',
+            'player_uuid'    => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -478,7 +479,12 @@ class FloorApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
         }
 
+        if ($request->filled('player_uuid') && !$this->floorService->isPlayer($restaurant, $request->get('player_uuid'))) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Player not found');
+        }
+
         $employee = new Employee();
+        $employee->player_uuid     = $request->filled('player_uuid') ? $request->get('player_uuid') : null;
         $employee->restaurant_uuid = $restaurant->uuid;
         $employee->name            = $request->get('name');
         $employee->cleaning_speed  = round((float) ($request->get('cleaning_speed') ?? 1), 2);
@@ -510,6 +516,8 @@ class FloorApi extends AbstractApi
             'icon'           => 'nullable|image|max:2048',
             'cleaning_speed' => 'nullable|numeric|min:0|max:100',
             'prep_speed'     => 'nullable|numeric|min:0|max:100',
+            // An empty player leaves the employee to the owner and managers, while leaving it out keeps the current one
+            'player_uuid'    => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -524,6 +532,14 @@ class FloorApi extends AbstractApi
         $employee = $this->getEmployee($restaurant, $employee_uuid);
         if ($employee === null) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Employee not found');
+        }
+
+        if ($request->filled('player_uuid') && !$this->floorService->isPlayer($restaurant, $request->get('player_uuid'))) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Player not found');
+        }
+
+        if ($request->has('player_uuid')) {
+            $employee->player_uuid = $request->filled('player_uuid') ? $request->get('player_uuid') : null;
         }
 
         $employee->name = $request->get('name') ?? $employee->name;

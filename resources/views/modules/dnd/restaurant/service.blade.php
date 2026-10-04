@@ -16,7 +16,8 @@
     <div id="service"
          data-api-url="{{route('api.dnd.restaurant.floor.get', ['restaurant_uuid' => $restaurant->uuid])}}"
          data-service-url="{{route('api.dnd.restaurant.service.get', ['restaurant_uuid' => $restaurant->uuid])}}"
-         data-management-url="{{route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid])}}">
+         data-management-url="{{route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid])}}"
+         data-player="{{$isPlayer ? 1 : 0}}">
 
         {{--| Top bar. Both sides share a width, so the title stays centred |--}}
         <div class="flex justify-between items-center mb-2">
@@ -29,12 +30,15 @@
                     <small id="service-date" class="text-gray-500"></small>
                     <input id="service-time" type="time" class="underlined service-clock" title="Current time" onchange="setServiceTime(this.value)">
                 </div>
-                <div class="flex items-center gap-1">
-                    @foreach([1 => '+1m', 5 => '+5m', 15 => '+15m', 60 => '+1h'] as $minutes => $label)
-                        <button class="service-clock-step interactive" onclick="advanceTime({{$minutes}})" dusk="advance-{{$minutes}}">{{$label}}</button>
-                    @endforeach
-                    <button class="interactive text-sm font-semibold ml-2" onclick="openEndServiceModal()" dusk="service-end">End service</button>
-                </div>
+                {{--| Players only control their employees, so the clock runs as whoever runs the service moves it |--}}
+                @unless($isPlayer)
+                    <div class="flex items-center gap-1">
+                        @foreach([1 => '+1m', 5 => '+5m', 15 => '+15m', 60 => '+1h'] as $minutes => $label)
+                            <button class="service-clock-step interactive" onclick="advanceTime({{$minutes}})" dusk="advance-{{$minutes}}">{{$label}}</button>
+                        @endforeach
+                        <button class="interactive text-sm font-semibold ml-2" onclick="openEndServiceModal()" dusk="service-end">End service</button>
+                    </div>
+                @endunless
                 <small class="text-gray-500">
                     Open {{substr($restaurant->opening_time, 0, 5)}} &ndash; {{substr($restaurant->closing_time, 0, 5)}}
                     &middot; shift total <span id="service-shift-total" class="font-semibold">0b</span>
@@ -45,7 +49,8 @@
         <div class="flex gap-3 items-start">
 
             {{--| Sidebar |--}}
-            {{--| Collapsed until opened, as the floor and kitchen need the room during service |--}}
+            {{--| Collapsed until opened, as the floor and kitchen need the room during service. Players have none |--}}
+            @unless($isPlayer)
             <aside id="inventory-sidebar" class="inventory-sidebar collapsed rounded shadow border gray-border">
                 <div class="flex items-center border-b">
                     <button class="inventory-sidebar-toggle interactive px-2" onclick="toggleSidebar()" title="Collapse / expand">
@@ -65,6 +70,7 @@
                     <button id="customer-create-button" class="interactive text-sm" onclick="openCreateCustomerModal()" dusk="customer-create">+ New Customer</button>
                 </div>
             </aside>
+            @endunless
 
             {{--| Floor |--}}
             <div class="service-floor flex-1 flex flex-col gap-2">
@@ -109,7 +115,9 @@
                         <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Preparation</h4>
                             <div class="kitchen-area-staff" data-station-staff="prep"></div>
-                            <button class="interactive text-xs" onclick="openPlanMealModal()" dusk="meal-plan">+ Plan meal</button>
+                            @unless($isPlayer)
+                                <button class="interactive text-xs" onclick="openPlanMealModal()" dusk="meal-plan">+ Plan meal</button>
+                            @endunless
                         </div>
                         <div class="kitchen-total-progress hidden" data-station-progress="prep"><div></div></div>
                         <div id="kitchen-preparation" class="kitchen-meal-list"></div>
@@ -119,7 +127,9 @@
                         <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Equipment</h4>
                             <div class="kitchen-area-staff" data-station-staff="cleaning"></div>
-                            <button id="kitchen-clean-all" class="interactive text-xs disabled:opacity-40" onclick="cleanAllEquipment()" dusk="clean-all">Clean all</button>
+                            @unless($isPlayer)
+                                <button id="kitchen-clean-all" class="interactive text-xs disabled:opacity-40" onclick="cleanAllEquipment()" dusk="clean-all">Clean all</button>
+                            @endunless
                         </div>
                         <div class="kitchen-total-progress hidden" data-station-progress="cleaning"><div></div></div>
 
@@ -341,7 +351,8 @@
         </x-slot:buttons>
     </x-modal>
 
-    {{--| End service modal, listing what was sold and the profit made |--}}
+    {{--| End service modal, listing what was sold and the profit made. Only whoever runs the service ends it |--}}
+    @unless($isPlayer)
     <x-modal id="service-end-modal">
         <h3 class="title py-1">End service</h3>
         <p id="service-end-hours" class="text-center text-sm text-gray-500"></p>
@@ -352,6 +363,7 @@
             <button class="interactive px-5 py-2.5" dusk="service-end-confirm" onclick="endService()">End service</button>
         </x-slot:buttons>
     </x-modal>
+    @endunless
 
     {{--| Adding an ingredient brought in during service to the pile |--}}
     {{--| Queue a conversion in the prep area |--}}

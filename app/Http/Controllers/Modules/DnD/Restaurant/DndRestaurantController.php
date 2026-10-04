@@ -32,8 +32,12 @@ class DndRestaurantController extends Controller
      */
     public function showManagement(string $restaurant_uuid): View
     {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+
         return $this->view('modules.dnd.restaurant.management', [
-            'restaurant' => $this->getRestaurant($restaurant_uuid),
+            'restaurant' => $restaurant,
+            // Players only move ingredients around
+            'isPlayer' => $restaurant->isPlayer(Auth::user()),
         ]);
     }
 
@@ -76,6 +80,8 @@ class DndRestaurantController extends Controller
 
         return $this->view('modules.dnd.restaurant.service', [
             'restaurant' => $restaurant,
+            // Players only control the employees assigned to them
+            'isPlayer' => $restaurant->isPlayer(Auth::user()),
         ]);
     }
 

@@ -33,6 +33,15 @@ interface Employee {
     icon: string | null;
     cleaning_speed: number;
     prep_speed: number;
+    /** The player controlling the employee during service, if any */
+    player_uuid: string | null;
+    player_name: string | null;
+}
+
+/** A user invited to play, who controls the employees assigned to them during service */
+interface Player {
+    uuid: string;
+    username: string;
 }
 
 interface Floor {
@@ -40,10 +49,14 @@ interface Floor {
     tables: Table[];
     customers: Customer[];
     employees: Employee[];
+    players: Player[];
 }
 
-/** The sidebar lists tables, customers and employees */
-type SidebarTab = 'table' | 'customer' | 'employee';
+/** The sidebar lists tables, customers, employees and players */
+type SidebarTab = 'table' | 'customer' | 'employee' | 'player';
+
+/** The tabs whose entries are edited in a modal of their own, and deleted from there */
+type EditableTab = Exclude<SidebarTab, 'player'>;
 
 /** What is dragged when a table is moved between rooms */
 interface DraggedTable {
@@ -59,18 +72,20 @@ const TAB_LABELS: Record<SidebarTab, string> = {
     table:    'Table',
     customer: 'Customer',
     employee: 'Employee',
+    player:   'Player',
 };
 
 let apiUrl = '';
 let editUrl = '';
-let floor: Floor = {rooms: [], tables: [], customers: [], employees: []};
+let floor: Floor = {rooms: [], tables: [], customers: [], employees: [], players: []};
 let activeTab: SidebarTab = 'table';
 
 let editingTableUuid: string | null = null;
 let editingCustomerUuid: string | null = null;
 let editingEmployeeUuid: string | null = null;
 let pendingRoomDelete: string | null = null;
-let pendingDelete: {type: SidebarTab, uuid: string} | null = null;
+let pendingDelete: {type: EditableTab, uuid: string} | null = null;
+let pendingPlayerRemove: Player | null = null;
 
 /** Makes a rendered room reorderable by dragging */
 let registerRoomCard: (card: HTMLElement) => void = () => {};
@@ -113,9 +128,12 @@ function renderSidebar(): void {
     const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
 
     list.replaceChildren();
-    const total = activeTab === 'table'
-        ? renderTableRows(list, search)
-        : activeTab === 'customer' ? renderCustomerRows(list, search) : renderEmployeeRows(list, search);
+    const total = {
+        table: renderTableRows,
+        customer: renderCustomerRows,
+        employee: renderEmployeeRows,
+        player: renderPlayerRows,
+    }[activeTab](list, search);
 
     if (list.childElementCount === 0) {
         const empty = document.createElement('li');
@@ -170,13 +188,34 @@ function renderEmployeeRows(list: HTMLElement, search: string): number {
     for (const employee of floor.employees.filter((employee) => employee.name.toLowerCase().includes(search))) {
         const row = createListRow();
         setField(row, 'name', employee.name);
-        setField(row, 'meta', `Prep ×${employee.prep_speed} · Cleaning ×${employee.cleaning_speed}`);
+        const meta = `Prep ×${employee.prep_speed} · Cleaning ×${employee.cleaning_speed}`;
+        setField(row, 'meta', employee.player_name !== null ? `${meta} · ${employee.player_name}` : meta);
         row.querySelector('[data-action="edit"]')!.addEventListener('click', () => openEmployeeModal(employee.uuid));
 
         list.appendChild(row);
     }
 
     return floor.employees.length;
+}
+
+/** Renders the sidebar rows for players, returning how many players there are before filtering */
+function renderPlayerRows(list: HTMLElement, search: string): number {
+    for (const player of floor.players.filter((player) => player.username.toLowerCase().includes(search))) {
+        const row = createListRow();
+        setField(row, 'name', player.username);
+        const employees = floor.employees.filter((employee) => employee.player_uuid === player.uuid).map((employee) => employee.name);
+        setField(row, 'meta', employees.length > 0 ? employees.join(', ') : 'No employees');
+
+        // Players are invited rather than edited, so their button removes them
+        const button = row.querySelector('[data-action="edit"]') as HTMLElement;
+        button.innerHTML = '&times;';
+        button.title = 'Remove';
+        button.addEventListener('click', () => openRemovePlayerModal(player));
+
+        list.appendChild(row);
+    }
+
+    return floor.players.length;
 }
 
 function renderRooms(): void {
@@ -233,7 +272,7 @@ function switchTab(tab: SidebarTab): void {
         button.classList.toggle('active', button.dataset.tab === tab);
     });
 
-    document.getElementById('inventory-create-type')!.textContent = `+ New ${TAB_LABELS[tab]}`;
+    document.getElementById('inventory-create-type')!.textContent = tab === 'player' ? '+ Invite Player' : `+ New ${TAB_LABELS[tab]}`;
     renderSidebar();
 }
 
@@ -242,8 +281,10 @@ function openCreateModal(): void {
         openTableModal(null);
     } else if (activeTab === 'customer') {
         openCustomerModal(null);
-    } else {
+    } else if (activeTab === 'employee') {
         openEmployeeModal(null);
+    } else {
+        openInvitePlayerModal();
     }
 }
 
@@ -436,6 +477,11 @@ function openEmployeeModal(uuid: string | null): void {
     const form = document.getElementById('employee-form') as HTMLFormElement;
     form.reset();
 
+    // The employee can be handed to one of the players to control during service
+    const player = form.elements.namedItem('player_uuid') as HTMLSelectElement;
+    player.replaceChildren(new Option('None', ''), ...floor.players.map((candidate) => new Option(candidate.username, candidate.uuid)));
+    player.value = employee?.player_uuid ?? '';
+
     if (employee !== null) {
         (form.elements.namedItem('name') as HTMLInputElement).value = employee.name;
         (form.elements.namedItem('prep_speed') as HTMLInputElement).value = String(employee.prep_speed);
@@ -464,14 +510,45 @@ async function saveEmployee(): Promise<void> {
     setFloor(response.floor);
 }
 
+//| Players
+
+function openInvitePlayerModal(): void {
+    (document.getElementById('player-form') as HTMLFormElement).reset();
+    openModal('player-modal');
+}
+
+async function invitePlayer(): Promise<void> {
+    const form = document.getElementById('player-form') as HTMLFormElement;
+    if (!form.reportValidity()) return;
+
+    if (await postFloor(`${apiUrl}/player/invite`, new FormData(form))) {
+        closeModal('player-modal');
+    }
+}
+
+function openRemovePlayerModal(player: Player): void {
+    pendingPlayerRemove = player;
+    document.getElementById('player-remove-name')!.textContent = player.username;
+    openModal('player-remove-modal');
+}
+
+async function removePlayer(): Promise<void> {
+    if (pendingPlayerRemove === null) return;
+
+    const player = pendingPlayerRemove;
+    pendingPlayerRemove = null;
+    closeModal('player-remove-modal');
+    await postFloor(`${apiUrl}/player/${player.uuid}/remove`);
+}
+
 //| Deleting tables, customers & employees
 
 /** The uuid of what is open in each edit modal */
-function getEditingUuid(type: SidebarTab): string | null {
+function getEditingUuid(type: EditableTab): string | null {
     return {table: editingTableUuid, customer: editingCustomerUuid, employee: editingEmployeeUuid}[type];
 }
 
-function openDeleteModal(type: SidebarTab): void {
+function openDeleteModal(type: EditableTab): void {
     const uuid = getEditingUuid(type);
     if (uuid === null) return;
 
@@ -556,6 +633,8 @@ function seatsLabel(seats: number): string {
 (<any>window).saveTable           = saveTable;
 (<any>window).saveCustomer        = saveCustomer;
 (<any>window).saveEmployee        = saveEmployee;
+(<any>window).invitePlayer        = invitePlayer;
+(<any>window).removePlayer        = removePlayer;
 (<any>window).openDeleteModal     = openDeleteModal;
 (<any>window).cancelDelete        = cancelDelete;
 (<any>window).confirmDelete       = confirmDelete;

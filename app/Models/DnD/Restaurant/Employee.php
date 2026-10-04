@@ -3,13 +3,16 @@
 namespace App\Models\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Interfaces\RestaurantDataModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * An employee of the restaurant, who during service can be put to work in a work area of the kitchen, or wait tables.
  * They do one or the other
  * @inheritdoc
+ * @property string|null player_uuid The uuid of the player controlling the employee during service, if any
  * @property string name The name of the employee
  * @property string|null icon The path of the employee's icon
  * @property float cleaning_speed How much faster than normal the employee cleans, so 2 cleans twice as fast
@@ -29,6 +32,14 @@ class Employee extends RestaurantDataModel
         'prep_speed'     => 'float',
         'station'        => WorkStation::class,
     ];
+
+    /**
+     * The relationship for the player controlling the employee during service
+     * @return BelongsTo
+     */
+    public function Player(): BelongsTo {
+        return $this->belongsTo(User::class, 'player_uuid', 'uuid');
+    }
 
     /**
      * Gets how fast the employee works in a work area

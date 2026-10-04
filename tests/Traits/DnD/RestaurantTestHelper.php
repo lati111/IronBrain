@@ -38,11 +38,13 @@ trait RestaurantTestHelper
         return $restaurant;
     }
 
-    protected function grantRestaurantAccess(Restaurant $restaurant, User $user): void
+    /** Gives a user access to a restaurant, as a manager with full control unless another role is given */
+    protected function grantRestaurantAccess(Restaurant $restaurant, User $user, string $role = RestaurantUser::ROLE_MANAGER): void
     {
         $access = new RestaurantUser();
         $access->restaurant_uuid = $restaurant->uuid;
         $access->user_uuid = $user->uuid;
+        $access->role = $role;
         $access->save();
     }
 

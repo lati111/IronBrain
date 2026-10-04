@@ -192,6 +192,8 @@ const RECIPE_COMPONENT_KEYS: Record<RecipeComponentKind, 'ingredients' | 'equipm
 };
 
 let apiUrl = '';
+/** Players only move ingredients between the storage spaces and out of the pile */
+let isPlayer = false;
 let inventory: Inventory = {date: '', storages: [], pile: [], ingredients: [], equipment: [], conversions: [], recipes: []};
 let activeTab: SidebarTab = 'ingredient';
 
@@ -248,22 +250,28 @@ const RECIPE_COMPONENT_KINDS = Object.keys(RECIPE_COMPONENT_KEYS) as RecipeCompo
 //| Initialisation
 
 async function init(): Promise<void> {
-    apiUrl = (document.getElementById('inventory') as HTMLElement).dataset.apiUrl!;
+    const root = document.getElementById('inventory') as HTMLElement;
+    apiUrl = root.dataset.apiUrl!;
+    isPlayer = root.dataset.player === '1';
 
     initModals();
     document.querySelectorAll<HTMLInputElement>('input[data-money]').forEach(setupMoneyInput);
-    setupItemDropTarget(document.getElementById('general-storage') as HTMLElement, GENERAL);
-    // An empty general storage is hidden, though it still shows while an item is dragged so it can be dropped there
-    showWhileDragging(document.getElementById('general-storage') as HTMLElement, ITEM_MIME);
-    setupItemDropTarget(document.getElementById('discard-edge') as HTMLElement, DISCARD);
-    showWhileDragging(document.getElementById('discard-edge') as HTMLElement, ITEM_MIME);
-    registerStorageCard = createReorderableList(document.getElementById('storage-list') as HTMLElement, {
-        mime: STORAGE_MIME,
-        getSavedOrder: () => inventory.storages.map((storage) => storage.uuid),
-        save: saveStorageOrder,
-        restore: renderStorages,
-    });
-    restoreSidebar();
+
+    // Players neither add items, take them out, nor arrange the storage spaces
+    if (!isPlayer) {
+        setupItemDropTarget(document.getElementById('general-storage') as HTMLElement, GENERAL);
+        // An empty general storage is hidden, though it still shows while an item is dragged so it can be dropped there
+        showWhileDragging(document.getElementById('general-storage') as HTMLElement, ITEM_MIME);
+        setupItemDropTarget(document.getElementById('discard-edge') as HTMLElement, DISCARD);
+        showWhileDragging(document.getElementById('discard-edge') as HTMLElement, ITEM_MIME);
+        registerStorageCard = createReorderableList(document.getElementById('storage-list') as HTMLElement, {
+            mime: STORAGE_MIME,
+            getSavedOrder: () => inventory.storages.map((storage) => storage.uuid),
+            save: saveStorageOrder,
+            restore: renderStorages,
+        });
+        restoreSidebar();
+    }
 
     window.addEventListener('beforeunload', (event) => {
         if (generalStorage.size > 0) {
@@ -293,10 +301,14 @@ function setInventory(data: Inventory): void {
 
 function render(): void {
     renderDate();
-    renderSidebar();
     renderPile();
-    renderGeneralStorage();
     renderStorages();
+
+    // Players have neither the sidebar nor general storage
+    if (!isPlayer) {
+        renderSidebar();
+        renderGeneralStorage();
+    }
 }
 
 function renderSidebar(): void {
@@ -476,7 +488,13 @@ function renderStorages(): void {
             items.appendChild(createItemElement(item, storage.uuid));
         }
 
-        section.querySelector('[data-action="delete"]')!.addEventListener('click', () => openDeleteStorageModal(storage));
+        if (isPlayer) {
+            section.draggable = false;
+            section.querySelector('[data-action="delete"]')!.remove();
+            section.querySelector('.inventory-storage-handle')?.remove();
+        } else {
+            section.querySelector('[data-action="delete"]')!.addEventListener('click', () => openDeleteStorageModal(storage));
+        }
         setupItemDropTarget(section, storage.uuid);
         registerStorageCard(section);
 
@@ -498,6 +516,12 @@ function createItemElement(item: Item, from: string | null): HTMLElement {
     setField(element, 'amount', `×${item.amount}`);
     setField(element, 'expiry', describeDaysLeft(item));
     element.classList.toggle('expiring', item.days_left !== undefined && item.days_left !== null && item.days_left <= 1);
+
+    // Players only move stored ingredients
+    if (isPlayer && (item.type !== 'ingredient' || from === null)) {
+        element.draggable = false;
+        return element;
+    }
 
     element.addEventListener('dragstart', (event) => {
         const data: DraggedItem = {...item, from};

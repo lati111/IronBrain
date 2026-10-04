@@ -153,6 +153,15 @@ export interface Employee {
     tables: string[];
     /** The task the employee is on, such as "Prepping Stew" */
     task: string;
+    /** The player controlling the employee, if any */
+    player_uuid: string | null;
+    player_name: string | null;
+}
+
+/** Who is looking at the service. Players only control the employees assigned to them */
+interface Viewer {
+    user_uuid: string | null;
+    player: boolean;
 }
 
 /** A job queued in a work area: prepping a meal, or cleaning pieces of equipment */
@@ -213,6 +222,7 @@ export interface ServiceState {
     /** The jobs of the waiters: taking orders and bringing plates */
     waiting: WaitingJob[];
     orders: Order[];
+    viewer: Viewer;
 }
 
 /** A job of a table's waiter: taking an order there, or bringing a plated portion */
@@ -250,6 +260,55 @@ let pendingScrap: Meal | null = null;
 /** The meal the quality modal is asking about, and the meals whose question was put off until the page reloads */
 let qualityMeal: Meal | null = null;
 const qualityPutOff = new Set<string>();
+
+/** Whether the one looking is a player, who only controls the employees assigned to them */
+export function isPlayer(): boolean {
+    return state?.viewer.player ?? false;
+}
+
+/** Whether the one looking may move an employee around: anyone but a player, and a player their own employees */
+export function canControl(employee: Employee): boolean {
+    return !isPlayer() || employee.player_uuid === state!.viewer.user_uuid;
+}
+
+/** How often the service is refreshed, in milliseconds, so changes made by others show up */
+const REFRESH_INTERVAL = 5000;
+/** Counts the changes posted, so a refresh that started before one doesn't overwrite what it returned */
+let changeCount = 0;
+let dragging = false;
+
+/**
+ * Whether the page is left alone, so refreshing it doesn't get in the way: it is visible, and nothing is being dragged,
+ * asked for in a modal, or opened in a menu
+ */
+export function isIdle(): boolean {
+    return document.visibilityState === 'visible' && !dragging && menuAnchor === null
+        && document.querySelector('.modal:not(.hidden)') === null;
+}
+
+/** Fetches the service again when the page is left alone, unless something was changed in the meantime */
+async function refreshState(): Promise<void> {
+    if (!isIdle()) return;
+
+    const count = changeCount;
+    try {
+        const response = await getData(serviceUrl);
+        if (count === changeCount && isIdle()) {
+            setState(response.data);
+        }
+    } catch {
+        // Tried again on the next refresh
+    }
+}
+
+/** Turns an interactive card into one that can only be looked at, by copying it without its listeners */
+function makeReadOnly(card: HTMLElement): HTMLElement {
+    const copy = card.cloneNode(true) as HTMLElement;
+    copy.draggable = false;
+    copy.classList.remove('clickable');
+    copy.querySelector('[data-actions]')?.replaceChildren();
+    return copy;
+}
 
 export function getServiceState(): ServiceState | null {
     return state;
@@ -292,6 +351,11 @@ export async function initKitchen(url: string): Promise<void> {
 
     const response = await getData(serviceUrl);
     setState(response.data);
+
+    document.addEventListener('dragstart', () => dragging = true);
+    document.addEventListener('dragend', () => dragging = false);
+    document.addEventListener('drop', () => dragging = false);
+    setInterval(refreshState, REFRESH_INTERVAL);
 }
 
 function setState(data: ServiceState): void {
@@ -315,6 +379,7 @@ function renderClock(): void {
     const clock = state!.clock;
     const input = document.getElementById('service-time') as HTMLInputElement;
     input.value = clock.time;
+    input.disabled = isPlayer();
 
     const date = new Date(`${clock.date}T00:00:00`);
     document.getElementById('service-date')!.textContent = date.toLocaleDateString(undefined, {day: 'numeric', month: 'long', year: 'numeric'});
@@ -422,7 +487,7 @@ function createConversionCard(job: WorkJob): HTMLElement {
     addAction(card.querySelector('[data-actions]') as HTMLElement, 'Cancel', () => post(`/work/${job.uuid}/cancel`));
     onRightClick(card, () => openPrioritizeMenu(card, name, [job.uuid]));
 
-    return card;
+    return isPlayer() ? makeReadOnly(card) : card;
 }
 
 function openPlanMealModal(): void {
@@ -508,9 +573,12 @@ function renderServing(): void {
 function createPlateChip(plate: Plate): HTMLElement {
     const chip = document.createElement('div');
     chip.className = 'inventory-item kitchen-plate';
-    chip.draggable = true;
     chip.classList.toggle('spoiled', plate.spoiled);
     chip.textContent = describePlate(plate);
+
+    // Plates are brought to tables by whoever runs the floor
+    if (isPlayer()) return chip;
+    chip.draggable = true;
 
     chip.addEventListener('dragstart', (event) => {
         draggedPlate = plate;
@@ -589,8 +657,10 @@ function renderEquipment(): void {
             const done = queue.reduce((total, job) => total + job.work * job.progress, 0);
             row.appendChild(createProgressBar(work > 0 ? done / work : 0));
         }
-        row.addEventListener('click', () => toggleEquipmentMenu(piece, row));
-        if (queue.length > 0) {
+        if (!isPlayer()) {
+            row.addEventListener('click', () => toggleEquipmentMenu(piece, row));
+        }
+        if (queue.length > 0 && !isPlayer()) {
             // Prioritising one piece moves every piece of the equipment, so the first stands for all
             onRightClick(row, () => openPrioritizeMenu(row, `${piece.name}: cleaning`, [queue[0].uuid]));
         }
@@ -602,7 +672,8 @@ function renderEquipment(): void {
     }
 
     const anyToClean = state!.equipment.some((piece) => getUnqueuedDirty(piece) > 0);
-    (document.getElementById('kitchen-clean-all') as HTMLButtonElement).disabled = !anyToClean;
+    const cleanAll = document.getElementById('kitchen-clean-all') as HTMLButtonElement | null;
+    if (cleanAll !== null) cleanAll.disabled = !anyToClean;
 }
 
 function getCleaningJobs(piece: KitchenEquipment): WorkJob[] {
@@ -691,9 +762,11 @@ function renderStaff(): void {
         element.replaceChildren();
         for (const employee of state!.employees.filter((candidate) => candidate.station === element.dataset.stationStaff)) {
             const icon = createEmployeeIcon(employee);
-            icon.title = employee.name;
-            icon.draggable = true;
-            setupEmployeeDrag(icon, employee);
+            icon.title = describeEmployee(employee);
+            if (canControl(employee)) {
+                icon.draggable = true;
+                setupEmployeeDrag(icon, employee);
+            }
             element.appendChild(icon);
         }
     });
@@ -709,9 +782,22 @@ function createEmployeeElement(employee: Employee): HTMLElement {
     if (employee.station !== null) {
         element.dataset.station = employee.station;
     }
+    element.title = describeEmployee(employee);
 
-    setupEmployeeDrag(element, employee);
+    // Players only move their own employees, which are marked out for them
+    if (canControl(employee)) {
+        setupEmployeeDrag(element, employee);
+        element.classList.toggle('own', isPlayer());
+    } else {
+        element.draggable = false;
+        element.classList.add('locked');
+    }
     return element;
+}
+
+/** Names the employee, and the player controlling them, if any */
+export function describeEmployee(employee: Employee): string {
+    return employee.player_name !== null ? `${employee.name} (${employee.player_name})` : employee.name;
 }
 
 /** The employee's icon, or the first letter of their name when they have none */
@@ -810,7 +896,7 @@ function createMealCard(meal: Meal): HTMLElement {
         card.addEventListener('dragend', () => draggedMeal = null);
     }
 
-    return card;
+    return isPlayer() ? makeReadOnly(card) : card;
 }
 
 //| Meals in meals
@@ -971,7 +1057,8 @@ function setupMealMenuClosing(): void {
 
 /** Asks how a finished meal turned out, for the first one that hasn't got a quality yet */
 function askForQuality(): void {
-    if (qualityMeal !== null) return;
+    // How a meal turned out is up to whoever runs the kitchen
+    if (qualityMeal !== null || isPlayer()) return;
 
     const meal = state!.meals.find((candidate) => candidate.finished && candidate.quality === null && !qualityPutOff.has(candidate.uuid));
     if (meal !== undefined) {
@@ -1051,6 +1138,7 @@ function describeTimer(meal: Meal): string {
  * @return Whether the request succeeded
  */
 export async function post(path: string, formData: FormData | string = new FormData(), announce: boolean = true): Promise<boolean> {
+    changeCount++;
     try {
         const response = await postOnce(`${serviceUrl}${path}`, formData);
         if (!response?.ok) return false;

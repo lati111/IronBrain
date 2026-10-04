@@ -43,7 +43,7 @@ class WorkService
      */
     public function describe(Restaurant $restaurant): array
     {
-        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->with('Tables')->orderBy('name')->get();
+        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->with(['Tables', 'Player'])->orderBy('name')->get();
         $waiting = $this->describeWaiting($restaurant, $employees);
 
         $stations = [];
@@ -108,6 +108,9 @@ class WorkService
                 'name' => $employee->name,
                 'icon' => $employee->icon !== null ? asset('img/' . $employee->icon) : null,
                 'station' => $employee->station?->value,
+                // The player controlling the employee, if any
+                'player_uuid' => $employee->player_uuid,
+                'player_name' => $employee->Player?->username,
                 // The tables the employee waits, when they wait tables rather than work in a work area
                 'tables' => $employee->Tables->pluck('uuid')->values()->all(),
                 'task' => $this->describeEmployeeTask($employee, $tasks, $employeeTasks),

@@ -2,9 +2,11 @@
 
 namespace App\Service\DnD\Restaurant;
 
+use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Restaurant;
+use App\Models\DnD\Restaurant\RestaurantUser;
 use App\Models\DnD\Restaurant\Room;
 use App\Models\DnD\Restaurant\Table;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +16,7 @@ class FloorService
 {
     /**
      * Builds the floor state of a restaurant: its rooms, its tables along with the room each is placed in, and its
-     * customers along with the table each is seated at, and its employees
+     * customers along with the table each is seated at, its employees, and its players
      * @param Restaurant $restaurant The restaurant to build the state for
      * @return array The floor state
      */
@@ -23,7 +25,9 @@ class FloorService
         $rooms = Room::where('restaurant_uuid', $restaurant->uuid)->orderBy('order')->orderBy('created_at')->get();
         $tables = Table::where('restaurant_uuid', $restaurant->uuid)->withCount('Customers')->orderBy('name')->get();
         $customers = Customer::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
-        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
+        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->with('Player')->orderBy('name')->get();
+        $players = RestaurantUser::where('restaurant_uuid', $restaurant->uuid)->where('role', RestaurantUser::ROLE_PLAYER)
+            ->with('User')->get()->sortBy(fn (RestaurantUser $access) => strtolower($access->User->username));
 
         return [
             'rooms' => $rooms->map(fn (Room $room) => [
@@ -51,8 +55,59 @@ class FloorService
                 'icon' => $employee->icon !== null ? asset('img/' . $employee->icon) : null,
                 'cleaning_speed' => $employee->cleaning_speed,
                 'prep_speed' => $employee->prep_speed,
+                'player_uuid' => $employee->player_uuid,
+                'player_name' => $employee->Player?->username,
+            ])->values()->all(),
+            // The users invited to play, who control the employees assigned to them
+            'players' => $players->map(fn (RestaurantUser $access) => [
+                'uuid' => $access->user_uuid,
+                'username' => $access->User->username,
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * Invites a user to play in the restaurant, giving them access as a player
+     * @param Restaurant $restaurant The restaurant
+     * @param User $user The user
+     * @throws InvalidArgumentException Thrown when the user owns the restaurant or already has access to it
+     */
+    public function invitePlayer(Restaurant $restaurant, User $user): void
+    {
+        if ($restaurant->hasAccess($user)) {
+            throw new InvalidArgumentException($user->username . ' already has access to ' . $restaurant->name);
+        }
+
+        $access = new RestaurantUser();
+        $access->restaurant_uuid = $restaurant->uuid;
+        $access->user_uuid = $user->uuid;
+        $access->role = RestaurantUser::ROLE_PLAYER;
+        $access->save();
+    }
+
+    /**
+     * Removes a player from the restaurant, along with their access. Their employees are no longer controlled by anyone
+     * @param Restaurant $restaurant The restaurant
+     * @param RestaurantUser $access The player's access
+     */
+    public function removePlayer(Restaurant $restaurant, RestaurantUser $access): void
+    {
+        DB::transaction(function () use ($restaurant, $access) {
+            Employee::where('restaurant_uuid', $restaurant->uuid)->where('player_uuid', $access->user_uuid)->update(['player_uuid' => null]);
+            $access->delete();
+        });
+    }
+
+    /**
+     * Checks whether a user is one of the restaurant's players, who employees can be assigned to
+     * @param Restaurant $restaurant The restaurant
+     * @param string $userUuid The uuid of the user
+     * @return bool Whether they are a player
+     */
+    public function isPlayer(Restaurant $restaurant, string $userUuid): bool
+    {
+        return RestaurantUser::where('restaurant_uuid', $restaurant->uuid)->where('user_uuid', $userUuid)
+            ->where('role', RestaurantUser::ROLE_PLAYER)->exists();
     }
 
     /**

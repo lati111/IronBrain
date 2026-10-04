@@ -56,6 +56,21 @@ class Restaurant extends DndRestaurantModel
     }
 
     /**
+     * Checks whether a user is one of the restaurant's players, who only control the employees assigned to them and
+     * move ingredients around, rather than its owner or one of its managers
+     * @param User $user The user to check
+     * @return bool Whether the user is a player
+     */
+    public function isPlayer(User $user): bool
+    {
+        if ($this->owner_uuid === $user->uuid) {
+            return false;
+        }
+
+        return $this->Access()->where('user_uuid', $user->uuid)->where('role', RestaurantUser::ROLE_PLAYER)->exists();
+    }
+
+    /**
      * Gets the details of the restaurant as shown and edited on its manage page. Times are given as H:i
      * @return array The details
      */

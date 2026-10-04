@@ -25,6 +25,7 @@ use App\Service\DnD\Restaurant\WorkService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
@@ -330,6 +331,15 @@ class ServiceApi extends AbstractApi
             }
         }
 
+        // Players only move their own employees, and can't take a table from someone else's waiter
+        if ($restaurant->isPlayer(Auth::user())) {
+            $current = $table->employee_uuid !== null ? Employee::where('uuid', $table->employee_uuid)->first() : null;
+            $denied = $this->denyPlayer($employee) ?? $this->denyPlayer($current);
+            if ($denied !== null) {
+                return $denied;
+            }
+        }
+
         $this->workService->assignWaiter($table, $employee);
 
         $message = $employee !== null ? sprintf('%s is waiting %s', $employee->name, $table->name) : $table->name . ' has no waiter';
@@ -533,6 +543,13 @@ class ServiceApi extends AbstractApi
         $employee = Employee::where('uuid', $employee_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
         if ($employee === null) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Employee not found');
+        }
+
+        if ($restaurant->isPlayer(Auth::user())) {
+            $denied = $this->denyPlayer($employee);
+            if ($denied !== null) {
+                return $denied;
+            }
         }
 
         $station = $request->filled('station') ? WorkStation::from($request->get('station')) : null;
@@ -905,9 +922,28 @@ class ServiceApi extends AbstractApi
      */
     private function getState(Restaurant $restaurant): array
     {
+        $user = Auth::user();
+
         return $this->kitchenService->getState($restaurant)
             + $this->workService->describe($restaurant)
-            + ['orders' => $this->orderService->describeOrders($restaurant)];
+            + ['orders' => $this->orderService->describeOrders($restaurant)]
+            // Who is looking: players only control the employees assigned to them
+            + ['viewer' => ['user_uuid' => $user?->uuid, 'player' => $user !== null && $restaurant->isPlayer($user)]];
+    }
+
+    /**
+     * Turns a player away from an employee that isn't assigned to them
+     * @param Employee|null $employee The employee, or null when there is none
+     * @return JsonResponse|null An error response when the employee belongs to someone else, or null when the player
+     *                           may control them
+     */
+    private function denyPlayer(?Employee $employee): ?JsonResponse
+    {
+        if ($employee === null || $employee->player_uuid === Auth::user()->uuid) {
+            return null;
+        }
+
+        return $this->respond(Response::HTTP_FORBIDDEN, $employee->name . ' isn\'t one of your employees');
     }
 
     /**

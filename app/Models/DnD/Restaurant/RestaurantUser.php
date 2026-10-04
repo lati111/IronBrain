@@ -11,9 +11,15 @@ use Illuminate\Database\Eloquent\Relations\Concerns\AsPivot;
  * @inheritdoc
  * @property string restaurant_uuid The uuid of the restaurant access is granted to
  * @property string user_uuid The uuid of the user that is granted access
+ * @property string role What the user may do: everything as a manager, or only control their employees as a player
  */
 class RestaurantUser extends DndRestaurantModel
 {
+    /** @var string Has the same control over the restaurant as its owner */
+    public const string ROLE_MANAGER = 'manager';
+    /** @var string Only controls the employees assigned to them during service, and moves ingredients around */
+    public const string ROLE_PLAYER = 'player';
+
     use AsPivot;
 
     /** @inheritdoc */

@@ -37,6 +37,7 @@
                         <button class="inventory-tab active flex-1 py-2" data-tab="table" onclick="switchTab('table')">Tables</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="employee" onclick="switchTab('employee')">Employees</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="player" onclick="switchTab('player')">Players</button>
                     </div>
                 </div>
 
@@ -209,6 +210,9 @@
                     <input type="number" name="cleaning_speed" class="underlined" min="0" max="100" step="0.01" value="1" required/>
                 </x-form.input-wrapper>
             </div>
+            <x-form.input-wrapper label_text="Controlled by">
+                <select name="player_uuid" class="underlined"></select>
+            </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Icon (optional)">
                 <x-form.input.file_uploader name="icon" accepts="image/*"/>
             </x-form.input-wrapper>
@@ -218,6 +222,32 @@
             <button id="employee-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteModal('employee')">Delete</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('employee-modal')">Cancel</button>
             <button id="employee-modal-submit" class="interactive px-5 py-2.5" onclick="saveEmployee()">Create</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Invite a player, who controls the employees assigned to them during service |--}}
+    <x-modal id="player-modal">
+        <h3 class="title py-1">Invite Player</h3>
+        <form id="player-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); invitePlayer()">
+            <x-form.input-wrapper label_text="Username">
+                <input type="text" name="username" class="underlined" maxlength="255" placeholder="Username..." autocomplete="off" required/>
+            </x-form.input-wrapper>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('player-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="player-invite" onclick="invitePlayer()">Invite</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    <x-modal id="player-remove-modal">
+        <h3 class="title py-1">Remove player</h3>
+        <p class="text-center">
+            Are you sure you want to remove <span id="player-remove-name" class="font-semibold"></span>?
+        </p>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('player-remove-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" onclick="removePlayer()">Remove</button>
         </x-slot:buttons>
     </x-modal>
 

@@ -1197,3 +1197,15 @@
     background-color: rgb(249 250 251);
     resize: vertical;
 }
+
+/*| Players */
+
+/* A player's own employees stand out, while those of others can't be moved */
+.kitchen-employee.own .kitchen-employee-icon {
+    box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+
+.kitchen-employee.locked {
+    cursor: default;
+    opacity: 0.6;
+}

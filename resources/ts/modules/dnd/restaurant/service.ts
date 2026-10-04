@@ -5,8 +5,8 @@ import {
     submitForm, toggleSidebar,
 } from "./shared";
 import {
-    createEmployeeIcon, Employee, EMPLOYEE_MIME, formatMinutes, getDraggedEmployee, getDraggedPlate, getServiceState,
-    initKitchen, KitchenRecipe, onRightClick, onServiceState, openPrioritizeMenu, Order, PLATE_MIME,
+    canControl, createEmployeeIcon, describeEmployee, Employee, EMPLOYEE_MIME, formatMinutes, getDraggedEmployee, getDraggedPlate,
+    getServiceState, initKitchen, isIdle, isPlayer, KitchenRecipe, onRightClick, onServiceState, openPrioritizeMenu, Order, PLATE_MIME,
     post as postService, ServiceConversion, ServiceIngredient, setupEmployeeDrag, toggleMenu,
 } from "./kitchen";
 import {describeOrder, openOrderDetails, openOrderModal} from "./orders";
@@ -83,8 +83,10 @@ async function init(): Promise<void> {
         if (activeTab !== 'customer') renderSidebar();
     });
 
-    // During service the floor and kitchen need the room, so the customer list starts closed
-    restoreSidebar('dnd-restaurant-service-sidebar-collapsed', true);
+    // During service the floor and kitchen need the room, so the customer list starts closed. Players have none
+    if (document.getElementById('inventory-sidebar') !== null) {
+        restoreSidebar('dnd-restaurant-service-sidebar-collapsed', true);
+    }
 
     setupDropTarget(document.querySelector('#service-entrance') as HTMLElement, CUSTOMER_MIME, (data) => {
         const customer = JSON.parse(data) as DraggedCustomer;
@@ -108,6 +110,23 @@ async function init(): Promise<void> {
     const response = await getData(apiUrl);
     setFloor(response.data);
     await kitchen;
+
+    // Customers are seated by others as well, so the floor is refreshed along with the kitchen
+    setInterval(refreshFloor, FLOOR_REFRESH_INTERVAL);
+}
+
+/** How often the floor is refreshed, in milliseconds */
+const FLOOR_REFRESH_INTERVAL = 5000;
+
+async function refreshFloor(): Promise<void> {
+    if (!isIdle()) return;
+
+    try {
+        const response = await getData(apiUrl);
+        if (isIdle()) setFloor(response.data);
+    } catch {
+        // Tried again on the next refresh
+    }
 }
 
 function setFloor(data: Floor): void {
@@ -133,6 +152,9 @@ function render(): void {
 }
 
 function renderSidebar(): void {
+    // Players have no sidebar
+    if (document.getElementById('inventory-list') === null) return;
+
     if (activeTab === 'ingredient') {
         renderIngredientRows();
         return;
@@ -424,9 +446,9 @@ function createTableElement(table: Table): HTMLElement {
     renderWaiter(element, table);
     renderWaiterJob(element, table);
 
-    // Clicking the table, rather than one of its seats, opens its menu
+    // Clicking the table, rather than one of its seats, opens its menu. Players only move their employees around
     element.addEventListener('click', (event) => {
-        if ((event.target as Element).closest('.service-seat') !== null) return;
+        if (isPlayer() || (event.target as Element).closest('.service-seat') !== null) return;
         openTableMenu(table, element);
     });
 
@@ -438,14 +460,15 @@ function createTableElement(table: Table): HTMLElement {
     }, () => {
         // Only items without a plate on its way yet, and only when someone waits the table to bring it
         const plate = getDraggedPlate();
-        return plate !== null && getWaiter(table) !== null && orders.some((order) => order.status === 'open'
+        return !isPlayer() && plate !== null && getWaiter(table) !== null && orders.some((order) => order.status === 'open'
             && order.items.some((item) => !item.served && !item.on_the_way && item.recipe_uuid === plate.recipe_uuid));
     });
 
-    // An employee dropped on the table waits it, taking its orders
+    // An employee dropped on the table waits it, taking its orders. Players can't take a table from someone else's waiter
     setupDropTarget(element, EMPLOYEE_MIME, (uuid) => assignWaiter(table, uuid), () => {
         const employee = getDraggedEmployee();
-        return employee !== null && !employee.tables.includes(table.uuid);
+        const waiter = getWaiter(table);
+        return employee !== null && !employee.tables.includes(table.uuid) && (waiter === null || canControl(waiter));
     });
 
     return element;
@@ -466,9 +489,11 @@ function renderWaiter(element: HTMLElement, table: Table): void {
     const waiter = getWaiter(table);
     if (waiter !== null) {
         const icon = createEmployeeIcon(waiter);
-        icon.title = waiter.name;
-        icon.draggable = true;
-        setupEmployeeDrag(icon, waiter);
+        icon.title = describeEmployee(waiter);
+        if (canControl(waiter)) {
+            icon.draggable = true;
+            setupEmployeeDrag(icon, waiter);
+        }
         slot.appendChild(icon);
     }
 }
@@ -487,7 +512,8 @@ function renderWaiterJob(element: HTMLElement, table: Table): void {
     container.title = jobs.map((candidate) => candidate.task).join('\n');
     (container.querySelector('[data-waiter-job-fill]') as HTMLElement).style.width = `${Math.round(job.progress * 100)}%`;
 
-    // Any of the table's jobs can be moved to the front of its waiter's queue
+    // Any of the table's jobs can be moved to the front of its waiter's queue, by whoever runs the floor
+    if (isPlayer()) return;
     onRightClick(container, () => openPrioritizeMenu(container, `${table.name}: waiter`,
         jobs.map((candidate) => candidate.uuid),
         jobs.length > 1 ? jobs.map((candidate) => candidate.task.replace(/ (at|to) .*$/, '').toLowerCase()) : []));
@@ -601,6 +627,12 @@ function createCustomerChip(customer: Customer): HTMLElement {
 
     setField(chip, 'name', customer.name);
     chip.title = customer.description ?? customer.name;
+
+    // Customers are seated by whoever runs the floor
+    if (isPlayer()) {
+        chip.draggable = false;
+        return chip;
+    }
 
     chip.addEventListener('dragstart', (event) => {
         const data: DraggedCustomer = {uuid: customer.uuid, seated: customer.table_uuid !== null};

@@ -12,6 +12,7 @@ use App\Models\DnD\Restaurant\Storage;
 use App\Service\DnD\Restaurant\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage as FileStorage;
 use Illuminate\Support\Facades\Validator;
@@ -80,6 +81,12 @@ class InventoryApi extends AbstractApi
         $toUuid = $request->get('to_storage_uuid');
         if ($fromUuid === null && $toUuid === null) {
             return $this->respond(Response::HTTP_BAD_REQUEST, 'A storage to move from or to is required');
+        }
+
+        // Players move ingredients around, but neither add them to the inventory nor take them out of it
+        if ($restaurant->isPlayer(Auth::user())
+            && ($request->get('type') !== InventoryService::TYPE_INGREDIENT || $fromUuid === null || $toUuid === null)) {
+            return $this->respond(Response::HTTP_FORBIDDEN, 'Players can only move ingredients between storage spaces');
         }
 
         $model = $request->get('type') === InventoryService::TYPE_INGREDIENT ? Ingredient::class : Equipment::class;

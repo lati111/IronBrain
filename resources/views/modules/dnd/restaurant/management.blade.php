@@ -13,30 +13,43 @@
 @section('onload_functions', 'init()')
 
 @section('content')
-    <div id="inventory" data-api-url="{{route('api.dnd.restaurant.inventory.get', ['restaurant_uuid' => $restaurant->uuid])}}">
+    {{--| Players only move ingredients between the storage spaces, so everything else is left out for them |--}}
+    <div id="inventory" data-api-url="{{route('api.dnd.restaurant.inventory.get', ['restaurant_uuid' => $restaurant->uuid])}}"
+         data-player="{{$isPlayer ? 1 : 0}}">
 
         {{--| Top bar |--}}
         <div class="flex justify-between items-center mb-4">
             {{--| Both sides share a width, so the title stays centred |--}}
             <div class="w-72 flex gap-4 whitespace-nowrap">
                 <a href="{{route('dnd.restaurant.overview')}}" class="interactive">&larr; Restaurants</a>
-                <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
-                <a href="{{route('dnd.restaurant.finances', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-finances">Finances</a>
+                @unless($isPlayer)
+                    <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
+                    <a href="{{route('dnd.restaurant.finances', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-finances">Finances</a>
+                @endunless
             </div>
             <div class="flex flex-col items-center">
                 <h1 class="title">Inventory</h1>
                 {{--| The restaurant's date, which ages the stored ingredients as it moves on |--}}
                 <div class="flex items-center gap-2 text-sm text-gray-500">
                     <span id="inventory-date"></span>
-                    <button class="service-clock-step interactive" onclick="advanceDay()" dusk="advance-day">+1 day</button>
+                    @unless($isPlayer)
+                        <button class="service-clock-step interactive" onclick="advanceDay()" dusk="advance-day">+1 day</button>
+                    @endunless
                 </div>
             </div>
             <div class="w-72 flex justify-end gap-4 whitespace-nowrap">
-                <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
-                @if($restaurant->isInService())
-                    <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-continue">Continue service</a>
+                @if($isPlayer)
+                    {{--| Players join the service once it has been started |--}}
+                    @if($restaurant->isInService())
+                        <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-join">Join service</a>
+                    @endif
                 @else
-                    <button class="interactive font-semibold" onclick="openModal('service-start-modal')" dusk="service-start">Start service</button>
+                    <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
+                    @if($restaurant->isInService())
+                        <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-continue">Continue service</a>
+                    @else
+                        <button class="interactive font-semibold" onclick="openModal('service-start-modal')" dusk="service-start">Start service</button>
+                    @endif
                 @endif
             </div>
         </div>
@@ -44,6 +57,7 @@
         <div class="flex gap-4 items-start">
 
             {{--| Sidebar |--}}
+            @unless($isPlayer)
             <aside id="inventory-sidebar" class="inventory-sidebar rounded shadow border gray-border">
                 <div class="flex items-center border-b">
                     <button class="inventory-sidebar-toggle interactive px-2" onclick="toggleSidebar()" title="Collapse / expand">
@@ -63,6 +77,7 @@
                     <button id="inventory-create-type" class="interactive text-sm" onclick="openCreateTypeModal()">+ New Ingredient</button>
                 </div>
             </aside>
+            @endunless
 
             {{--| Storage area |--}}
             <div class="flex-1 flex flex-col gap-4 min-w-0">
@@ -76,12 +91,14 @@
                 </section>
 
                 {{--| General storage. Hidden while empty, which is always the case when the page loads |--}}
-                <section id="general-storage" class="inventory-storage inventory-general empty" data-drop-target="general">
-                    <div class="inventory-storage-header">
-                        <span class="font-semibold">General Storage</span>
-                    </div>
-                    <div class="inventory-storage-items" data-items></div>
-                </section>
+                @unless($isPlayer)
+                    <section id="general-storage" class="inventory-storage inventory-general empty" data-drop-target="general">
+                        <div class="inventory-storage-header">
+                            <span class="font-semibold">General Storage</span>
+                        </div>
+                        <div class="inventory-storage-items" data-items></div>
+                    </section>
+                @endunless
 
                 {{--| Storage spaces |--}}
                 <div id="storage-list" class="inventory-storage-list"></div>
@@ -91,10 +108,12 @@
     </div>
 
     {{--| Drop zone for removing items, pinned to the right edge of the viewport while an item is being dragged |--}}
-    <div id="discard-edge" data-drop-target="discard">
-        <img src="{{asset('img/icons/x.svg')}}" alt="" class="w-6 h-6">
-        <span class="text-sm">Remove</span>
-    </div>
+    @unless($isPlayer)
+        <div id="discard-edge" data-drop-target="discard">
+            <img src="{{asset('img/icons/x.svg')}}" alt="" class="w-6 h-6">
+            <span class="text-sm">Remove</span>
+        </div>
+    @endunless
 
     {{--| Templates |--}}
     <template id="list-row-template">
