@@ -1,6 +1,6 @@
 import {getData} from "../../../main";
 import {openModal, init as initModals, closeModal} from "../../../components/modal";
-import {formatMoney, postOnce, refreshMoneyInputs, setField, setupMoneyInput} from "./shared";
+import {formatMoney, formatSatisfaction, postOnce, refreshMoneyInputs, setField, setupMoneyInput} from "./shared";
 
 interface Transaction {
     uuid: string;
@@ -17,9 +17,10 @@ interface Transaction {
 
 /** A day's finances: the profit of a service, broken down */
 interface ServiceTransaction extends Transaction {
-    service: {started_at: string, ended_at: string | null, profit: number};
+    /** Satisfaction is how satisfied the customers were with everything served, from 1 to 5 */
+    service: {started_at: string, ended_at: string | null, profit: number, satisfaction: number | null};
     orders: FinanceOrder[];
-    customers: {name: string, portions: number, profit: number}[];
+    customers: {name: string, portions: number, profit: number, satisfaction: number | null}[];
     recipes: {name: string, amount: number, total: number}[];
 }
 
@@ -29,12 +30,14 @@ interface FinanceOrder {
     status: string;
     /** As H:i */
     ordered_at: string;
-    items: {name: string, price: number, customer: string | null}[];
+    items: {name: string, price: number, customer: string | null, satisfaction: number | null}[];
     total_price: number;
     discount: number;
     tip: number;
     /** What was paid for it, nothing when cancelled */
     paid: number;
+    /** How satisfied the table was, or null when nothing was rated */
+    satisfaction: number | null;
 }
 
 let apiUrl = '';
@@ -147,10 +150,11 @@ function renderServiceDetails(body: HTMLElement, transaction: ServiceTransaction
     const service = transaction.service;
     const hours = document.createElement('p');
     hours.className = 'text-center text-sm';
-    hours.textContent = `Open ${formatTime(service.started_at)} – ${service.ended_at !== null ? formatTime(service.ended_at) : 'now'}`;
+    hours.textContent = `Open ${formatTime(service.started_at)} – ${service.ended_at !== null ? formatTime(service.ended_at) : 'now'}`
+        + (service.satisfaction !== null ? ` · satisfaction ${formatSatisfaction(service.satisfaction)}` : '');
     body.appendChild(hours);
 
-    body.appendChild(createSection('Orders', ['Time', 'Table', 'Ordered', 'Price', 'Discount', 'Tip', 'Paid'],
+    body.appendChild(createSection('Orders', ['Time', 'Table', 'Ordered', 'Satisfaction', 'Price', 'Discount', 'Tip', 'Paid'],
         transaction.orders.map((order) => {
             const cancelled = order.status === 'cancelled';
             return {
@@ -158,6 +162,7 @@ function renderServiceDetails(body: HTMLElement, transaction: ServiceTransaction
                     order.ordered_at,
                     order.table ?? '—',
                     describeItems(order) + (cancelled ? ' (cancelled)' : ''),
+                    formatSatisfaction(order.satisfaction),
                     formatMoney(order.total_price),
                     order.discount > 0 ? `-${formatMoney(order.discount)}` : '',
                     order.tip > 0 ? `+${formatMoney(order.tip)}` : '',
@@ -168,9 +173,9 @@ function renderServiceDetails(body: HTMLElement, transaction: ServiceTransaction
         }),
         'No orders'));
 
-    body.appendChild(createSection('Profit per customer', ['Customer', 'Portions', 'Profit'],
+    body.appendChild(createSection('Profit per customer', ['Customer', 'Portions', 'Satisfaction', 'Profit'],
         transaction.customers.map((customer) => ({
-            cells: [customer.name, String(customer.portions), formatMoney(customer.profit)],
+            cells: [customer.name, String(customer.portions), formatSatisfaction(customer.satisfaction), formatMoney(customer.profit)],
         })),
         'Nothing sold'));
 

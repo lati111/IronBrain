@@ -15,6 +15,10 @@ use InvalidArgumentException;
  */
 class FinanceService
 {
+    public function __construct(private readonly SatisfactionService $satisfactionService)
+    {
+    }
+
     /** @var string What portions ordered for the table as a whole, or for customers that no longer exist, count under */
     private const string UNASSIGNED = 'Unassigned';
 
@@ -90,6 +94,8 @@ class FinanceService
                 'started_at' => $service->started_at->format('Y-m-d H:i'),
                 'ended_at' => $service->ended_at?->format('Y-m-d H:i'),
                 'profit' => $service->profit,
+                // How satisfied the customers were with everything served that day
+                'satisfaction' => $this->satisfactionService->average($paid->flatMap(fn (Order $order) => $order->Items)),
             ],
             'orders' => $orders->map(fn (Order $order) => $this->describeOrder($order))->values()->all(),
             'customers' => $this->getCustomerProfits($paid),
@@ -128,7 +134,9 @@ class FinanceService
                 'name' => $item->name,
                 'price' => $item->price,
                 'customer' => $item->Customer?->name,
+                'satisfaction' => $item->satisfaction,
             ])->values()->all(),
+            'satisfaction' => $this->satisfactionService->average($order->Items),
             'total_price' => $order->total_price,
             'discount' => $order->discount,
             'tip' => $order->tip,
@@ -138,7 +146,8 @@ class FinanceService
 
     /**
      * Works out what each customer brought in: the price of what they ordered, with the order's tip and discount
-     * shared out over its portions by price. Portions for the table as a whole count as unassigned
+     * shared out over its portions by price, and how satisfied they were. Portions for the table as a whole count as
+     * unassigned
      * @param Collection<Order> $orders The orders that were paid for, with their items and customers
      * @return array The customers, each with how many portions they had and the profit, the most profitable first
      */
@@ -159,14 +168,20 @@ class FinanceService
                 $name = $item->Customer?->name ?? self::UNASSIGNED;
                 $key = $item->customer_uuid ?? self::UNASSIGNED;
 
-                $customers[$key] ??= ['name' => $name, 'portions' => 0, 'profit' => 0.0];
+                $customers[$key] ??= ['name' => $name, 'portions' => 0, 'profit' => 0.0, 'items' => []];
                 $customers[$key]['portions']++;
                 $customers[$key]['profit'] += $paid * $share;
+                $customers[$key]['items'][] = $item;
             }
         }
 
         return collect($customers)
-            ->map(fn (array $customer) => ['name' => $customer['name'], 'portions' => $customer['portions'], 'profit' => round($customer['profit'], 2)])
+            ->map(fn (array $customer) => [
+                'name' => $customer['name'],
+                'portions' => $customer['portions'],
+                'profit' => round($customer['profit'], 2),
+                'satisfaction' => $this->satisfactionService->average($customer['items']),
+            ])
             ->sortBy([['profit', 'desc'], ['name', 'asc']])
             ->values()->all();
     }

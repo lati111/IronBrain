@@ -161,4 +161,30 @@ class EndServiceTest extends AbstractFeatureTester
         $this->assertEquals('08:00', $service->started_at->format('H:i'));
         $this->assertEquals('09:00', $service->ended_at->format('H:i'));
     }
+
+    //| moving on to the next day
+
+    public function test_ending_can_move_on_to_the_next_day(): void
+    {
+        $cellar = $this->createTestStorage($this->restaurant, 100, 0, 'Cellar');
+        $potato = $this->createTestIngredient($this->restaurant, 1, 'Potato');
+        $this->storeIngredient($cellar, $potato, 2, 1);
+        $this->storeIngredient($cellar, $potato, 3, 5);
+
+        $response = $this->callService('end', ['advance_day' => 1]);
+
+        $response->assertOk();
+        $this->assertEquals('1492-03-02', $response->json('data.date'));
+        $this->assertEquals([['name' => 'Potato', 'amount' => 2, 'location' => 'Cellar']], $response->json('data.expired'));
+        $this->assertEquals(3, $this->getStoredIngredientAmount($cellar, $potato));
+    }
+
+    public function test_ending_keeps_the_day_unless_asked(): void
+    {
+        $response = $this->callService('end');
+
+        $response->assertOk();
+        $this->assertEquals('1492-03-01', $response->json('data.date'));
+        $this->assertEquals([], $response->json('data.expired'));
+    }
 }

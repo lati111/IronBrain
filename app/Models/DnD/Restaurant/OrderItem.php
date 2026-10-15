@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property float price The price of the recipe when it was ordered
  * @property Carbon|null served_at When the portion was brought to the table, in the restaurant's time
  * @property Carbon|null consumed_at When the portion was eaten, in the restaurant's time
+ * @property integer|null satisfaction How satisfied the customer was with the portion, from 1 to 5, rated once served
  */
 class OrderItem extends DndRestaurantModel
 {
@@ -30,6 +31,7 @@ class OrderItem extends DndRestaurantModel
         'price'     => 'float',
         'served_at'   => 'datetime',
         'consumed_at' => 'datetime',
+        'satisfaction' => 'integer',
     ];
 
     //| Relationships

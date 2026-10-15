@@ -4,6 +4,7 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\PermissionGuard;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RestaurantManagerGuard;
+use App\Http\Middleware\RestaurantStateVersion;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.permission' => PermissionGuard::class,
             'guest' => RedirectIfAuthenticated::class,
             'dnd.restaurant.manager' => RestaurantManagerGuard::class,
+            'dnd.restaurant.version' => RestaurantStateVersion::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

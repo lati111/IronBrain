@@ -128,7 +128,11 @@ class FinancesTest extends AbstractFeatureTester
         $this->assertEquals(['Booth', 'finished', 10, 1, 2, 11], [
             $orders[0]['table'], $orders[0]['status'], $orders[0]['total_price'], $orders[0]['discount'], $orders[0]['tip'], $orders[0]['paid'],
         ]);
-        $this->assertEquals([['name' => 'Stew', 'price' => 5, 'customer' => 'Alice'], ['name' => 'Stew', 'price' => 5, 'customer' => 'Bob']], $orders[0]['items']);
+        // Nothing was brought to the table, so nothing was rated
+        $this->assertEquals([
+            ['name' => 'Stew', 'price' => 5, 'customer' => 'Alice', 'satisfaction' => null],
+            ['name' => 'Stew', 'price' => 5, 'customer' => 'Bob', 'satisfaction' => null],
+        ], $orders[0]['items']);
         $this->assertEquals(['cancelled', 0], [$orders[1]['status'], $orders[1]['paid']]);
     }
 
@@ -142,9 +146,9 @@ class FinancesTest extends AbstractFeatureTester
         $customers = $this->getDetails($this->endService())->json('data.customers');
 
         $this->assertEquals([
-            ['name' => 'Alice', 'portions' => 2, 'profit' => 12],
-            ['name' => 'Bob', 'portions' => 1, 'profit' => 6],
-            ['name' => 'Unassigned', 'portions' => 1, 'profit' => 5],
+            ['name' => 'Alice', 'portions' => 2, 'profit' => 12, 'satisfaction' => null],
+            ['name' => 'Bob', 'portions' => 1, 'profit' => 6, 'satisfaction' => null],
+            ['name' => 'Unassigned', 'portions' => 1, 'profit' => 5, 'satisfaction' => null],
         ], $customers);
     }
 
@@ -161,7 +165,7 @@ class FinancesTest extends AbstractFeatureTester
             ['name' => 'Stew', 'amount' => 2, 'total' => 10],
             ['name' => 'Pie', 'amount' => 1, 'total' => 5],
         ], $response->json('data.recipes'));
-        $this->assertEquals(['started_at' => '1492-03-01 09:00', 'ended_at' => '1492-03-01 10:00', 'profit' => 15], $response->json('data.service'));
+        $this->assertEquals(['started_at' => '1492-03-01 09:00', 'ended_at' => '1492-03-01 10:00', 'profit' => 15, 'satisfaction' => null], $response->json('data.service'));
     }
 
     //| added by hand

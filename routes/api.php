@@ -80,7 +80,7 @@ Route::prefix('/arsenal')
 
 // Players of a restaurant may only use the routes that opt out of the manager guard
 Route::prefix('/dnd/restaurant')
-    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access', 'dnd.restaurant.manager'])
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access', 'dnd.restaurant.manager', 'dnd.restaurant.version'])
     ->group(function() {
         Route::post('/create', [\App\Http\Api\Modules\DnD\Restaurant\RestaurantApi::class, 'createRestaurant'])
             ->name('api.dnd.restaurant.create');

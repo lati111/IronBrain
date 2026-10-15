@@ -23,6 +23,8 @@ use InvalidArgumentException;
  * @property integer silver How much silver the restaurant has
  * @property integer gold How much gold the restaurant has
  * @property float shift_total What the orders placed during the current service are worth
+ * @property integer state_version How many changes have been made to the restaurant, so refreshing pages can tell when
+ *                                 nothing changed
  */
 class Restaurant extends DndRestaurantModel
 {
@@ -39,7 +41,11 @@ class Restaurant extends DndRestaurantModel
         'silver' => 'integer',
         'gold'   => 'integer',
         'shift_total' => 'float',
+        'state_version' => 'integer',
     ];
+
+    /** @var string[] The count of changes is bookkeeping for refreshing pages rather than part of the restaurant */
+    protected $hidden = ['state_version'];
 
     /**
      * Check whether a user may access this restaurant, either as owner or through granted access

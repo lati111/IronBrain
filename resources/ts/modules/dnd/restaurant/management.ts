@@ -1,8 +1,8 @@
 import {getData, toast} from "../../../main";
 import {openModal, init as initModals, closeModal} from "../../../components/modal";
 import {
-    createReorderableList, formatMoney, postOnce, refreshMoneyInputs, restoreSidebar, setField, setupDropTarget, setupMoneyInput,
-    showWhileDragging, submitForm, toggleSidebar,
+    createReorderableList, EXPIRED_STORAGE_KEY, formatMoney, postOnce, refreshMoneyInputs, restoreSidebar, setField,
+    setupDropTarget, setupMoneyInput, showWhileDragging, submitForm, toggleSidebar,
 } from "./shared";
 
 type ItemType = 'ingredient' | 'equipment';
@@ -282,6 +282,13 @@ async function init(): Promise<void> {
 
     const response = await getData(apiUrl);
     setInventory(response.data);
+
+    // Ingredients that expired when the service that just ended moved on to the next day
+    const expired = sessionStorage.getItem(EXPIRED_STORAGE_KEY);
+    if (expired !== null) {
+        sessionStorage.removeItem(EXPIRED_STORAGE_KEY);
+        showExpired(JSON.parse(expired) as ExpiredStack[]);
+    }
 }
 
 function setInventory(data: Inventory): void {

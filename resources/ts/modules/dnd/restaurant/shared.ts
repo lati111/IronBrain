@@ -12,6 +12,18 @@ const LOWER_COINS = ['b', 'cp', 'sp'] as const;
  * becomes "5cp". Fractions of a bit stay on the bits
  * @param bits The amount in bits
  */
+/** Where the ingredients that expired as a service ended and the day moved on are kept, for the management page to
+ * show once it has loaded */
+export const EXPIRED_STORAGE_KEY = 'dnd-restaurant-expired';
+
+/**
+ * Shows how satisfied customers were, from 1 to 5, such as "★ 4.5", or a dash when nothing was rated
+ * @param rating The rating, or null when nothing was rated
+ */
+export function formatSatisfaction(rating: number | null): string {
+    return rating === null ? '—' : `★ ${rating.toFixed(1).replace(/\.0$/, '')}`;
+}
+
 export function formatMoney(bits: number): string {
     const sign = bits < 0 ? '-' : '';
     const rounded = Math.round(Math.abs(bits) * 100) / 100;

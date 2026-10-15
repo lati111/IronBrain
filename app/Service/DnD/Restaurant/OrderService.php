@@ -30,6 +30,7 @@ class OrderService
     public function __construct(
         private readonly KitchenService $kitchenService,
         private readonly WorkService $workService,
+        private readonly SatisfactionService $satisfactionService,
     )
     {
     }
@@ -60,6 +61,8 @@ class OrderService
                 'ordered_at' => $order->ordered_at->format('H:i'),
                 'ordered_minutes_ago' => $this->minutesSince($order->ordered_at, $now),
                 'fulfilled_minutes_ago' => $order->fulfilled_at !== null ? $this->minutesSince($order->fulfilled_at, $now) : null,
+                // How satisfied the table is with what has been served so far, or null before anything was
+                'satisfaction' => $this->satisfactionService->average($order->Items),
                 'items' => $order->Items->sortBy('created_at')->map(fn (OrderItem $item) => [
                     'uuid' => $item->uuid,
                     'recipe_uuid' => $item->recipe_uuid,
@@ -71,6 +74,7 @@ class OrderService
                     // A plate set aside for it, which the waiter is bringing
                     'on_the_way' => $item->served_at === null && $item->ServedMeal !== null,
                     'consumed' => $item->consumed_at !== null,
+                    'satisfaction' => $item->satisfaction,
                 ])->values()->all(),
             ])->values()->all();
     }

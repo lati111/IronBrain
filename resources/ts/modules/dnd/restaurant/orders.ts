@@ -1,6 +1,6 @@
 import {openModal, closeModal} from "../../../components/modal";
 import {formatMinutes, getServiceState, KitchenRecipe, Order, post} from "./kitchen";
-import {formatMoney, refreshMoneyInputs, setupMoneyInput} from "./shared";
+import {formatMoney, formatSatisfaction, refreshMoneyInputs, setupMoneyInput} from "./shared";
 
 /**
  * Taking and editing orders at a table, and looking after one once it is placed: its portions being eaten, a tip or
@@ -210,7 +210,10 @@ function renderOrderDetails(): void {
     const {order, table} = details;
 
     document.getElementById('order-details-title')!.textContent = `${table.name}, ordered at ${order.ordered_at}`;
-    document.getElementById('order-details-status')!.textContent = describeOrder(order);
+    const status = describeOrder(order);
+    document.getElementById('order-details-status')!.textContent = order.satisfaction !== null
+        ? `${status} · ${formatSatisfaction(order.satisfaction)}`
+        : status;
 
     const list = document.getElementById('order-details-items') as HTMLElement;
     list.replaceChildren();
@@ -231,8 +234,11 @@ function renderOrderDetails(): void {
         }
 
         const name = item.served ? `✓ ${item.name}` : item.on_the_way ? `${item.name} (on its way)` : item.name;
+        const satisfaction = createSpan(item.satisfaction !== null ? formatSatisfaction(item.satisfaction) : '', 'order-satisfaction w-10 text-right');
+        satisfaction.title = 'Satisfaction';
         row.append(
             createSpan(name, 'flex-1 truncate'),
+            satisfaction,
             createSpan(item.customer_name ?? 'Table', 'text-gray-500'),
             createSpan(formatMoney(item.price), 'min-w-16 text-right whitespace-nowrap'),
             actions,

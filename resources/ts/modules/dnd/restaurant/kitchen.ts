@@ -120,6 +120,8 @@ export interface OrderItem {
     /** Whether a plate was set aside for it, which the waiter is bringing */
     on_the_way: boolean;
     consumed: boolean;
+    /** How satisfied the customer was, from 1 to 5, once served */
+    satisfaction: number | null;
 }
 
 /** An order that is still being served or eaten */
@@ -138,6 +140,8 @@ export interface Order {
     ordered_minutes_ago: number;
     fulfilled_minutes_ago: number | null;
     items: OrderItem[];
+    /** How satisfied the table is with what has been served so far, or null before anything was */
+    satisfaction: number | null;
 }
 
 /** The work areas employees can work in */
@@ -223,6 +227,8 @@ export interface ServiceState {
     waiting: WaitingJob[];
     orders: Order[];
     viewer: Viewer;
+    /** How many changes the restaurant has seen, sent along when refreshing to learn whether anything changed */
+    version: number;
 }
 
 /** A job of a table's waiter: taking an order there, or bringing a plated portion */
@@ -291,9 +297,12 @@ async function refreshState(): Promise<void> {
     if (!isIdle()) return;
 
     const count = changeCount;
+    const query = new FormData();
+    if (state !== null) query.append('version', String(state.version));
+
     try {
-        const response = await getData(serviceUrl);
-        if (count === changeCount && isIdle()) {
+        const response = await getData(serviceUrl, query);
+        if (count === changeCount && isIdle() && !response.data.unchanged) {
             setState(response.data);
         }
     } catch {

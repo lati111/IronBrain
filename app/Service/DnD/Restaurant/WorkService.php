@@ -31,6 +31,7 @@ class WorkService
     public function __construct(
         private readonly KitchenService $kitchenService,
         private readonly InventoryService $inventoryService,
+        private readonly SatisfactionService $satisfactionService,
     ) {
     }
 
@@ -646,7 +647,8 @@ class WorkService
     }
 
     /**
-     * The waiter arrived with a plated portion, which serves the order entry it was set aside for
+     * The waiter arrived with a plated portion, which serves the order entry it was set aside for. The customer rates
+     * how satisfied they are with it there and then
      */
     private function finishDelivery(ServedMeal $plate, Carbon $at): void
     {
@@ -656,6 +658,7 @@ class WorkService
         }
 
         $item->served_at = $at;
+        $item->satisfaction = $this->satisfactionService->rate($item, $plate, $at);
         $item->save();
 
         $order = $item->Order;

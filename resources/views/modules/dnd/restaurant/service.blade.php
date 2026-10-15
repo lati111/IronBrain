@@ -358,6 +358,11 @@
         <p id="service-end-hours" class="text-center text-sm text-gray-500"></p>
         <ul id="service-end-items" class="w-full"></ul>
         <p class="w-full text-right">Profit: <span id="service-end-profit" class="font-semibold"></span></p>
+        {{--| Moving on to the next day ages the stored ingredients, as the +1 day button on the inventory page does |--}}
+        <label class="w-full flex items-center gap-2 text-sm">
+            <input id="service-end-advance-day" type="checkbox" checked dusk="service-end-advance-day">
+            Move on to the next day
+        </label>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('service-end-modal')">Cancel</button>
             <button class="interactive px-5 py-2.5" dusk="service-end-confirm" onclick="endService()">End service</button>

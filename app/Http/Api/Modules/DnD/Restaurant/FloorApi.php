@@ -36,14 +36,20 @@ class FloorApi extends AbstractApi
      * @param string $restaurant_uuid The uuid of the restaurant
      * @return JsonResponse The floor state in JSON format
      */
-    public function getFloor(string $restaurant_uuid): JsonResponse
+    public function getFloor(Request $request, string $restaurant_uuid): JsonResponse
     {
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
         }
 
-        return $this->respond(Response::HTTP_OK, 'Floor retrieved', $this->floorService->getFloor($restaurant));
+        // A refresh that gives the version it last saw only gets told nothing changed, when that is the case
+        if ($request->filled('version') && (int) $request->get('version') === $restaurant->state_version) {
+            return $this->respond(Response::HTTP_OK, 'Unchanged', ['unchanged' => true, 'version' => $restaurant->state_version]);
+        }
+
+        return $this->respond(Response::HTTP_OK, 'Floor retrieved',
+            $this->floorService->getFloor($restaurant) + ['version' => $restaurant->state_version]);
     }
 
     //| Rooms

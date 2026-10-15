@@ -49,15 +49,21 @@ class ServiceApi extends AbstractApi
     }
 
     /**
-     * Gets the state of the restaurant's service: its clock and its kitchen
+     * Gets the state of the restaurant's service: its clock and its kitchen. A refresh that gives the version it last
+     * saw only gets told nothing changed, when that is the case
+     * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant
      * @return JsonResponse The service state in JSON format
      */
-    public function getService(string $restaurant_uuid): JsonResponse
+    public function getService(Request $request, string $restaurant_uuid): JsonResponse
     {
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        if ($request->filled('version') && (int) $request->get('version') === $restaurant->state_version) {
+            return $this->respond(Response::HTTP_OK, 'Unchanged', ['unchanged' => true, 'version' => $restaurant->state_version]);
         }
 
         return $this->respond(Response::HTTP_OK, 'Service retrieved', $this->getState($restaurant));
@@ -893,12 +899,22 @@ class ServiceApi extends AbstractApi
     }
 
     /**
-     * Ends the ongoing service, adding its profit to the restaurant's money and logging it in the service history
+     * Ends the ongoing service, adding its profit to the restaurant's money and logging it in the service history. The
+     * restaurant can move on to the next day straight away, which ages its stored ingredients
+     * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant
-     * @return JsonResponse The summary of the service in JSON format
+     * @return JsonResponse The summary of the service, and the ingredients that expired, in JSON format
      */
-    public function endService(string $restaurant_uuid): JsonResponse
+    public function endService(Request $request, string $restaurant_uuid): JsonResponse
     {
+        $validator = Validator::make($request->all(), [
+            'advance_day' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
@@ -910,7 +926,12 @@ class ServiceApi extends AbstractApi
             return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
         }
 
-        return $this->respond(Response::HTTP_OK, 'Service ended', $summary);
+        $expired = $request->boolean('advance_day') ? $this->inventoryService->advanceDay($restaurant->fresh()) : [];
+
+        return $this->respond(Response::HTTP_OK, 'Service ended', $summary + [
+            'date' => $restaurant->fresh()->date->format('Y-m-d'),
+            'expired' => $expired,
+        ]);
     }
 
     //| Helpers
@@ -927,6 +948,8 @@ class ServiceApi extends AbstractApi
         return $this->kitchenService->getState($restaurant)
             + $this->workService->describe($restaurant)
             + ['orders' => $this->orderService->describeOrders($restaurant)]
+            // How many changes the restaurant has seen, which a refresh sends along to learn whether anything changed
+            + ['version' => $restaurant->state_version]
             // Who is looking: players only control the employees assigned to them
             + ['viewer' => ['user_uuid' => $user?->uuid, 'player' => $user !== null && $restaurant->isPlayer($user)]];
     }

@@ -37,6 +37,8 @@ interface Floor {
     rooms: Room[];
     tables: Table[];
     customers: Customer[];
+    /** How many changes the restaurant had seen, when fetched by itself rather than returned by a change */
+    version?: number;
 }
 
 /** Where a dragged customer comes from: the entrance, or the seat they are seated on */
@@ -121,9 +123,13 @@ const FLOOR_REFRESH_INTERVAL = 5000;
 async function refreshFloor(): Promise<void> {
     if (!isIdle()) return;
 
+    // Nothing comes back but that it is unchanged, while nothing changed since the floor was last fetched
+    const query = new FormData();
+    if (floor.version !== undefined) query.append('version', String(floor.version));
+
     try {
-        const response = await getData(apiUrl);
-        if (isIdle()) setFloor(response.data);
+        const response = await getData(apiUrl, query);
+        if (isIdle() && !response.data.unchanged) setFloor(response.data);
     } catch {
         // Tried again on the next refresh
     }
