@@ -795,7 +795,7 @@
 /* The recipes to pick from on the left, the order being taken on the right */
 .order-columns {
     display: grid;
-    grid-template-columns: 14rem minmax(20rem, 1fr);
+    grid-template-columns: 16rem minmax(20rem, 1fr);
     gap: 1rem;
 }
 
@@ -838,6 +838,56 @@
 
 .order-recipe-variant {
     padding-left: 1.5rem;
+}
+
+/* The menu's search bar */
+.order-search {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+    background-color: white;
+    cursor: text;
+}
+
+.order-search:focus-within {
+    border-color: rgb(248 113 113);
+    box-shadow: 0 0 0 2px rgb(254 226 226);
+}
+
+.order-search-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: rgb(156 163 175);
+}
+
+.order-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.875rem;
+}
+
+/* A type of recipe on the menu, such as meals or drinks, heading the recipes of that type */
+.order-recipe-type {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.375rem 0.5rem 0.25rem;
+    background-color: rgb(249 250 251);
+    border-bottom: 1px solid rgb(229 231 235);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(107 114 128);
 }
 
 .order-details-item {

@@ -70,6 +70,8 @@ export function openOrderModal(table: OrderTable, customers: SeatedCustomer[], o
     renderOrderRecipes();
     renderOrderItems();
     openModal('order-modal');
+    // Ready to type, as most orders start with looking something up
+    (document.getElementById('order-recipe-search') as HTMLInputElement).focus();
 }
 
 /** The recipes with variants opened in the recipe list, by uuid. Collapsed by default */
@@ -86,44 +88,21 @@ function renderOrderRecipes(): void {
     list.replaceChildren();
 
     const all = getServiceState()?.recipes ?? [];
-    const matches = (recipe: KitchenRecipe) => recipe.name.toLowerCase().includes(search);
-    for (const base of all.filter((recipe) => recipe.parent_uuid === null)) {
-        const variants = all.filter((recipe) => recipe.parent_uuid === base.uuid);
-        if (variants.length === 0) {
-            if (matches(base)) list.appendChild(createOrderRecipeRow(base));
-            continue;
-        }
+    // A recipe is found by its name, its type or its category
+    const matches = (recipe: KitchenRecipe) => [recipe.name, recipe.type, recipe.category ?? '']
+        .some((text) => text.toLowerCase().includes(search));
 
-        // The whole group is shown when the base recipe matches, otherwise only the variants that do
-        const shown = matches(base) ? [base, ...variants] : variants.filter(matches);
-        if (shown.length === 0) continue;
-
-        const expanded = expandedRecipes.has(base.uuid) || (search !== '' && !matches(base));
-        const prices = [base, ...variants].map((recipe) => recipe.price);
-        const low = Math.min(...prices);
-        const high = Math.max(...prices);
+    // The menu is split by type, such as meals and drinks, alphabetically. Variants share their base recipe's type
+    const types = [...new Set(all.map((recipe) => recipe.type))].sort((a, b) => a.localeCompare(b));
+    for (const type of types) {
+        const section = all.filter((recipe) => recipe.parent_uuid === null && recipe.type === type);
+        const rows = section.flatMap((base) => renderOrderRecipeGroup(base, all.filter((recipe) => recipe.parent_uuid === base.uuid), matches, search));
+        if (rows.length === 0) continue;
 
         const header = document.createElement('li');
-        header.className = 'order-recipe order-recipe-group';
-        header.classList.toggle('expanded', expanded);
-        header.append(
-            createSpan(expanded ? '▾' : '▸', 'text-xs text-gray-500 w-3'),
-            createSpan(base.name, 'flex-1 truncate'),
-            createSpan(low === high ? formatMoney(low) : `${formatMoney(low)} – ${formatMoney(high)}`, 'text-xs text-gray-500 whitespace-nowrap'),
-        );
-        header.addEventListener('click', () => {
-            if (!expandedRecipes.delete(base.uuid)) expandedRecipes.add(base.uuid);
-            renderOrderRecipes();
-        });
-        list.appendChild(header);
-
-        if (expanded) {
-            for (const recipe of shown) {
-                const row = createOrderRecipeRow(recipe, recipe === base ? `${base.name} (base)` : recipe.name);
-                row.classList.add('order-recipe-variant');
-                list.appendChild(row);
-            }
-        }
+        header.className = 'order-recipe-type';
+        header.append(createSpan(type, ''), createSpan(String(section.length), 'font-normal'));
+        list.append(header, ...rows);
     }
 
     if (list.childElementCount === 0) {
@@ -131,10 +110,67 @@ function renderOrderRecipes(): void {
     }
 }
 
+/**
+ * Creates the rows of the menu for a recipe and its variants, as far as they match the search. A recipe with variants
+ * is a collapsed group showing the range of their prices, which opens to list the recipe itself and each variant.
+ * Searching for a variant opens its group
+ * @returns The rows, none when nothing matches
+ */
+function renderOrderRecipeGroup(base: KitchenRecipe, variants: KitchenRecipe[], matches: (recipe: KitchenRecipe) => boolean, search: string): HTMLElement[] {
+    if (variants.length === 0) {
+        return matches(base) ? [createOrderRecipeRow(base)] : [];
+    }
+
+    // The whole group is shown when the base recipe matches, otherwise only the variants that do
+    const shown = matches(base) ? [base, ...variants] : variants.filter(matches);
+    if (shown.length === 0) return [];
+
+    const expanded = expandedRecipes.has(base.uuid) || (search !== '' && !matches(base));
+    const prices = [base, ...variants].map((recipe) => recipe.price);
+    const low = Math.min(...prices);
+    const high = Math.max(...prices);
+
+    const header = document.createElement('li');
+    header.className = 'order-recipe order-recipe-group';
+    header.classList.toggle('expanded', expanded);
+    header.append(
+        createSpan(expanded ? '▾' : '▸', 'text-xs text-gray-500 w-3'),
+        createSpan(base.name, 'flex-1 truncate'),
+        createSpan(low === high ? formatMoney(low) : `${formatMoney(low)} – ${formatMoney(high)}`, 'text-xs text-gray-500 whitespace-nowrap'),
+    );
+    header.addEventListener('click', () => {
+        if (!expandedRecipes.delete(base.uuid)) expandedRecipes.add(base.uuid);
+        renderOrderRecipes();
+    });
+
+    if (!expanded) return [header];
+
+    return [header, ...shown.map((recipe) => {
+        const row = createOrderRecipeRow(recipe, recipe === base ? `${base.name} (base)` : recipe.name);
+        row.classList.add('order-recipe-variant');
+        return row;
+    })];
+}
+
+/** Enter adds the first recipe found to the order, and escape clears the search rather than closing the modal */
+function handleOrderSearchKey(event: KeyboardEvent): void {
+    const input = event.target as HTMLInputElement;
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        document.querySelector<HTMLElement>('#order-recipes [data-orderable]')?.click();
+    } else if (event.key === 'Escape' && input.value !== '') {
+        event.preventDefault();
+        event.stopPropagation();
+        input.value = '';
+        renderOrderRecipes();
+    }
+}
+
 /** Creates a row of the recipe list, which adds a portion of the recipe to the order when clicked */
 function createOrderRecipeRow(recipe: KitchenRecipe, label: string = recipe.name): HTMLElement {
     const row = document.createElement('li');
     row.className = 'order-recipe';
+    row.dataset.orderable = '';
     row.append(
         createSpan(label, 'flex-1 truncate'),
         createSpan(formatMoney(recipe.price), 'text-xs text-gray-500 whitespace-nowrap'),
@@ -416,6 +452,7 @@ function appendEmptyRow(list: HTMLElement, text: string, padding: string): void 
 
 (<any>window).placeOrder           = placeOrder;
 (<any>window).renderOrderRecipes   = renderOrderRecipes;
+(<any>window).handleOrderSearchKey = handleOrderSearchKey;
 (<any>window).editOrder            = editOrder;
 (<any>window).consumeOrder         = consumeOrder;
 (<any>window).finishOrder          = finishOrder;

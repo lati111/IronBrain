@@ -29,6 +29,9 @@ export interface KitchenRecipe {
     /** The base recipe this is a variant of, which it is listed under */
     parent_uuid: string | null;
     name: string;
+    /** What kind of recipe it is, such as a meal or drink */
+    type: string;
+    category: string | null;
     /** What the recipe is ordered at: its sale price while on sale */
     price: number;
     /** The usual price of the recipe */

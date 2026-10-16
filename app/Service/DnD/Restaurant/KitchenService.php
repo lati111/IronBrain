@@ -90,6 +90,9 @@ class KitchenService
                     // The base recipe a variant is of, which it is listed under
                     'parent_uuid' => $recipe->parent_uuid,
                     'name' => $recipe->name,
+                    // What kind of recipe it is, such as a meal or drink, which the menu is split by
+                    'type' => $recipe->type,
+                    'category' => $recipe->category,
                     // What it is ordered at, which is its sale price while it is on sale
                     'price' => $sales[$recipe->uuid] ?? $recipe->price,
                     'base_price' => $recipe->price,

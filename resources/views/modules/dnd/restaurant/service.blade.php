@@ -324,7 +324,15 @@
         <div class="order-columns w-full">
             <section class="flex flex-col gap-1 min-w-0">
                 <span class="kitchen-area-title">Recipes</span>
-                <input id="order-recipe-search" type="search" class="underlined w-full text-sm" placeholder="Search..." oninput="renderOrderRecipes()">
+                {{-- Searches names, types and categories. Enter adds the first recipe found, escape clears the search --}}
+                <label class="order-search">
+                    <svg class="order-search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="8.5" cy="8.5" r="5.5"/>
+                        <path d="m13 13 4 4" stroke-linecap="round"/>
+                    </svg>
+                    <input id="order-recipe-search" type="search" placeholder="Search the menu..." autocomplete="off"
+                           oninput="renderOrderRecipes()" onkeydown="handleOrderSearchKey(event)">
+                </label>
                 <ul id="order-recipes" class="order-list"></ul>
             </section>
             <section class="flex flex-col gap-1 min-w-0">
