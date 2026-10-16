@@ -163,8 +163,8 @@ class IngredientCategoryTest extends AbstractFeatureTester
         $category = collect($response->json('data.recipes'))->firstWhere('name', 'Stew')['categories'][0];
         $this->assertEquals('Vegetable', $category['category']);
         $this->assertEquals([
-            ['uuid' => $this->carrot->uuid, 'name' => 'Carrot', 'available' => 3],
-            ['uuid' => $this->turnip->uuid, 'name' => 'Turnip', 'available' => 0],
+            ['uuid' => $this->carrot->uuid, 'name' => 'Carrot', 'available' => 3, 'quality' => 0],
+            ['uuid' => $this->turnip->uuid, 'name' => 'Turnip', 'available' => 0, 'quality' => 0],
         ], $category['options']);
     }
 

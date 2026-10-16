@@ -3,6 +3,7 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Models\Auth\User;
+use App\Models\DnD\Restaurant\Boost;
 use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Restaurant;
@@ -16,7 +17,7 @@ class FloorService
 {
     /**
      * Builds the floor state of a restaurant: its rooms, its tables along with the room each is placed in, and its
-     * customers along with the table each is seated at, its employees, and its players
+     * customers along with the table each is seated at, its employees, its players, and its boosts
      * @param Restaurant $restaurant The restaurant to build the state for
      * @return array The floor state
      */
@@ -57,6 +58,17 @@ class FloorService
                 'prep_speed' => $employee->prep_speed,
                 'player_uuid' => $employee->player_uuid,
                 'player_name' => $employee->Player?->username,
+            ])->values()->all(),
+            // Boosts the restaurant can activate during service
+            'boosts' => Boost::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get()
+            ->map(fn (Boost $boost) => [
+                'uuid' => $boost->uuid,
+                'name' => $boost->name,
+                'target' => $boost->target,
+                'speed_bonus' => $boost->speed_bonus,
+                'minutes_off' => $boost->minutes_off,
+                'quality_bonus' => $boost->quality_bonus,
+                'duration' => $boost->duration,
             ])->values()->all(),
             // The users invited to play, who control the employees assigned to them
             'players' => $players->map(fn (RestaurantUser $access) => [

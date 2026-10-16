@@ -2,7 +2,11 @@
 
 namespace App\Service\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\EquipmentCategory;
+use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\ActiveBoost;
+use App\Models\DnD\Restaurant\Boost;
 use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
@@ -14,6 +18,7 @@ use App\Models\DnD\Restaurant\Table;
 use App\Models\DnD\Restaurant\Work;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -32,6 +37,7 @@ class WorkService
         private readonly KitchenService $kitchenService,
         private readonly InventoryService $inventoryService,
         private readonly SatisfactionService $satisfactionService,
+        private readonly BoostService $boostService,
     ) {
     }
 
@@ -63,7 +69,7 @@ class WorkService
             // When each job is done, in minutes from now, or null while nobody works in the area
             $finishedAt = [];
             if ($station === WorkStation::CLEANING) {
-                $schedule = $this->scheduleCleaning($queue, $this->getCleaners($employees), null);
+                $schedule = $this->scheduleCleaning($restaurant, $queue, $this->getCleaners($employees), $restaurant->getNow(), null);
                 $finishedAt = $schedule['finished'];
                 foreach ($schedule['assigned'] as $cleanerUuid => $job) {
                     $employeeTasks[$cleanerUuid] = $this->describeTask($job);
@@ -72,10 +78,12 @@ class WorkService
                 // Cleaners work on their own piece, so those without one have nothing to do
                 $tasks[$station->value] = $station->label() . ' (idle)';
             } elseif ($speed > 0) {
-                // Prep counts up through the queue, as each meal waits for the ones before it
+                // Prep counts up through the queue, as each meal waits for the ones before it, each at its own speed
+                $now = $restaurant->getNow();
+                $boosts = $this->boostService->getBoosts($restaurant, $now);
                 $before = 0.0;
                 foreach ($queue as $job) {
-                    $before += $job->getRemaining();
+                    $before += $job->getRemaining() / $this->getJobSpeed($job, $now, $boosts);
                     $finishedAt[$job->uuid] = $before / $speed;
                 }
             }
@@ -465,6 +473,10 @@ class WorkService
 
         $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->with('Tables')->get();
         $start = $restaurant->getNow();
+        $end = $start->copy()->addSeconds((int) round($minutes * 60));
+
+        // Meals in a cooker cook on by themselves, at the speed of their cooker, equipment and boosts
+        $this->boostService->advanceCooking($restaurant, $start, $end);
 
         foreach (WorkStation::areas() as $station) {
             if ($station === WorkStation::CLEANING) {
@@ -473,25 +485,11 @@ class WorkService
             }
 
             $speed = $this->getSpeed($employees, $station);
-            $budget = round($minutes * $speed, 4);
-            if ($budget <= 0) {
+            if ($speed <= 0) {
                 continue;
             }
 
-            $done = 0.0;
-            foreach ($this->getQueue($restaurant, $station) as $job) {
-                $remaining = $job->getRemaining();
-                if ($budget < $remaining) {
-                    $job->progress = round($job->progress + $budget, 2);
-                    $job->save();
-                    break;
-                }
-
-                // The job finished partway through, once the work before it and its own was done
-                $budget = round($budget - $remaining, 4);
-                $done += $remaining;
-                $this->finishJob($restaurant, $job, $start->copy()->addSeconds((int) round($done / $speed * 60)));
-            }
+            $this->doPrep($restaurant, $speed, $start, $end);
 
             // Once everything in the area is done, its finished jobs are cleared, starting its total over
             if ($this->getQueue($restaurant, $station)->isEmpty()) {
@@ -519,6 +517,184 @@ class WorkService
     }
 
     /**
+     * Gets prep done over a stretch of time. Everyone at prep works on the first job in the queue together, at their
+     * combined speed times the job's own speed, which depends on the equipment and boosts of its meal. As boosts run
+     * out partway through, the time is worked through in stretches between those moments
+     * @param float $speed The combined speed of the employees at prep
+     * @param Carbon $start When the stretch of time started, in the restaurant's time
+     * @param Carbon $end When it ends
+     */
+    private function doPrep(Restaurant $restaurant, float $speed, Carbon $start, Carbon $end): void
+    {
+        $boosts = $this->boostService->getBoosts($restaurant, $start);
+        $queue = $this->getQueue($restaurant, WorkStation::PREP)->values();
+        $index = 0;
+        $at = $start->copy();
+
+        foreach ([...$this->boostService->getBoundaries($boosts, $start, $end), $end] as $until) {
+            while ($index < $queue->count() && $at->lt($until)) {
+                $job = $queue[$index];
+                $rate = $speed * $this->getJobSpeed($job, $at, $boosts);
+                $needed = $job->getRemaining() / $rate;
+                $available = ($until->getTimestamp() - $at->getTimestamp()) / 60;
+
+                if ($needed > $available) {
+                    $job->progress = round($job->progress + $available * $rate, 2);
+                    $job->save();
+                    $at = $until->copy();
+                    break;
+                }
+
+                // The job finished partway through, once the work before it and its own was done
+                $at = $at->copy()->addSeconds((int) round($needed * 60));
+                $this->finishJob($restaurant, $job, $at);
+                $index++;
+            }
+
+            $at = $until->copy();
+        }
+    }
+
+    /**
+     * Gets how fast a job in the prep area goes at a moment: a meal at the speed its equipment and boosts give it, a
+     * conversion at the speed the boosts on the prep area give it
+     * @return float The speed, where 1 is normal
+     */
+    private function getJobSpeed(Work $job, Carbon $at, BaseCollection $boosts): float
+    {
+        return $job->Meal !== null
+            ? $this->boostService->getMealSpeed($job->Meal, EquipmentStage::PREP, $at, $boosts)
+            : $this->boostService->getAreaSpeed(Boost::AREA_PREP, $at, $boosts);
+    }
+
+    //| Boosts
+
+    /**
+     * Activates a boost during service on what it is for: a piece of equipment, a prepped or cooking meal, or an area
+     * of the kitchen. Minutes it takes off are done straight away on the prep or cooking of what it is on, finishing
+     * it when nothing is left. A meal gets its quality bonus. A speed bonus lasts the boost's duration
+     * @param Restaurant $restaurant The restaurant
+     * @param Boost $boost The boost
+     * @param Equipment|null $equipment The equipment it is activated on, for equipment boosts
+     * @param Meal|null $meal The meal it is activated on, for meal boosts
+     * @param string|null $area The area it is activated on, one of the Boost::AREA constants, for area boosts
+     * @param int|null $cookerSlot The single cooker of the equipment it is activated on, from 1, or null for all of it
+     * @throws InvalidArgumentException Thrown when no service is ongoing, or it is activated on something it isn't for
+     */
+    public function activateBoost(Restaurant $restaurant, Boost $boost, ?Equipment $equipment, ?Meal $meal, ?string $area, ?int $cookerSlot = null): void
+    {
+        if (!$restaurant->isInService()) {
+            throw new InvalidArgumentException('Boosts are only activated during service');
+        }
+
+        $now = $restaurant->getNow();
+        match ($boost->target) {
+            Boost::TARGET_EQUIPMENT => $equipment !== null ?: throw new InvalidArgumentException('Choose the equipment to boost'),
+            Boost::TARGET_AREA => in_array($area, Boost::AREAS, true) ?: throw new InvalidArgumentException('Choose the area to boost'),
+            default => $meal !== null ?: throw new InvalidArgumentException('Choose the meal to boost'),
+        };
+
+        if ($meal !== null && !in_array($meal->getStatusAt($now), [Meal::STATUS_PREPPED, Meal::STATUS_COOKING], true)) {
+            throw new InvalidArgumentException('Only prepped or cooking meals can be boosted');
+        }
+
+        if ($cookerSlot !== null && ($equipment === null || $equipment->category !== EquipmentCategory::COOKER
+                || $cookerSlot < 1 || $cookerSlot > $this->inventoryService->getTotalStock($equipment))) {
+            throw new InvalidArgumentException('There is no such cooker to boost');
+        }
+
+        DB::transaction(function () use ($restaurant, $boost, $equipment, $meal, $area, $cookerSlot, $now) {
+            if ($meal !== null && $boost->quality_bonus !== 0) {
+                $meal->quality_bonus += $boost->quality_bonus;
+                $meal->save();
+            }
+
+            if ($boost->minutes_off > 0) {
+                $this->cutTime($restaurant, $boost->minutes_off, $now, $equipment, $meal, $area, $cookerSlot);
+            }
+
+            if ($boost->lasts()) {
+                $active = new ActiveBoost();
+                $active->restaurant_uuid = $restaurant->uuid;
+                $active->boost_uuid = $boost->uuid;
+                $active->name = $boost->name;
+                $active->speed_bonus = $boost->speed_bonus;
+                $active->equipment_uuid = $equipment?->uuid;
+                $active->cooker_slot = $cookerSlot;
+                $active->meal_uuid = $meal?->uuid;
+                $active->area = $area;
+                $active->starts_at = $now;
+                $active->expires_at = $now->copy()->addMinutes($boost->duration);
+                $active->save();
+
+                // Meals in a cooker go faster from now on, so they are done sooner
+                $this->boostService->rescheduleAll($restaurant, $now);
+            }
+        });
+    }
+
+    /**
+     * Does minutes of work straight away on what a boost is activated on: a prepped meal gets a head start on cooking,
+     * a cooking meal cooks on, meals being prepped get prep done, and pieces waiting to be cleaned get cleaning done.
+     * Equipment counts for the meals using it in the stage they are in, a single cooker for the meal in it, and an area
+     * for everything in it
+     */
+    private function cutTime(Restaurant $restaurant, float $minutes, Carbon $now, ?Equipment $equipment, ?Meal $meal, ?string $area, ?int $cookerSlot): void
+    {
+        if ($area === Boost::AREA_CLEANING) {
+            $this->cutCleaning($restaurant, $minutes, $now);
+            return;
+        }
+
+        $cooking = $this->boostService->getCookingMeals($restaurant)->filter(fn (Meal $candidate) => match (true) {
+            $meal !== null => $candidate->uuid === $meal->uuid,
+            $cookerSlot !== null => $candidate->cooker_uuid === $equipment->uuid && $candidate->cooker_slot === $cookerSlot,
+            $equipment !== null => in_array($equipment->uuid, $this->boostService->getStageEquipment($candidate, EquipmentStage::COOKING), true),
+            default => $area === Boost::AREA_COOKING,
+        });
+        foreach ($cooking as $candidate) {
+            $candidate->cooking_progress = min((float) $candidate->Recipe->cooking_time, $candidate->cooking_progress + $minutes);
+            $this->boostService->reschedule($candidate, $now);
+        }
+
+        if ($meal !== null && $meal->status === Meal::STATUS_PREPPED) {
+            $meal->cooking_progress = min((float) $meal->getRecipe()->cooking_time, $meal->cooking_progress + $minutes);
+            $meal->save();
+        }
+
+        if ($meal !== null || $area === Boost::AREA_COOKING || $cookerSlot !== null) {
+            return;
+        }
+
+        $jobs = $this->getQueue($restaurant, WorkStation::PREP)->filter(fn (Work $job) => $equipment === null
+            || ($job->Meal !== null && in_array($equipment->uuid, $this->boostService->getStageEquipment($job->Meal, EquipmentStage::PREP), true)));
+        foreach ($jobs as $job) {
+            $job->progress = round(min($job->work, $job->progress + $minutes), 2);
+            $job->isFinished() ? $this->finishJob($restaurant, $job, $now) : $job->save();
+        }
+
+        if ($jobs->isNotEmpty() && $this->getQueue($restaurant, WorkStation::PREP)->isEmpty()) {
+            Work::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::PREP->value)->delete();
+        }
+    }
+
+    /**
+     * Does minutes of cleaning straight away on every piece waiting to be cleaned, as a boost on the cleaning area does
+     */
+    private function cutCleaning(Restaurant $restaurant, float $minutes, Carbon $now): void
+    {
+        $jobs = $this->getQueue($restaurant, WorkStation::CLEANING);
+        foreach ($jobs as $job) {
+            $job->progress = round(min($job->work, $job->progress + $minutes), 2);
+            $job->isFinished() ? $this->finishJob($restaurant, $job, $now) : $job->save();
+        }
+
+        if ($jobs->isNotEmpty() && $this->getQueue($restaurant, WorkStation::CLEANING)->isEmpty()) {
+            Work::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::CLEANING->value)->delete();
+        }
+    }
+
+    /**
      * Gets cleaning done over a stretch of time, each cleaner on their own piece at their own speed
      * @param Collection<Employee> $employees The restaurant's employees
      * @param float $minutes How many minutes pass
@@ -527,7 +703,7 @@ class WorkService
     private function doCleaning(Restaurant $restaurant, Collection $employees, float $minutes, Carbon $start): void
     {
         $queue = $this->getQueue($restaurant, WorkStation::CLEANING);
-        $schedule = $this->scheduleCleaning($queue, $this->getCleaners($employees), $minutes);
+        $schedule = $this->scheduleCleaning($restaurant, $queue, $this->getCleaners($employees), $start, $minutes);
 
         foreach ($queue as $job) {
             if (isset($schedule['finished'][$job->uuid])) {
@@ -546,15 +722,22 @@ class WorkService
 
     /**
      * Works out how cleaning goes: the fastest cleaners take the first pieces in the queue, and each takes the next
-     * piece as soon as theirs is clean
+     * piece as soon as theirs is clean. Boosts on the cleaning area make everyone clean faster while they last
      * @param Collection<Work> $queue The pieces still to clean, in order
      * @param array<string, float> $cleaners The speed of each cleaner, keyed by their uuid, fastest first
+     * @param Carbon $start When cleaning starts, in the restaurant's time
      * @param float|null $limit How many minutes to work out, or null to work out until everything is clean
      * @return array When each finished piece was done in minutes from the start, the work done on the others, and
      *               the piece each cleaner starts on
      */
-    private function scheduleCleaning(Collection $queue, array $cleaners, ?float $limit): array
+    private function scheduleCleaning(Restaurant $restaurant, Collection $queue, array $cleaners, Carbon $start, ?float $limit): array
     {
+        // How much faster everyone cleans until the next boost runs out, and when that is in minutes from the start
+        $boosts = $this->boostService->getBoosts($restaurant, $start);
+        $boundaries = array_map(fn (Carbon $moment) => ($moment->getTimestamp() - $start->getTimestamp()) / 60,
+            $this->boostService->getBoundaries($boosts, $start, null));
+        $factor = fn (float $time) => $this->boostService->getAreaSpeed(Boost::AREA_CLEANING, $start->copy()->addSeconds((int) round($time * 60)), $boosts);
+
         $remaining = $queue->mapWithKeys(fn (Work $job) => [$job->uuid => $job->getRemaining()])->all();
         $pending = $queue->values()->all();
         $active = [];
@@ -567,8 +750,13 @@ class WorkService
         $schedule = ['finished' => [], 'progress' => [], 'assigned' => $active];
         $time = 0.0;
         while ($active !== []) {
-            // Until the first of the pieces being cleaned is done
-            $step = min(array_map(fn (string $cleanerUuid) => $remaining[$active[$cleanerUuid]->uuid] / $cleaners[$cleanerUuid], array_keys($active)));
+            // Until the first of the pieces being cleaned is done, or the next boost runs out
+            $rate = $factor($time);
+            $step = min(array_map(fn (string $cleanerUuid) => $remaining[$active[$cleanerUuid]->uuid] / ($cleaners[$cleanerUuid] * $rate), array_keys($active)));
+            $next = collect($boundaries)->first(fn (float $boundary) => $boundary > $time + 0.0001);
+            if ($next !== null && $time + $step > $next) {
+                $step = $next - $time;
+            }
             $last = $limit !== null && $time + $step > $limit;
             if ($last) {
                 $step = $limit - $time;
@@ -576,7 +764,7 @@ class WorkService
             $time += $step;
 
             foreach ($active as $cleanerUuid => $job) {
-                $work = $step * $cleaners[$cleanerUuid];
+                $work = $step * $cleaners[$cleanerUuid] * $rate;
                 $remaining[$job->uuid] -= $work;
                 $schedule['progress'][$job->uuid] = ($schedule['progress'][$job->uuid] ?? 0) + $work;
 

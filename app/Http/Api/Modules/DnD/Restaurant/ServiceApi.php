@@ -5,6 +5,7 @@ use App\Enum\DnD\Restaurant\WorkStation;
 use App\Enum\ErrorEnum;
 use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
+use App\Models\DnD\Restaurant\Boost;
 use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Employee;
@@ -114,6 +115,12 @@ class ServiceApi extends AbstractApi
             // The ingredient chosen for each category the recipe takes, keyed by category
             'choices'     => 'nullable|array',
             'choices.*'   => 'nullable|string|max:255',
+            // The variant to use instead of each piece of equipment the recipe takes, keyed by that equipment's uuid
+            'equipment'   => 'nullable|array',
+            'equipment.*' => 'nullable|string|max:255',
+            // The variant to use instead of each ingredient the recipe takes, keyed by that ingredient's uuid
+            'ingredients'   => 'nullable|array',
+            'ingredients.*' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -143,7 +150,7 @@ class ServiceApi extends AbstractApi
             $choices[$category] = $ingredient;
         }
 
-        return $this->attempt($restaurant, 'Meal planned', fn () => $this->kitchenService->planMeal($restaurant, $recipe, $choices), Response::HTTP_CREATED);
+        return $this->attempt($restaurant, 'Meal planned', fn () => $this->kitchenService->planMeal($restaurant, $recipe, $choices, $request->get('equipment') ?? [], $request->get('ingredients') ?? []), Response::HTTP_CREATED);
     }
 
     /**
@@ -170,6 +177,9 @@ class ServiceApi extends AbstractApi
         $validator = Validator::make($request->all(), [
             'cooker_uuid' => 'required|string|max:255',
             'slot'        => 'required|integer|min:1',
+            // The variant to use instead of each piece of cooking equipment the recipe takes, keyed by its uuid
+            'equipment'   => 'nullable|array',
+            'equipment.*' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -182,7 +192,7 @@ class ServiceApi extends AbstractApi
                 return $this->respond(Response::HTTP_NOT_FOUND, 'Cooker not found');
             }
 
-            $this->kitchenService->cookMeal($restaurant, $meal, $cooker, (int) $request->get('slot'));
+            $this->kitchenService->cookMeal($restaurant, $meal, $cooker, (int) $request->get('slot'), $request->get('equipment') ?? []);
             return null;
         });
     }
@@ -499,6 +509,61 @@ class ServiceApi extends AbstractApi
 
         return $this->attempt($restaurant, 'Conversion queued',
             fn () => $this->workService->queueConversion($restaurant, $conversion, (float) $request->get('amount')));
+    }
+
+    /**
+     * Activates a boost on what it is for: a piece of equipment, a prepped or cooking meal, or an area of the kitchen
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $boost_uuid The uuid of the boost
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function activateBoost(Request $request, string $restaurant_uuid, string $boost_uuid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'equipment_uuid' => 'nullable|string|max:255',
+            'meal_uuid'      => 'nullable|string|max:255',
+            'area'           => ['nullable', 'string', Rule::in(Boost::AREAS)],
+            // A single cooker of the equipment, rather than all of it
+            'cooker_slot'    => 'nullable|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        $boost = Boost::where('uuid', $boost_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($boost === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Boost not found');
+        }
+
+        // Only what the boost is for is looked at, so other targets given along are left alone
+        $equipment = null;
+        if ($boost->target === Boost::TARGET_EQUIPMENT && $request->filled('equipment_uuid')) {
+            $equipment = Equipment::where('uuid', $request->get('equipment_uuid'))->where('restaurant_uuid', $restaurant->uuid)->first();
+            if ($equipment === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Equipment not found');
+            }
+        }
+
+        $meal = null;
+        if ($boost->target === Boost::TARGET_MEAL && $request->filled('meal_uuid')) {
+            $meal = $this->getMeal($restaurant, $request->get('meal_uuid'));
+            if ($meal === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Meal not found');
+            }
+        }
+
+        $area = $boost->target === Boost::TARGET_AREA ? $request->get('area') : null;
+
+        return $this->attempt($restaurant, $boost->name . ' activated',
+            fn () => $this->workService->activateBoost($restaurant, $boost, $equipment, $meal, $area,
+                $equipment !== null && $request->filled('cooker_slot') ? (int) $request->get('cooker_slot') : null));
     }
 
     /**

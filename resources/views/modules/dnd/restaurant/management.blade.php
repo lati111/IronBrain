@@ -220,6 +220,15 @@
             <x-form.input-wrapper label_text="Size">
                 <input type="number" name="size" class="underlined" min="0.01" step="0.01" value="1" required/>
             </x-form.input-wrapper>
+            {{-- Meals add the average quality of the ingredients they are made with --}}
+            <x-form.input-wrapper label_text="Quality">
+                <input type="number" name="quality" class="underlined" min="-9999" max="9999" step="1" value="0" required/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Variant of (optional)">
+                <select id="ingredient-parent-select" name="parent_uuid" class="underlined">
+                    <option value="">None</option>
+                </select>
+            </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Icon (optional)">
                 <x-form.input.file_uploader name="icon" accepts="image/*"/>
             </x-form.input-wrapper>
@@ -287,6 +296,13 @@
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
+            {{-- A variant adds to or takes away from its base recipe, which is chosen when it is created --}}
+            <x-form.input-wrapper label_text="Variant of (optional)">
+                <select id="recipe-parent-select" name="parent_uuid" class="underlined" onchange="changeRecipeParent()">
+                    <option value="">None</option>
+                </select>
+            </x-form.input-wrapper>
+            <p id="recipe-variant-hint" class="text-sm text-gray-500 hidden"></p>
 
             {{--| Tabs |--}}
             <div class="flex border-b">
@@ -300,7 +316,8 @@
 
             {{--| Details |--}}
             <div class="recipe-panel flex flex-col gap-3" data-recipe-panel="details">
-                <div class="flex gap-3">
+                {{-- A variant takes its type and category from its base recipe --}}
+                <div id="recipe-type-row" class="flex gap-3">
                     <x-form.input-wrapper label_text="Type" cls="flex-1">
                         <input type="text" name="type" class="underlined" maxlength="64" value="meal" list="recipe-type-options" autocomplete="off" required/>
                         <datalist id="recipe-type-options"></datalist>

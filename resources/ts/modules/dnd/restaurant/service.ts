@@ -7,7 +7,8 @@ import {
 import {
     canControl, createEmployeeIcon, describeEmployee, Employee, EMPLOYEE_MIME, formatMinutes, getDraggedEmployee, getDraggedPlate,
     getServiceState, initKitchen, isIdle, isPlayer, KitchenRecipe, onRightClick, onServiceState, openPrioritizeMenu, Order, PLATE_MIME,
-    post as postService, ServiceConversion, ServiceIngredient, setupEmployeeDrag, toggleMenu,
+    post as postService, BOOST_MIME, ServiceBoost, ServiceConversion, ServiceIngredient, setDraggedBoost, setupEmployeeDrag,
+    toggleMenu,
 } from "./kitchen";
 import {describeOrder, openOrderDetails, openOrderModal} from "./orders";
 import "./shift";
@@ -51,7 +52,7 @@ const CUSTOMER_MIME = 'application/x-restaurant-customer';
 
 /** The sidebar lists the customers, the ingredients that can be brought in during service, the conversions that can be
  * done in the prep area, and the recipes' sales */
-type SidebarTab = 'customer' | 'ingredient' | 'conversion' | 'sale';
+type SidebarTab = 'customer' | 'ingredient' | 'conversion' | 'boost' | 'sale';
 let activeTab: SidebarTab = 'customer';
 
 /** The ingredient the pile modal is adding */
@@ -176,6 +177,11 @@ function renderSidebar(): void {
         return;
     }
 
+    if (activeTab === 'boost') {
+        renderBoostRows();
+        return;
+    }
+
     const list = document.getElementById('inventory-list') as HTMLElement;
     const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
     const template = document.getElementById('list-row-template') as HTMLTemplateElement;
@@ -232,6 +238,49 @@ function renderIngredientRows(): void {
         empty.textContent = ingredients.length === 0 ? 'No ingredients yet' : 'No results';
         list.appendChild(empty);
     }
+}
+
+/** Lists the boosts, each of which is dragged onto what it boosts, as often as wanted */
+function renderBoostRows(): void {
+    const list = document.getElementById('inventory-list') as HTMLElement;
+    const search = (document.getElementById('inventory-search') as HTMLInputElement).value.trim().toLowerCase();
+    const template = document.getElementById('list-row-template') as HTMLTemplateElement;
+    const boosts = getServiceState()?.boosts ?? [];
+
+    list.replaceChildren();
+    for (const boost of boosts.filter((boost) => boost.name.toLowerCase().includes(search))) {
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        setField(row, 'name', boost.name);
+        setField(row, 'meta', describeBoostEffects(boost));
+        row.querySelector('[data-action="add"]')!.classList.add('hidden');
+
+        row.draggable = true;
+        row.classList.add('draggable');
+        row.addEventListener('dragstart', (event) => {
+            setDraggedBoost(boost);
+            event.dataTransfer!.setData(BOOST_MIME, boost.uuid);
+            event.dataTransfer!.effectAllowed = 'copy';
+        });
+        row.addEventListener('dragend', () => setDraggedBoost(null));
+
+        list.appendChild(row);
+    }
+
+    if (list.childElementCount === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'text-center text-gray-400 py-4 text-sm';
+        empty.textContent = boosts.length === 0 ? 'No boosts yet' : 'No results';
+        list.appendChild(empty);
+    }
+}
+
+/** Describes what a boost does, such as "+0.5 speed for 30m · 5m off" */
+function describeBoostEffects(boost: ServiceBoost): string {
+    const effects: string[] = [];
+    if (boost.speed_bonus > 0) effects.push(`+${boost.speed_bonus} speed for ${formatMinutes(boost.duration)}`);
+    if (boost.minutes_off > 0) effects.push(`${formatMinutes(boost.minutes_off)} off`);
+    if (boost.quality_bonus !== 0) effects.push(`${boost.quality_bonus > 0 ? '+' : ''}${boost.quality_bonus} quality`);
+    return effects.length > 0 ? effects.join(' · ') : 'No effect';
 }
 
 /** Lists the conversions, each of which can be queued in the prep area */

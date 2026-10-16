@@ -4,6 +4,7 @@ namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\EquipmentCategory;
 use App\Enum\DnD\Restaurant\EquipmentStage;
+use App\Models\DnD\Restaurant\Boost;
 use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
@@ -12,6 +13,7 @@ use App\Models\DnD\Restaurant\PileIngredient;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\RecipeCategory;
 use App\Models\DnD\Restaurant\RecipeEquipment;
+use App\Models\DnD\Restaurant\RecipeIngredient;
 use App\Models\DnD\Restaurant\RecipeMeal;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\ServedMeal;
@@ -23,8 +25,10 @@ use InvalidArgumentException;
 
 class KitchenService
 {
-    public function __construct(private readonly InventoryService $inventoryService)
-    {
+    public function __construct(
+        private readonly InventoryService $inventoryService,
+        private readonly BoostService $boostService,
+    ) {
     }
 
     /**
@@ -43,6 +47,7 @@ class KitchenService
         $meals = Meal::where('restaurant_uuid', $restaurant->uuid)->with('Recipe.RecipeMeals.RequiredRecipe')->orderBy('created_at')->get();
         $sales = $restaurant->getSalePrices();
         $ingredients = $this->describeIngredients($restaurant);
+        $clean = $equipment->mapWithKeys(fn (Equipment $piece) => [$piece->uuid => $this->getCleanAmount($piece)]);
 
         return [
             'clock' => [
@@ -53,6 +58,18 @@ class KitchenService
                 'shift_total' => $restaurant->shift_total,
             ],
             'ingredients' => $ingredients,
+            // The boosts that can be activated, and those active now
+            'boosts' => Boost::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get()
+            ->map(fn (Boost $boost) => [
+                'uuid' => $boost->uuid,
+                'name' => $boost->name,
+                'target' => $boost->target,
+                'speed_bonus' => $boost->speed_bonus,
+                'minutes_off' => $boost->minutes_off,
+                'quality_bonus' => $boost->quality_bonus,
+                'duration' => $boost->duration,
+            ])->values()->all(),
+            'active_boosts' => $this->boostService->describeActive($restaurant, $now),
             // Conversions that can be done in the prep area, with how much of the input is stored
             'conversions' => Conversion::where('restaurant_uuid', $restaurant->uuid)->with(['Input', 'Output'])->get()
                 ->map(function (Conversion $conversion) use ($ingredients) {
@@ -67,9 +84,11 @@ class KitchenService
                     ];
                 })
                 ->sortBy(fn (array $conversion) => [$conversion['input_name'], $conversion['output_name']])->values()->all(),
-            'recipes' => Recipe::where('restaurant_uuid', $restaurant->uuid)->with('RecipeCategories')->orderBy('name')->get()
+            'recipes' => Recipe::where('restaurant_uuid', $restaurant->uuid)->with(['RecipeCategories', 'RecipeEquipment', 'RecipeIngredients'])->orderBy('name')->get()
                 ->map(fn (Recipe $recipe) => [
                     'uuid' => $recipe->uuid,
+                    // The base recipe a variant is of, which it is listed under
+                    'parent_uuid' => $recipe->parent_uuid,
                     'name' => $recipe->name,
                     // What it is ordered at, which is its sale price while it is on sale
                     'price' => $sales[$recipe->uuid] ?? $recipe->price,
@@ -85,8 +104,38 @@ class KitchenService
                             'uuid' => $ingredient['uuid'],
                             'name' => $ingredient['name'],
                             'available' => round($ingredient['stored'] + $ingredient['pile'], 2),
+                            'quality' => $ingredient['quality'],
                         ])->values()->all(),
                     ])->values()->all(),
+                    // Ingredients taken outright, with the variants of each that can be used instead
+                    'ingredients' => $recipe->RecipeIngredients
+                        ->map(fn (RecipeIngredient $link) => [$link, collect($ingredients)->firstWhere('uuid', $link->ingredient_uuid)])
+                        ->filter(fn (array $pair) => $pair[1] !== null)
+                        ->map(fn (array $pair) => [
+                            'ingredient_uuid' => $pair[1]['uuid'],
+                            'amount' => $pair[0]->amount,
+                            'options' => collect([$pair[1]])
+                                ->concat(collect($ingredients)->where('parent_uuid', $pair[1]['uuid']))
+                                ->map(fn (array $ingredient) => [
+                                    'uuid' => $ingredient['uuid'],
+                                    'name' => $ingredient['name'],
+                                    'available' => round($ingredient['stored'] + $ingredient['pile'], 2),
+                                    'quality' => $ingredient['quality'],
+                                ])->values()->all(),
+                        ])->values()->all(),
+                    // Equipment other than cookers, with the variants of it that can be used instead
+                    'equipment' => $recipe->RecipeEquipment
+                        ->map(fn (RecipeEquipment $link) => [$link, $equipment->firstWhere('uuid', $link->equipment_uuid)])
+                        ->filter(fn (array $pair) => $pair[1] !== null && $pair[1]->category !== EquipmentCategory::COOKER)
+                        ->map(fn (array $pair) => [
+                            'equipment_uuid' => $pair[1]->uuid,
+                            'stage' => $pair[0]->stage->value,
+                            'amount' => $pair[0]->amount,
+                            'options' => collect([$pair[1]])
+                                ->concat($equipment->filter(fn (Equipment $piece) => $piece->parent_uuid === $pair[1]->uuid && $piece->category !== EquipmentCategory::COOKER))
+                                ->map(fn (Equipment $piece) => ['uuid' => $piece->uuid, 'name' => $piece->name, 'clean' => $clean[$piece->uuid] ?? 0])
+                                ->values()->all(),
+                        ])->values()->all(),
                 ])->values()->all(),
             // Every piece of cooker equipment is a cooker of its own, holding one meal at a time
             'cookers' => $equipment->filter(fn (Equipment $piece) => $piece->category === EquipmentCategory::COOKER)
@@ -151,7 +200,7 @@ class KitchenService
             $plate = new ServedMeal();
             $plate->restaurant_uuid = $restaurant->uuid;
             $plate->recipe_uuid = $meal->recipe_uuid;
-            $plate->quality = $meal->quality;
+            $plate->quality = $meal->getServedQuality();
             $plate->expires_at = $meal->status === Meal::STATUS_SERVING
                 ? $meal->expires_at
                 : $this->getServedExpiry($meal, $restaurant->getNow());
@@ -225,13 +274,17 @@ class KitchenService
      * @param Restaurant $restaurant The restaurant
      * @param Recipe $recipe The recipe to make
      * @param array<string, Ingredient> $choices The ingredient chosen for each category the recipe takes, keyed by category
+     * @param array<string, string> $substitutes The variants to use instead of the prep equipment the recipe takes, as
+     *                                          the chosen equipment uuid keyed by the uuid of the recipe's equipment
+     * @param array<string, string> $ingredientSubstitutes The variants to use instead of the ingredients the recipe
+     *                                                    takes, as the chosen uuid keyed by the recipe's ingredient
      * @return Meal The planned meal
      * @throws InvalidArgumentException Thrown when a category has no fitting ingredient chosen, or too little of an
-     *                                  ingredient is stored or of the prep equipment is clean
+     *                                  ingredient is stored or of the prep equipment is clean, or a variant isn't one
      */
-    public function planMeal(Restaurant $restaurant, Recipe $recipe, array $choices = []): Meal
+    public function planMeal(Restaurant $restaurant, Recipe $recipe, array $choices = [], array $substitutes = [], array $ingredientSubstitutes = []): Meal
     {
-        return DB::transaction(function () use ($restaurant, $recipe, $choices) {
+        return DB::transaction(function () use ($restaurant, $recipe, $choices, $substitutes, $ingredientSubstitutes) {
             // A snapshot, so changing the recipe later doesn't change which equipment this meal holds
             $equipment = $recipe->RecipeEquipment()->get()->map(fn (RecipeEquipment $link) => [
                 'equipment_uuid' => $link->equipment_uuid,
@@ -240,12 +293,16 @@ class KitchenService
                 'container' => $link->container,
             ])->values()->all();
 
+            $equipment = $this->substituteEquipment($restaurant, $equipment, EquipmentStage::PREP, $substitutes);
             $this->useEquipment($restaurant, $equipment, EquipmentStage::PREP);
             $consumed = [];
 
-            // Each ingredient comes from the stacks closest to expiring first
+            // Each ingredient comes from the stacks closest to expiring first, of the variant chosen for it if any
+            $used = [];
             foreach ($recipe->RecipeIngredients()->with('Ingredient')->get() as $requirement) {
-                $consumed = array_merge($consumed, $this->inventoryService->takeForCooking($restaurant, $requirement->Ingredient, $requirement->amount));
+                $ingredient = $this->getIngredientVariant($restaurant, $requirement->Ingredient, $ingredientSubstitutes[$requirement->ingredient_uuid] ?? null);
+                $consumed = array_merge($consumed, $this->inventoryService->takeForCooking($restaurant, $ingredient, $requirement->amount));
+                $used[$ingredient->uuid] = $ingredient->quality;
             }
 
             // Ingredients taken by category come from the ingredient chosen for it
@@ -256,6 +313,7 @@ class KitchenService
                 }
 
                 $consumed = array_merge($consumed, $this->inventoryService->takeForCooking($restaurant, $ingredient, $requirement->amount));
+                $used[$ingredient->uuid] = $ingredient->quality;
             }
 
             $meal = new Meal();
@@ -265,10 +323,34 @@ class KitchenService
             $meal->portions_left = max(1, $recipe->portions);
             $meal->consumed = $consumed;
             $meal->equipment = $equipment;
+            // Each ingredient used counts once, however much of it is used
+            $meal->ingredient_quality = $used !== [] ? (int) round(array_sum($used) / count($used)) : 0;
             $meal->save();
 
             return $meal;
         });
+    }
+
+    /**
+     * Gets the ingredient to use for one a recipe takes: the chosen variant of it, or the ingredient itself
+     * @param Restaurant $restaurant The restaurant
+     * @param Ingredient $ingredient The ingredient the recipe takes
+     * @param string|null $chosen The uuid of the chosen variant, if any
+     * @return Ingredient The ingredient to use
+     * @throws InvalidArgumentException Thrown when the chosen ingredient isn't a variant of it
+     */
+    private function getIngredientVariant(Restaurant $restaurant, Ingredient $ingredient, ?string $chosen): Ingredient
+    {
+        if ($chosen === null || $chosen === '' || $chosen === $ingredient->uuid) {
+            return $ingredient;
+        }
+
+        $variant = Ingredient::where('uuid', $chosen)->where('restaurant_uuid', $restaurant->uuid)->first();
+        if ($variant === null || $variant->parent_uuid !== $ingredient->uuid) {
+            throw new InvalidArgumentException($variant?->name . ' cannot be used instead of ' . $ingredient->name);
+        }
+
+        return $variant;
     }
 
     /**
@@ -370,16 +452,18 @@ class KitchenService
     }
 
     /**
-     * Puts a prepped meal in a cooker, which starts its cooking timer. Once cooked, it stays good for the recipe's
-     * good for time
+     * Puts a prepped meal in a cooker, which starts cooking it at the speed of the cooker and its cooking equipment.
+     * Once cooked, it stays good for the recipe's good for time
      * @param Restaurant $restaurant The restaurant
      * @param Meal $meal The meal
      * @param Equipment $cooker The cooker equipment
      * @param int $slot Which piece of the cooker equipment to use, from 1
-     * @throws InvalidArgumentException Thrown when the meal isn't prepped, still waits on other meals to be put in, or
-     *                                  the cooker doesn't exist or is full
+     * @param array<string, string> $substitutes The variants to use instead of the cooking equipment the recipe takes,
+     *                                          as the chosen equipment uuid keyed by the uuid of the recipe's equipment
+     * @throws InvalidArgumentException Thrown when the meal isn't prepped, still waits on other meals to be put in,
+     *                                  the cooker doesn't exist or is full, or a variant isn't one
      */
-    public function cookMeal(Restaurant $restaurant, Meal $meal, Equipment $cooker, int $slot): void
+    public function cookMeal(Restaurant $restaurant, Meal $meal, Equipment $cooker, int $slot, array $substitutes = []): void
     {
         if ($meal->status !== Meal::STATUS_PREPPED) {
             throw new InvalidArgumentException('Only prepped meals can be cooked');
@@ -398,7 +482,7 @@ class KitchenService
             throw new InvalidArgumentException('There is no ' . $cooker->name . ' ' . $slot);
         }
 
-        DB::transaction(function () use ($restaurant, $meal, $cooker, $slot) {
+        DB::transaction(function () use ($restaurant, $meal, $cooker, $slot, $substitutes) {
             $full = Meal::where('cooker_uuid', $cooker->uuid)
                 ->where('cooker_slot', $slot)
                 ->where('status', Meal::STATUS_COOKING)
@@ -409,21 +493,20 @@ class KitchenService
                 throw new InvalidArgumentException('That ' . $cooker->name . ' is already in use');
             }
 
+            $meal->equipment = $this->substituteEquipment($restaurant, $meal->equipment ?? [], EquipmentStage::COOKING, $substitutes, $meal->carried_equipment ?? []);
+
             // The cooking equipment goes in use, apart from what was carried over and is in use already, and prep
             // containers are emptied into the cooker and become dirty
             $this->useEquipment($restaurant, $this->withoutCarriedEquipment($meal), EquipmentStage::COOKING);
             $meal->carried_equipment = null;
             $this->releaseEquipment($restaurant, $this->filterEquipment($meal, EquipmentStage::PREP, container: true), dirty: true);
 
-            $recipe = $meal->getRecipe();
-            $endsAt = $restaurant->getNow()->addMinutes($recipe->cooking_time);
-
+            // Cooking picks up from any progress boosts made while it was prepped, at the speed of the cooker and the
+            // cooking equipment
             $meal->status = Meal::STATUS_COOKING;
             $meal->cooker_uuid = $cooker->uuid;
             $meal->cooker_slot = $slot;
-            $meal->cooking_ends_at = $endsAt;
-            $meal->expires_at = $endsAt->copy()->addHours($recipe->good_for);
-            $meal->save();
+            $this->boostService->reschedule($meal, $restaurant->getNow());
         });
     }
 
@@ -659,6 +742,51 @@ class KitchenService
     }
 
     /**
+     * Swaps the equipment a meal takes in a stage for the chosen variants of it. What was carried over from meals put
+     * in stays as it is, since that is in use already
+     * @param Restaurant $restaurant The restaurant
+     * @param array $entries The meal's equipment, as equipment_uuid, amount, stage and container
+     * @param EquipmentStage $stage The stage whose equipment is swapped
+     * @param array<string, string> $substitutes The chosen equipment uuid, keyed by the uuid of the equipment it replaces
+     * @param array<string, int> $carried The amounts carried over, keyed by equipment uuid
+     * @return array The equipment, as equipment_uuid, amount, stage and container
+     * @throws InvalidArgumentException Thrown when a chosen piece isn't a variant of the equipment it replaces
+     */
+    private function substituteEquipment(Restaurant $restaurant, array $entries, EquipmentStage $stage, array $substitutes, array $carried = []): array
+    {
+        $result = [];
+        foreach ($entries as $entry) {
+            if ($entry['stage'] !== $stage->value) {
+                $result[] = $entry;
+                continue;
+            }
+
+            // Carried over equipment is matched in the same order withoutCarriedEquipment matches it
+            $base = $entry['equipment_uuid'];
+            $covered = min($entry['amount'], $carried[$base] ?? 0);
+            $carried[$base] = ($carried[$base] ?? 0) - $covered;
+
+            $chosen = $substitutes[$base] ?? null;
+            if ($chosen === null || $chosen === '' || $chosen === $base || $entry['amount'] <= $covered) {
+                $result[] = $entry;
+                continue;
+            }
+
+            $variant = Equipment::where('uuid', $chosen)->where('restaurant_uuid', $restaurant->uuid)->first();
+            if ($variant === null || $variant->parent_uuid !== $base || $variant->category === EquipmentCategory::COOKER) {
+                throw new InvalidArgumentException('That equipment cannot be used instead');
+            }
+
+            if ($covered > 0) {
+                $result[] = array_merge($entry, ['amount' => $covered]);
+            }
+            $result[] = array_merge($entry, ['equipment_uuid' => $variant->uuid, 'amount' => $entry['amount'] - $covered]);
+        }
+
+        return $result;
+    }
+
+    /**
      * Adds up equipment entries per piece of equipment
      * @param array $entries The equipment, as equipment_uuid and amount
      * @return array<string, int> The amounts keyed by equipment uuid
@@ -836,11 +964,16 @@ class KitchenService
             'cooker_uuid' => $meal->cooker_uuid,
             'cooker_slot' => $meal->cooker_slot,
             'cooking_minutes_left' => $status === Meal::STATUS_COOKING ? $this->minutesUntil($now, $meal->cooking_ends_at) : null,
-            'cooking_progress' => $status === Meal::STATUS_COOKING ? $this->getCookingProgress($meal, $now) : null,
+            'cooking_progress' => $status === Meal::STATUS_COOKING ? $this->getCookingProgress($meal) : null,
+            // How fast it is being worked on, where 1 is normal, while it is prepped or cooking
+            'speed' => $this->getMealSpeed($meal, $status, $now),
             'expires_in_minutes' => $meal->expires_at !== null ? $this->minutesUntil($now, $meal->expires_at) : null,
             'spoiled' => $meal->isSpoiledAt($now),
             'portions_left' => $meal->portions_left,
-            'quality' => $meal->quality,
+            // The quality it is served at, with what boosts added, of which the bonus is part
+            'quality' => $meal->getServedQuality(),
+            'quality_bonus' => $meal->quality_bonus,
+            'ingredient_quality' => $meal->ingredient_quality,
             // A finished meal without a quality yet asks for it
             'finished' => $meal->isFinishedAt($now),
             // Other meals still to be put in while it is being prepared, with how many portions of each
@@ -858,15 +991,29 @@ class KitchenService
     /**
      * Gets how far along a cooking meal is, from 0 when it went in to 1 when it is done
      */
-    private function getCookingProgress(Meal $meal, Carbon $now): float
+    private function getCookingProgress(Meal $meal): float
     {
-        $total = $meal->Recipe->cooking_time * 60;
+        $total = $meal->Recipe->cooking_time;
         if ($total <= 0) {
             return 1.0;
         }
 
-        $left = max(0, $meal->cooking_ends_at->getTimestamp() - $now->getTimestamp());
-        return round(min(1, max(0, ($total - $left) / $total)), 4);
+        return round(min(1, max(0, $meal->cooking_progress / $total)), 4);
+    }
+
+    /**
+     * Gets how fast a meal is worked on in the stage it is in: prep while planned, cooking once prepped
+     * @return float|null The speed, where 1 is normal, or null when it isn't being worked on
+     */
+    private function getMealSpeed(Meal $meal, string $status, Carbon $now): ?float
+    {
+        $stage = match ($status) {
+            Meal::STATUS_PLANNED => EquipmentStage::PREP,
+            Meal::STATUS_PREPPED, Meal::STATUS_COOKING => EquipmentStage::COOKING,
+            default => null,
+        };
+
+        return $stage !== null ? $this->boostService->getMealSpeed($meal, $stage, $now, $this->boostService->getBoosts($meal->getRestaurant(), $now)) : null;
     }
 
     /**
@@ -890,6 +1037,8 @@ class KitchenService
                 'uuid' => $ingredient->uuid,
                 'name' => $ingredient->name,
                 'category' => $ingredient->category,
+                'parent_uuid' => $ingredient->parent_uuid,
+                'quality' => $ingredient->quality,
                 'icon' => $ingredient->icon !== null ? asset('img/' . $ingredient->icon) : null,
                 'stored' => round((float) ($stored[$ingredient->uuid] ?? 0), 2),
                 'pile' => round((float) ($pile[$ingredient->uuid] ?? 0), 2),

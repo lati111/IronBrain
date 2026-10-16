@@ -72,40 +72,89 @@ export function openOrderModal(table: OrderTable, customers: SeatedCustomer[], o
     openModal('order-modal');
 }
 
-/** Lists the recipes that can be added, filtered by the search */
+/** The recipes with variants opened in the recipe list, by uuid. Collapsed by default */
+const expandedRecipes = new Set<string>();
+
+/**
+ * Lists the recipes that can be added, filtered by the search. A recipe with variants is a collapsed group showing
+ * the range of their prices, which opens to list the recipe itself and each variant. Searching for a variant opens
+ * its group
+ */
 function renderOrderRecipes(): void {
     const list = document.getElementById('order-recipes') as HTMLElement;
     const search = (document.getElementById('order-recipe-search') as HTMLInputElement).value.trim().toLowerCase();
     list.replaceChildren();
 
-    const recipes = (getServiceState()?.recipes ?? []).filter((recipe) => recipe.name.toLowerCase().includes(search));
-    for (const recipe of recipes) {
-        const row = document.createElement('li');
-        row.className = 'order-recipe';
-        row.append(
-            createSpan(recipe.name, 'flex-1 truncate'),
-            createSpan(formatMoney(recipe.price), 'text-xs text-gray-500 whitespace-nowrap'),
-            createSpan('+', 'interactive font-semibold'),
-        );
+    const all = getServiceState()?.recipes ?? [];
+    const matches = (recipe: KitchenRecipe) => recipe.name.toLowerCase().includes(search);
+    for (const base of all.filter((recipe) => recipe.parent_uuid === null)) {
+        const variants = all.filter((recipe) => recipe.parent_uuid === base.uuid);
+        if (variants.length === 0) {
+            if (matches(base)) list.appendChild(createOrderRecipeRow(base));
+            continue;
+        }
 
-        row.addEventListener('click', () => {
-            // Each click adds another portion, for the first customer without one yet, so a round is quick to take
-            draftItems.push({
-                uuid: null,
-                recipeUuid: recipe.uuid,
-                name: recipe.name,
-                price: recipe.price,
-                customerUuid: suggestCustomer(recipe),
-                served: false,
-            });
-            renderOrderItems();
+        // The whole group is shown when the base recipe matches, otherwise only the variants that do
+        const shown = matches(base) ? [base, ...variants] : variants.filter(matches);
+        if (shown.length === 0) continue;
+
+        const expanded = expandedRecipes.has(base.uuid) || (search !== '' && !matches(base));
+        const prices = [base, ...variants].map((recipe) => recipe.price);
+        const low = Math.min(...prices);
+        const high = Math.max(...prices);
+
+        const header = document.createElement('li');
+        header.className = 'order-recipe order-recipe-group';
+        header.classList.toggle('expanded', expanded);
+        header.append(
+            createSpan(expanded ? '▾' : '▸', 'text-xs text-gray-500 w-3'),
+            createSpan(base.name, 'flex-1 truncate'),
+            createSpan(low === high ? formatMoney(low) : `${formatMoney(low)} – ${formatMoney(high)}`, 'text-xs text-gray-500 whitespace-nowrap'),
+        );
+        header.addEventListener('click', () => {
+            if (!expandedRecipes.delete(base.uuid)) expandedRecipes.add(base.uuid);
+            renderOrderRecipes();
         });
-        list.appendChild(row);
+        list.appendChild(header);
+
+        if (expanded) {
+            for (const recipe of shown) {
+                const row = createOrderRecipeRow(recipe, recipe === base ? `${base.name} (base)` : recipe.name);
+                row.classList.add('order-recipe-variant');
+                list.appendChild(row);
+            }
+        }
     }
 
     if (list.childElementCount === 0) {
-        appendEmptyRow(list, (getServiceState()?.recipes ?? []).length === 0 ? 'No recipes yet' : 'No results', 'py-2');
+        appendEmptyRow(list, all.length === 0 ? 'No recipes yet' : 'No results', 'py-2');
     }
+}
+
+/** Creates a row of the recipe list, which adds a portion of the recipe to the order when clicked */
+function createOrderRecipeRow(recipe: KitchenRecipe, label: string = recipe.name): HTMLElement {
+    const row = document.createElement('li');
+    row.className = 'order-recipe';
+    row.append(
+        createSpan(label, 'flex-1 truncate'),
+        createSpan(formatMoney(recipe.price), 'text-xs text-gray-500 whitespace-nowrap'),
+        createSpan('+', 'interactive font-semibold'),
+    );
+
+    row.addEventListener('click', () => {
+        // Each click adds another portion, for the first customer without one yet, so a round is quick to take
+        draftItems.push({
+            uuid: null,
+            recipeUuid: recipe.uuid,
+            name: recipe.name,
+            price: recipe.price,
+            customerUuid: suggestCustomer(recipe),
+            served: false,
+        });
+        renderOrderItems();
+    });
+
+    return row;
 }
 
 /** Suggests the first seated customer that hasn't been given this recipe yet, or the table when everyone has */

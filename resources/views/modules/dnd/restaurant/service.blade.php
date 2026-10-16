@@ -60,6 +60,7 @@
                         <button class="inventory-tab active flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="boost" onclick="switchTab('boost')">Boosts</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="sale" onclick="switchTab('sale')">Sales</button>
                     </div>
                 </div>
@@ -92,6 +93,8 @@
             {{--| Kitchen |--}}
             <aside class="service-kitchen rounded shadow border gray-border">
                 <div class="service-kitchen-title">Kitchen</div>
+                {{--| The boosts active now, with what they are on and how long they have left |--}}
+                <div id="kitchen-boosts" class="kitchen-boosts hidden"></div>
 
                 {{--| The areas sit side by side when there is room for it |--}}
                 <div class="kitchen-areas">
@@ -106,7 +109,7 @@
                         <div id="kitchen-serving" class="kitchen-meal-list kitchen-drop-zone"></div>
                     </section>
 
-                    <section class="kitchen-area">
+                    <section id="kitchen-cooking-area" class="kitchen-area">
                         <h4 class="kitchen-area-title">Cooking</h4>
                         <div id="kitchen-cookers" class="kitchen-cookers"></div>
                     </section>
@@ -235,8 +238,14 @@
         <h3 class="title py-1">Plan a meal</h3>
         <form id="meal-plan-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); planMeal()">
             <x-form.input-wrapper label_text="Recipe">
-                <select id="meal-plan-recipe" name="recipe_uuid" class="underlined" required onchange="renderMealPlanChoices()"></select>
+                <select id="meal-plan-recipe" class="underlined" required onchange="renderMealPlanVariants()"></select>
             </x-form.input-wrapper>
+            {{-- Which variant of the recipe to prepare, when it has any --}}
+            <div id="meal-plan-variant-field" class="contents">
+                <x-form.input-wrapper label_text="Variant">
+                    <select id="meal-plan-variant" name="recipe_uuid" class="underlined" required onchange="renderMealPlanChoices()"></select>
+                </x-form.input-wrapper>
+            </div>
             {{-- Which ingredient to use for each category the recipe takes --}}
             <div id="meal-plan-choices" class="contents"></div>
             <button type="submit" class="hidden"></button>
@@ -249,6 +258,19 @@
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-plan-modal')">Cancel</button>
             <button class="interactive px-5 py-2.5" dusk="confirm" onclick="planMeal()">Plan</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Which variants of its cooking equipment a meal uses, asked when it is put in a cooker |--}}
+    <x-modal id="meal-cook-modal">
+        <h3 class="title py-1">Cooking equipment</h3>
+        <form id="meal-cook-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); confirmCook()">
+            <div id="meal-cook-equipment" class="contents"></div>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-cook-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="meal-cook-confirm" onclick="confirmCook()">Cook</button>
         </x-slot:buttons>
     </x-modal>
 
@@ -265,6 +287,8 @@
             <x-form.input-wrapper label_text="Quality">
                 <input id="meal-quality-input" type="number" name="quality" class="underlined" min="-9999" max="9999" step="1" required/>
             </x-form.input-wrapper>
+            {{-- What the ingredients and boosts add to the quality entered --}}
+            <p id="meal-quality-hint" class="text-sm text-center opacity-75 hidden"></p>
         </form>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="putOffQuality()">Later</button>

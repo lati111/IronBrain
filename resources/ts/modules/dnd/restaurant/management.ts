@@ -42,6 +42,10 @@ interface IngredientType {
     icon: string | null;
     size: number;
     expires_in: number;
+    /** Added to the quality of meals made with it, averaged over their ingredients */
+    quality: number;
+    /** The ingredient this is a variant of, which it can be used instead of */
+    parent_uuid: string | null;
     stored: number;
 }
 
@@ -84,6 +88,9 @@ const COOKER_CATEGORY = 'cooker';
 
 interface RecipeType {
     uuid: string;
+    /** The base recipe this is a variant of. A variant's stats and lists are its base recipe's with its changes */
+    parent_uuid: string | null;
+    variant_changes: VariantChanges | null;
     name: string;
     /** What kind of recipe it is, such as a meal */
     type: string;
@@ -107,6 +114,24 @@ interface RecipeType {
     categories: RecipeCategory[];
     /** Other meals taken, of a specific recipe or of any recipe of a category */
     meals: RecipeMealRequirement[];
+}
+
+/** The lists a variant can add to or take away from, as the server knows them */
+type VariantList = 'ingredients' | 'equipment' | 'byproducts' | 'categories' | 'meals';
+
+/** What a variant changes about its base recipe */
+interface VariantChanges {
+    /** What is added to each of the base recipe's stats */
+    stats: Record<typeof RECIPE_NUMBER_FIELDS[number], number>;
+    /** What is added to the base recipe's lists, where adding what it has already adds to the amount */
+    ingredients: RecipeComponent[];
+    equipment: RecipeComponent[];
+    byproducts: RecipeComponent[];
+    categories: RecipeCategory[];
+    meals: RecipeMealRequirement[];
+    /** What is taken away from the base recipe's lists: by uuid, by category for ingredients taken by category, and
+     * by recipe uuid or CATEGORY_PREFIX and category for meals */
+    removed: Record<VariantList, string[]>;
 }
 
 interface RecipeMealRequirement {
@@ -247,6 +272,21 @@ const recipeComponents: Record<RecipeListKind, Map<string, number>> = {
 /** The component kinds, which are saved under the keys of RECIPE_COMPONENT_KEYS */
 const RECIPE_COMPONENT_KINDS = Object.keys(RECIPE_COMPONENT_KEYS) as RecipeComponentKind[];
 
+/** Every list of the recipe modal */
+const RECIPE_LIST_KINDS: RecipeListKind[] = [...RECIPE_COMPONENT_KINDS, 'meal'];
+
+/** The base recipe of the variant open in the recipe modal, or null when it is no variant. A variant's lists show
+ * its base recipe's entries, which can be taken away, followed by what it adds, which recipeComponents then holds */
+let recipeBase: RecipeType | null = null;
+
+/** What the variant open in the recipe modal takes away from its base recipe's lists, keyed as recipeComponents */
+const recipeRemoved: Record<RecipeListKind, Set<string>> = {
+    ingredient: new Set(),
+    equipment:  new Set(),
+    byproduct:  new Set(),
+    meal:       new Set(),
+};
+
 //| Initialisation
 
 async function init(): Promise<void> {
@@ -342,11 +382,15 @@ function createListRow(): HTMLElement {
 
 /** Renders the sidebar rows for recipes, returning how many recipes exist before filtering */
 function renderRecipeRows(list: HTMLElement, search: string): number {
-    for (const recipe of inventory.recipes.filter((recipe) => recipe.name.toLowerCase().includes(search))) {
+    // Variants are listed under their base recipe
+    const ordered = inventory.recipes.filter((recipe) => recipe.parent_uuid === null).flatMap((base) =>
+        [base, ...inventory.recipes.filter((recipe) => recipe.parent_uuid === base.uuid)]);
+    for (const recipe of ordered.filter((recipe) => recipe.name.toLowerCase().includes(search))) {
         const row = createListRow();
         row.classList.add('clickable');
+        row.classList.toggle('recipe-variant-row', recipe.parent_uuid !== null);
         setIcon(row, null);
-        setField(row, 'name', recipe.name);
+        setField(row, 'name', recipe.parent_uuid !== null ? `↳ ${recipe.name}` : recipe.name);
         setField(row, 'stored', formatMoney(recipe.price));
         row.querySelector('[data-field="stored"]')!.setAttribute('title', 'Price');
         row.title = `${recipe.name} — ${recipe.portions} portions, ${recipe.ingredients.length} ingredients, `
@@ -782,6 +826,7 @@ function openCreateTypeModal(): void {
         editingIngredientUuid = null;
         (document.getElementById('ingredient-create-form') as HTMLFormElement).reset();
         fillIngredientCategoryOptions();
+        fillIngredientParentSelect(null);
         document.getElementById('ingredient-modal-title')!.textContent = 'New Ingredient';
         document.getElementById('ingredient-modal-submit')!.textContent = 'Create';
         document.getElementById('ingredient-modal-delete')!.classList.add('hidden');
@@ -811,6 +856,9 @@ function openEditTypeModal(type: ItemType, uuid: string): void {
         (form.elements.namedItem('category') as HTMLInputElement).value = ingredient.category ?? '';
         (form.elements.namedItem('expires_in') as HTMLInputElement).value = String(ingredient.expires_in);
         (form.elements.namedItem('size') as HTMLInputElement).value = String(ingredient.size);
+        (form.elements.namedItem('quality') as HTMLInputElement).value = String(ingredient.quality);
+        fillIngredientParentSelect(uuid);
+        (form.elements.namedItem('parent_uuid') as HTMLSelectElement).value = ingredient.parent_uuid ?? '';
 
         document.getElementById('ingredient-modal-title')!.textContent = 'Edit Ingredient';
         document.getElementById('ingredient-modal-submit')!.textContent = 'Save';
@@ -847,6 +895,15 @@ function openEditTypeModal(type: ItemType, uuid: string): void {
 function fillIngredientCategoryOptions(): void {
     const list = document.getElementById('ingredient-category-options') as HTMLDataListElement;
     list.replaceChildren(...getIngredientCategories().map((category) => new Option(category)));
+}
+
+function fillIngredientParentSelect(excludeUuid: string | null): void {
+    const select = document.getElementById('ingredient-parent-select') as HTMLSelectElement;
+    select.replaceChildren(new Option('None', ''));
+    for (const ingredient of inventory.ingredients) {
+        if (ingredient.uuid === excludeUuid) continue; // an ingredient cannot be a variant of itself
+        select.appendChild(new Option(ingredient.name, ingredient.uuid));
+    }
 }
 
 function fillEquipmentParentSelect(excludeUuid: string | null): void {
@@ -916,41 +973,149 @@ function openRecipeModal(uuid: string | null): void {
     form.reset();
 
     fillRecipeTextOptions();
+    fillRecipeParentSelect(recipe);
+    recipeBase = recipe?.parent_uuid != null ? inventory.recipes.find((candidate) => candidate.uuid === recipe.parent_uuid) ?? null : null;
+    applyRecipeMode();
+
+    // A variant shows what it changes, rather than the outcome
+    const changes = recipe?.variant_changes ?? null;
     if (recipe !== null) {
         (form.elements.namedItem('name') as HTMLInputElement).value = recipe.name;
         (form.elements.namedItem('type') as HTMLInputElement).value = recipe.type;
         (form.elements.namedItem('category') as HTMLInputElement).value = recipe.category ?? '';
         (form.elements.namedItem('description') as HTMLTextAreaElement).value = recipe.description ?? '';
         for (const field of RECIPE_NUMBER_FIELDS) {
-            (form.elements.namedItem(field) as HTMLInputElement).value = String(recipe[field]);
+            (form.elements.namedItem(field) as HTMLInputElement).value = String(changes !== null ? changes.stats[field] : recipe[field]);
         }
     }
     refreshMoneyInputs(form);
 
-    recipeEquipmentUsage.clear();
-    recipe?.equipment.forEach((component) => recipeEquipmentUsage.set(component.uuid, {
-        stage: component.stage ?? DEFAULT_EQUIPMENT_STAGE,
-        container: component.container ?? false,
-    }));
-
-    for (const kind of RECIPE_COMPONENT_KINDS) {
-        recipeComponents[kind].clear();
-        recipe?.[RECIPE_COMPONENT_KEYS[kind]].forEach((component) => recipeComponents[kind].set(component.uuid, component.amount));
-        if (kind === 'ingredient') {
-            recipe?.categories.forEach((entry) => recipeComponents[kind].set(CATEGORY_PREFIX + entry.category, entry.amount));
-        }
-        renderRecipeComponents(kind);
+    fillRecipeLists(changes ?? recipe);
+    for (const kind of RECIPE_LIST_KINDS) {
+        recipeRemoved[kind].clear();
     }
-
-    recipeComponents.meal.clear();
-    recipe?.meals.forEach((entry) => recipeComponents.meal.set(entry.recipe_uuid ?? CATEGORY_PREFIX + entry.category, entry.portions));
-    renderRecipeComponents('meal');
+    if (changes !== null) {
+        changes.removed.ingredients.forEach((uuid) => recipeRemoved.ingredient.add(uuid));
+        changes.removed.categories.forEach((category) => recipeRemoved.ingredient.add(CATEGORY_PREFIX + category));
+        changes.removed.equipment.forEach((uuid) => recipeRemoved.equipment.add(uuid));
+        changes.removed.byproducts.forEach((uuid) => recipeRemoved.byproduct.add(uuid));
+        changes.removed.meals.forEach((key) => recipeRemoved.meal.add(key));
+    }
+    RECIPE_LIST_KINDS.forEach(renderRecipeComponents);
 
     switchRecipeTab('details');
     document.getElementById('recipe-modal-title')!.textContent = recipe !== null ? 'Edit Recipe' : 'New Recipe';
     document.getElementById('recipe-modal-submit')!.textContent = recipe !== null ? 'Save' : 'Create';
     document.getElementById('recipe-modal-delete')!.classList.toggle('hidden', recipe === null);
     openModal('recipe-modal');
+}
+
+/** Fills the recipe modal's lists from a recipe, or from what a variant adds, as they share the same shape */
+function fillRecipeLists(source: Pick<RecipeType, 'ingredients' | 'equipment' | 'byproducts' | 'categories' | 'meals'> | null): void {
+    recipeEquipmentUsage.clear();
+    source?.equipment.forEach((component) => recipeEquipmentUsage.set(component.uuid, {
+        stage: component.stage ?? DEFAULT_EQUIPMENT_STAGE,
+        container: component.container ?? false,
+    }));
+
+    for (const kind of RECIPE_COMPONENT_KINDS) {
+        recipeComponents[kind].clear();
+        source?.[RECIPE_COMPONENT_KEYS[kind]].forEach((component) => recipeComponents[kind].set(component.uuid, component.amount));
+    }
+    source?.categories.forEach((entry) => recipeComponents.ingredient.set(CATEGORY_PREFIX + entry.category, entry.amount));
+
+    recipeComponents.meal.clear();
+    source?.meals.forEach((entry) => recipeComponents.meal.set(entry.recipe_uuid ?? CATEGORY_PREFIX + entry.category, entry.portions));
+}
+
+/**
+ * Offers the recipes a new recipe can be a variant of: those that are no variant themselves. Whether a recipe is a
+ * variant is settled once it exists, so the choice is only shown for an existing one
+ */
+function fillRecipeParentSelect(recipe: RecipeType | null): void {
+    const select = document.getElementById('recipe-parent-select') as HTMLSelectElement;
+    select.replaceChildren(new Option('None', ''));
+    for (const candidate of inventory.recipes) {
+        if (candidate.parent_uuid === null && candidate.uuid !== recipe?.uuid) {
+            select.appendChild(new Option(candidate.name, candidate.uuid));
+        }
+    }
+
+    select.value = recipe?.parent_uuid ?? '';
+    select.disabled = recipe !== null;
+}
+
+/** Switches a new recipe between being a recipe of its own and a variant, which starts out as its base recipe */
+function changeRecipeParent(): void {
+    const form = document.getElementById('recipe-form') as HTMLFormElement;
+    const uuid = (document.getElementById('recipe-parent-select') as HTMLSelectElement).value;
+    recipeBase = inventory.recipes.find((candidate) => candidate.uuid === uuid) ?? null;
+    applyRecipeMode();
+
+    // A variant's numbers are what it adds, so it starts out adding nothing
+    for (const field of RECIPE_NUMBER_FIELDS) {
+        const input = form.elements.namedItem(field) as HTMLInputElement;
+        input.value = recipeBase !== null ? '0' : input.defaultValue;
+    }
+    refreshMoneyInputs(form);
+
+    fillRecipeLists(null);
+    for (const kind of RECIPE_LIST_KINDS) {
+        recipeRemoved[kind].clear();
+        renderRecipeComponents(kind);
+    }
+}
+
+/**
+ * Sets the recipe modal up for a variant or a recipe of its own. A variant takes its type and category from its
+ * base recipe, and its numbers are added to its base recipe's, so they can also take away
+ */
+function applyRecipeMode(): void {
+    const form = document.getElementById('recipe-form') as HTMLFormElement;
+    const variant = recipeBase !== null;
+
+    const typeRow = document.getElementById('recipe-type-row') as HTMLElement;
+    typeRow.classList.toggle('hidden', variant);
+    typeRow.querySelectorAll('input').forEach((input) => input.disabled = variant);
+
+    for (const field of RECIPE_NUMBER_FIELDS) {
+        const input = form.elements.namedItem(field) as HTMLInputElement;
+        input.dataset.min ??= input.min;
+        input.min = variant ? '' : input.dataset.min;
+    }
+
+    const hint = document.getElementById('recipe-variant-hint') as HTMLElement;
+    hint.classList.toggle('hidden', !variant);
+    hint.textContent = variant
+        ? `Numbers are added to those of ${recipeBase!.name}. Its ingredients, meals and equipment are kept unless crossed out, and those added here come on top`
+        : '';
+}
+
+/** The entries of a list of the base recipe of the variant open in the recipe modal, keyed as recipeComponents */
+function getBaseEntries(kind: RecipeListKind): Map<string, number> {
+    const entries = new Map<string, number>();
+    if (recipeBase === null) return entries;
+
+    if (kind === 'meal') {
+        recipeBase.meals.forEach((entry) => entries.set(entry.recipe_uuid ?? CATEGORY_PREFIX + entry.category, entry.portions));
+        return entries;
+    }
+
+    recipeBase[RECIPE_COMPONENT_KEYS[kind]].forEach((component) => entries.set(component.uuid, component.amount));
+    if (kind === 'ingredient') {
+        recipeBase.categories.forEach((entry) => entries.set(CATEGORY_PREFIX + entry.category, entry.amount));
+    }
+    return entries;
+}
+
+/** Names an entry of a recipe's list: an ingredient, equipment or recipe, or any of a category */
+function describeRecipeEntry(kind: RecipeListKind, key: string): string {
+    const category = getComponentCategory(key);
+    if (category !== null) return `Any ${category}`;
+
+    return kind === 'meal'
+        ? inventory.recipes.find((recipe) => recipe.uuid === key)?.name ?? 'Unknown'
+        : getDefinition(getComponentItemType(kind), key)?.name ?? 'Unknown';
 }
 
 function switchRecipeTab(tab: RecipeTab): void {
@@ -975,15 +1140,39 @@ function renderRecipeComponents(kind: RecipeListKind): void {
     const isMeal = kind === 'meal';
 
     list.replaceChildren();
+
+    // A variant lists its base recipe's entries first, which it keeps unless they are crossed out
+    const base = getBaseEntries(kind);
+    const removed = recipeRemoved[kind];
+    for (const [key, amount] of base) {
+        const definition = getComponentCategory(key) === null && !isMeal ? getDefinition(type, key) : null;
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        row.classList.add('recipe-base-row');
+        row.classList.toggle('removed', removed.has(key));
+        setIcon(row, definition !== null && 'icon' in definition ? definition.icon : null);
+        setField(row, 'name', describeRecipeEntry(kind, key));
+
+        const input = row.querySelector('[data-field="amount"]') as HTMLInputElement;
+        input.value = String(amount);
+        input.disabled = true;
+
+        const toggle = row.querySelector('[data-action="remove"]') as HTMLElement;
+        toggle.title = removed.has(key) ? 'Keep from the base recipe' : 'Take away from the base recipe';
+        toggle.addEventListener('click', () => {
+            if (!removed.delete(key)) removed.add(key);
+            renderRecipeComponents(kind);
+        });
+
+        list.appendChild(row);
+    }
+
     for (const [uuid, amount] of components) {
         const category = getComponentCategory(uuid);
         const definition = category === null && !isMeal ? getDefinition(type, uuid) : null;
         const row = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
         setIcon(row, definition !== null && 'icon' in definition ? definition.icon : null);
-        const name = isMeal && category === null
-            ? inventory.recipes.find((recipe) => recipe.uuid === uuid)?.name
-            : category !== null ? `Any ${category}` : definition?.name;
-        setField(row, 'name', name ?? 'Unknown');
+        // What a variant adds comes on top of its base recipe's
+        setField(row, 'name', (recipeBase !== null ? '+ ' : '') + describeRecipeEntry(kind, uuid));
 
         // Ingredients can be used and produced in fractions, while equipment and meal portions come whole. Invalid
         // amounts are left for the form's own validation to report on save
@@ -1010,17 +1199,18 @@ function renderRecipeComponents(kind: RecipeListKind): void {
         list.appendChild(row);
     }
 
-    if (components.size === 0) {
+    if (components.size === 0 && base.size === 0) {
         const empty = document.createElement('li');
         empty.className = 'text-gray-400 text-sm px-3 py-1';
         empty.textContent = 'None yet';
         list.appendChild(empty);
     }
 
-    document.querySelector(`[data-recipe-count="${kind}"]`)!.textContent = components.size > 0 ? `(${components.size})` : '';
+    const count = components.size + [...base.keys()].filter((key) => !removed.has(key)).length;
+    document.querySelector(`[data-recipe-count="${kind}"]`)!.textContent = count > 0 ? `(${count})` : '';
 
     // Only offer the types that are not part of the list yet. Cookers are where meals cook, so no recipe takes one,
-    // and a recipe can't take a meal of itself
+    // and a recipe can't take a meal of itself. A variant can add more of what its base recipe takes
     const select = document.getElementById(`recipe-${kind}-select`) as HTMLSelectElement;
     const types: {uuid: string, name: string}[] = isMeal
         ? inventory.recipes.filter((recipe) => recipe.uuid !== editingRecipeUuid)
@@ -1151,6 +1341,18 @@ async function saveRecipe(): Promise<void> {
                 .filter(([key]) => getComponentCategory(key) !== null)
                 .map(([key, amount]): RecipeCategory => ({category: getComponentCategory(key)!, amount}));
         }
+    }
+
+    // A variant's lists are what it adds, along with what it takes away from its base recipe's
+    if (recipeBase !== null) {
+        const removedIngredients = [...recipeRemoved.ingredient];
+        payload.remove = {
+            ingredients: removedIngredients.filter((key) => getComponentCategory(key) === null),
+            categories: removedIngredients.map(getComponentCategory).filter((category): category is string => category !== null),
+            equipment: [...recipeRemoved.equipment],
+            byproducts: [...recipeRemoved.byproduct],
+            meals: [...recipeRemoved.meal],
+        } satisfies Record<VariantList, string[]>;
     }
 
     try {
@@ -1454,6 +1656,7 @@ function describe(type: ItemType, uuid: string): string {
 (<any>window).createIngredient       = createIngredient;
 (<any>window).createEquipment        = createEquipment;
 (<any>window).saveRecipe             = saveRecipe;
+(<any>window).changeRecipeParent     = changeRecipeParent;
 (<any>window).saveConversion         = saveConversion;
 (<any>window).addRecipeComponent     = addRecipeComponent;
 (<any>window).switchRecipeTab        = switchRecipeTab;

@@ -3,6 +3,7 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\ActiveBoost;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Order;
@@ -131,6 +132,9 @@ class ShiftService
             Work::where('restaurant_uuid', $restaurant->uuid)
                 ->whereIn('station', [WorkStation::CLEANING->value, WorkStation::WAITING->value])
                 ->delete();
+
+            // Boosts last for the service they were activated in
+            ActiveBoost::where('restaurant_uuid', $restaurant->uuid)->delete();
 
             // The staff goes home, while prep that is still queued waits for the next service
             Employee::where('restaurant_uuid', $restaurant->uuid)->update(['station' => null]);

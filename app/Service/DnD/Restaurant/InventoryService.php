@@ -106,6 +106,8 @@ class InventoryService
                 'icon' => $ingredient->icon !== null ? asset('img/' . $ingredient->icon) : null,
                 'size' => $ingredient->size,
                 'expires_in' => $ingredient->expires_in,
+                'quality' => $ingredient->quality,
+                'parent_uuid' => $ingredient->parent_uuid,
                 'stored' => $storedIngredients[$ingredient->uuid] ?? 0,
             ])->values()->all(),
             'equipment' => $equipment->map(fn (Equipment $piece) => [
@@ -133,6 +135,9 @@ class InventoryService
             ])->values()->all(),
             'recipes' => $recipes->map(fn (Recipe $recipe) => [
                 'uuid' => $recipe->uuid,
+                // A variant's stats and lists are the outcome of its base recipe with its changes
+                'parent_uuid' => $recipe->parent_uuid,
+                'variant_changes' => $recipe->describeVariantChanges(),
                 'name' => $recipe->name,
                 'type' => $recipe->type,
                 'category' => $recipe->category,

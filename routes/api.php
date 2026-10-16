@@ -151,6 +151,8 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.service.conversion.queue');
             Route::post('/work/{work_uuid}/cancel', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'cancelConversion'])
                 ->name('api.dnd.restaurant.service.conversion.cancel');
+            Route::post('/boost/{boost_uuid}/activate', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'activateBoost'])
+                ->name('api.dnd.restaurant.service.boost.activate');
             Route::post('/table/{table_uuid}/waiter', [\App\Http\Api\Modules\DnD\Restaurant\ServiceApi::class, 'assignWaiter'])
                 ->name('api.dnd.restaurant.service.table.waiter')
                 ->withoutMiddleware('dnd.restaurant.manager');
@@ -196,6 +198,13 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.floor.player.invite');
             Route::post('/player/{user_uuid}/remove', [\App\Http\Api\Modules\DnD\Restaurant\PlayerApi::class, 'removePlayer'])
                 ->name('api.dnd.restaurant.floor.player.remove');
+
+            Route::post('/boost/create', [\App\Http\Api\Modules\DnD\Restaurant\BoostApi::class, 'createBoost'])
+                ->name('api.dnd.restaurant.floor.boost.create');
+            Route::post('/boost/{boost_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\BoostApi::class, 'editBoost'])
+                ->name('api.dnd.restaurant.floor.boost.edit');
+            Route::post('/boost/{boost_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\BoostApi::class, 'deleteBoost'])
+                ->name('api.dnd.restaurant.floor.boost.delete');
 
             Route::post('/customer/create', [\App\Http\Api\Modules\DnD\Restaurant\FloorApi::class, 'createCustomer'])
                 ->name('api.dnd.restaurant.floor.customer.create');

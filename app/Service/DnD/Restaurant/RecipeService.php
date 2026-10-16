@@ -146,4 +146,127 @@ class RecipeService
 
         RecipeMeal::where('recipe_uuid', $recipe->uuid)->whereNotIn('uuid', $kept)->delete();
     }
+
+    //| Variants
+
+    /**
+     * Gets how a meal a recipe takes is told apart: by the recipe it must be of, or by its category with the category
+     * prefix in front
+     * @param string|null $recipeUuid The uuid of the recipe the meal must be of, if any
+     * @param string|null $category The category of recipe the meal must be of, when no recipe is
+     * @return string The key
+     */
+    public function getMealKey(?string $recipeUuid, ?string $category): string
+    {
+        return $recipeUuid ?? 'category:' . $category;
+    }
+
+    /**
+     * Rebuilds every variant of a recipe, after the recipe changed
+     * @param Recipe $base The base recipe
+     */
+    public function rebuildVariants(Recipe $base): void
+    {
+        foreach (Recipe::where('parent_uuid', $base->uuid)->get() as $variant) {
+            $this->rebuildVariant($variant);
+        }
+    }
+
+    /**
+     * Rebuilds a variant's stats and components from its base recipe with its changes applied. Its stats are its base
+     * recipe's plus what it adds, never below what a recipe can have. Its lists are its base recipe's without what it
+     * takes away, plus what it adds, where adding something the base recipe has already adds to its amount. What was
+     * added but no longer exists is left out. The variant is saved
+     * @param Recipe $variant The variant
+     */
+    public function rebuildVariant(Recipe $variant): void
+    {
+        $base = Recipe::find($variant->parent_uuid);
+        if ($base === null) {
+            return;
+        }
+
+        $changes = $variant->variant_changes ?? [];
+        $removed = fn (string $list) => array_flip($changes['remove'][$list] ?? []);
+        $added = fn (string $list) => $changes['add'][$list] ?? [];
+
+        foreach (Recipe::VARIANT_STATS as $field) {
+            $value = $base->{$field} + ($changes['stats'][$field] ?? 0);
+            $variant->{$field} = match ($field) {
+                'price' => max(0, round($value, 2)),
+                'portions' => max(1, (int) $value),
+                default => max(0, (int) $value),
+            };
+        }
+
+        // The type and category are the base recipe's, so a variant is found wherever its base recipe is
+        $variant->type = $base->type;
+        $variant->category = $base->category;
+        $variant->save();
+
+        foreach (self::COMPONENTS as $kind => [$link, $key, $model]) {
+            $isEquipment = $model === Equipment::class;
+            $components = [];
+            foreach ($link::where('recipe_uuid', $base->uuid)->get() as $entry) {
+                $components[$entry->{$key}] = $isEquipment
+                    ? ['amount' => $entry->amount, 'stage' => $entry->stage, 'container' => $entry->container]
+                    : ['amount' => $entry->amount];
+            }
+            $components = array_diff_key($components, $removed($kind));
+
+            $additions = $added($kind);
+            $existing = $model::whereIn('uuid', array_keys($additions))->pluck('uuid')->all();
+            foreach ($additions as $uuid => $attributes) {
+                if (!in_array($uuid, $existing, true)) {
+                    continue;
+                }
+
+                if (isset($components[$uuid])) {
+                    $amount = $components[$uuid]['amount'] + $attributes['amount'];
+                    $components[$uuid]['amount'] = $isEquipment ? (int) $amount : round($amount, 2);
+                } else {
+                    $components[$uuid] = $isEquipment
+                        ? ['amount' => (int) $attributes['amount'], 'stage' => EquipmentStage::from($attributes['stage']), 'container' => (bool) $attributes['container']]
+                        : ['amount' => round($attributes['amount'], 2)];
+                }
+            }
+
+            $this->syncComponents($variant, $kind, $components);
+        }
+
+        $categories = array_diff_key(RecipeCategory::where('recipe_uuid', $base->uuid)->pluck('amount', 'category')->all(), $removed('categories'));
+        foreach ($added('categories') as $category => $amount) {
+            $categories[$category] = round(($categories[$category] ?? 0) + $amount, 2);
+        }
+        $this->syncCategories($variant, $categories);
+
+        $meals = [];
+        foreach (RecipeMeal::where('recipe_uuid', $base->uuid)->get() as $entry) {
+            $meals[$this->getMealKey($entry->required_recipe_uuid, $entry->category)] = [
+                'recipe_uuid' => $entry->required_recipe_uuid,
+                'category' => $entry->category,
+                'portions' => $entry->portions,
+            ];
+        }
+        $meals = array_diff_key($meals, $removed('meals'));
+
+        $additions = $added('meals');
+        $existing = Recipe::whereIn('uuid', array_filter(array_column($additions, 'recipe_uuid')))->pluck('uuid')->all();
+        foreach ($additions as $meal) {
+            if ($meal['recipe_uuid'] !== null && !in_array($meal['recipe_uuid'], $existing, true)) {
+                continue;
+            }
+
+            $key = $this->getMealKey($meal['recipe_uuid'], $meal['category']);
+            if (isset($meals[$key])) {
+                $meals[$key]['portions'] += $meal['portions'];
+            } else {
+                $meals[$key] = $meal;
+            }
+        }
+
+        // A variant can't take a meal of itself, even when its base recipe does
+        unset($meals[$variant->uuid]);
+        $this->syncMeals($variant, array_values($meals));
+    }
 }

@@ -26,6 +26,8 @@ export interface ServiceIngredient {
 
 export interface KitchenRecipe {
     uuid: string;
+    /** The base recipe this is a variant of, which it is listed under */
+    parent_uuid: string | null;
     name: string;
     /** What the recipe is ordered at: its sale price while on sale */
     price: number;
@@ -36,13 +38,40 @@ export interface KitchenRecipe {
     cooking_time: number;
     /** Ingredients taken by category, of which the one to use is chosen when planning the meal */
     categories: KitchenRecipeCategory[];
+    /** Ingredients taken outright, of which a variant can be used instead */
+    ingredients: KitchenRecipeIngredient[];
+    /** Equipment other than cookers, of which a variant can be used instead */
+    equipment: KitchenRecipeEquipment[];
+}
+
+interface KitchenRecipeEquipment {
+    equipment_uuid: string;
+    stage: 'prep' | 'cooking' | 'serving';
+    amount: number;
+    /** The equipment itself first, then its variants, with how many of each are clean */
+    options: {uuid: string, name: string, clean: number}[];
 }
 
 interface KitchenRecipeCategory {
     category: string;
     amount: number;
     /** The ingredients of the category, with how much of each is in storage and the pile together */
-    options: {uuid: string, name: string, available: number}[];
+    options: KitchenIngredientOption[];
+}
+
+interface KitchenRecipeIngredient {
+    ingredient_uuid: string;
+    amount: number;
+    /** The ingredient itself first, then its variants */
+    options: KitchenIngredientOption[];
+}
+
+interface KitchenIngredientOption {
+    uuid: string;
+    name: string;
+    /** How much is in storage and the pile together */
+    available: number;
+    quality: number;
 }
 
 interface Cooker {
@@ -81,8 +110,14 @@ interface Meal {
     expires_in_minutes: number | null;
     spoiled: boolean;
     portions_left: number;
-    /** How well the meal turned out, asked for once it is finished */
+    /** The quality the meal is served at: how well it turned out, asked for once it is finished, with boosts added */
     quality: number | null;
+    /** What boosts added to the quality */
+    quality_bonus: number;
+    /** The average quality of the ingredients it was made with, also added to the quality */
+    ingredient_quality: number;
+    /** How fast it is being worked on while prepped or cooking, where 1 is normal */
+    speed: number | null;
     /** Whether the meal is done cooking or ready to serve */
     finished: boolean;
     /** Other meals still to be put in before it can be cooked */
@@ -191,6 +226,31 @@ interface ConversionJob {
     output_amount: number;
 }
 
+/** A boost that can be activated during service, as often as wanted */
+export interface ServiceBoost {
+    uuid: string;
+    name: string;
+    target: 'equipment' | 'meal' | 'area';
+    speed_bonus: number;
+    minutes_off: number;
+    quality_bonus: number;
+    duration: number;
+}
+
+/** A boost active now, with what it is on and how long it has left */
+interface ActiveBoost {
+    uuid: string;
+    name: string;
+    speed_bonus: number;
+    equipment_uuid: string | null;
+    /** The single cooker of the equipment it is on, or null when on all of it */
+    cooker_slot: number | null;
+    meal_uuid: string | null;
+    area: string | null;
+    target_name: string;
+    minutes_left: number;
+}
+
 /** A conversion of an ingredient into another, done in the prep area during service */
 export interface ServiceConversion {
     uuid: string;
@@ -216,6 +276,8 @@ export interface ServiceState {
     clock: Clock;
     ingredients: ServiceIngredient[];
     conversions: ServiceConversion[];
+    boosts: ServiceBoost[];
+    active_boosts: ActiveBoost[];
     recipes: KitchenRecipe[];
     cookers: Cooker[];
     equipment: KitchenEquipment[];
@@ -250,6 +312,8 @@ const MEAL_MIME = 'application/x-restaurant-meal';
 export const EMPLOYEE_MIME = 'application/x-restaurant-employee';
 /** Drag type for plated portions, which are dropped on tables */
 export const PLATE_MIME = 'application/x-restaurant-plate';
+/** Boosts are activated by dropping them on what they boost */
+export const BOOST_MIME = 'application/x-restaurant-boost';
 
 let serviceUrl = '';
 let state: ServiceState | null = null;
@@ -261,6 +325,7 @@ const stateListeners: ((state: ServiceState) => void)[] = [];
 let draggedMeal: Meal | null = null;
 let draggedPlate: Plate | null = null;
 let draggedEmployee: Employee | null = null;
+let draggedBoost: ServiceBoost | null = null;
 let pendingScrap: Meal | null = null;
 
 /** The meal the quality modal is asking about, and the meals whose question was put off until the page reloads */
@@ -327,6 +392,22 @@ export function getDraggedPlate(): Plate | null {
     return draggedPlate;
 }
 
+/** Keeps the boost being dragged from the sidebar, so the kitchen can tell what it may be dropped on */
+export function setDraggedBoost(boost: ServiceBoost | null): void {
+    draggedBoost = boost;
+}
+
+/** Sets up an element to take a boost of a kind dropped on it, activating it there */
+function setupBoostTarget(element: HTMLElement, target: ServiceBoost['target'], parameters: Record<string, string>): void {
+    setupDropTarget(element, BOOST_MIME, (uuid) => activateBoost(uuid, parameters), () => draggedBoost?.target === target);
+}
+
+async function activateBoost(uuid: string, parameters: Record<string, string>): Promise<void> {
+    const formData = new FormData();
+    Object.entries(parameters).forEach(([key, value]) => formData.append(key, value));
+    await post(`/boost/${uuid}/activate`, formData);
+}
+
 export function getDraggedEmployee(): Employee | null {
     return draggedEmployee;
 }
@@ -346,6 +427,11 @@ export async function initKitchen(url: string): Promise<void> {
     setupDropTarget(document.getElementById('kitchen-serving') as HTMLElement, MEAL_MIME, (uuid) => {
         post(`/meal/${uuid}/serve`);
     }, () => draggedMeal?.status === 'done');
+
+    // A boost on an area is dropped on the area itself
+    setupBoostTarget(document.getElementById('kitchen-prep-area') as HTMLElement, 'area', {area: 'prep'});
+    setupBoostTarget(document.getElementById('kitchen-cooking-area') as HTMLElement, 'area', {area: 'cooking'});
+    setupBoostTarget(document.getElementById('kitchen-cleaning-area') as HTMLElement, 'area', {area: 'cleaning'});
 
     // Employees work in the area they are dropped on, and stop when dropped back with the rest of the staff
     const areas: [string, WorkStationCode | null][] = [
@@ -372,6 +458,7 @@ function setState(data: ServiceState): void {
     closeMealMenu();
     state = data;
     renderClock();
+    renderActiveBoosts();
     renderCookers();
     renderPreparation();
     renderServing();
@@ -380,6 +467,24 @@ function setState(data: ServiceState): void {
     renderStationProgress();
     stateListeners.forEach((listener) => listener(data));
     askForQuality();
+}
+
+//| Boosts
+
+/** Shows the boosts active now, each with what it is on and how long it has left */
+function renderActiveBoosts(): void {
+    const container = document.getElementById('kitchen-boosts') as HTMLElement;
+    container.replaceChildren();
+
+    for (const boost of state!.active_boosts) {
+        const chip = document.createElement('span');
+        chip.className = 'kitchen-boost';
+        chip.textContent = `⚡ ${boost.name} · ${boost.target_name} · ${formatMinutes(boost.minutes_left)}`;
+        chip.title = `+${boost.speed_bonus} speed on ${boost.target_name} for another ${formatMinutes(boost.minutes_left)}`;
+        container.appendChild(chip);
+    }
+
+    container.classList.toggle('hidden', state!.active_boosts.length === 0);
 }
 
 //| Clock
@@ -440,8 +545,10 @@ function renderCookers(): void {
             }
 
             // Only empty cookers take a prepped meal
-            setupDropTarget(element, MEAL_MIME, (uuid) => cookMeal(uuid, cooker.uuid, slot),
+            setupDropTarget(element, MEAL_MIME, (uuid) => chooseCookingEquipment(uuid, cooker.uuid, slot),
                 () => meal === null && draggedMeal?.status === 'prepped');
+            // A boost on equipment dropped here is on this one cooker only
+            setupBoostTarget(element, 'equipment', {equipment_uuid: cooker.uuid, cooker_slot: String(slot)});
 
             container.appendChild(element);
         }
@@ -452,11 +559,37 @@ function renderCookers(): void {
     }
 }
 
-async function cookMeal(uuid: string, cookerUuid: string, slot: number): Promise<void> {
-    const formData = new FormData();
+/** Where a dropped meal is going, while asking which variants of its cooking equipment to use */
+let pendingCook: {uuid: string, cookerUuid: string, slot: number} | null = null;
+
+/** Cooks a meal straight away, unless its cooking equipment has variants, in which case it asks which to use first */
+async function chooseCookingEquipment(uuid: string, cookerUuid: string, slot: number): Promise<void> {
+    const meal = state!.meals.find((candidate) => candidate.uuid === uuid);
+    const recipe = state!.recipes.find((candidate) => candidate.uuid === meal?.recipe_uuid);
+    const container = document.getElementById('meal-cook-equipment') as HTMLElement;
+    if (renderEquipmentChoices(container, recipe, 'cooking') === 0) {
+        await cookMeal(uuid, cookerUuid, slot);
+        return;
+    }
+
+    pendingCook = {uuid, cookerUuid, slot};
+    openModal('meal-cook-modal');
+}
+
+async function confirmCook(): Promise<void> {
+    if (pendingCook === null) return;
+
+    const form = document.getElementById('meal-cook-form') as HTMLFormElement;
+    if (await cookMeal(pendingCook.uuid, pendingCook.cookerUuid, pendingCook.slot, new FormData(form))) {
+        pendingCook = null;
+        closeModal('meal-cook-modal');
+    }
+}
+
+async function cookMeal(uuid: string, cookerUuid: string, slot: number, formData = new FormData()): Promise<boolean> {
     formData.append('cooker_uuid', cookerUuid);
     formData.append('slot', String(slot));
-    await post(`/meal/${uuid}/cook`, formData);
+    return await post(`/meal/${uuid}/cook`, formData);
 }
 
 //| Preparation
@@ -502,27 +635,73 @@ function createConversionCard(job: WorkJob): HTMLElement {
 function openPlanMealModal(): void {
     const select = document.getElementById('meal-plan-recipe') as HTMLSelectElement;
     select.replaceChildren();
-    for (const recipe of state!.recipes) {
-        const label = `${recipe.name} (prep ${formatMinutes(recipe.prep_time)}, cook ${formatMinutes(recipe.cooking_time)})`;
-        select.appendChild(new Option(label, recipe.uuid));
+    // Variants are chosen once their base recipe is
+    for (const recipe of state!.recipes.filter((candidate) => candidate.parent_uuid === null)) {
+        select.appendChild(new Option(describePlannedRecipe(recipe), recipe.uuid));
     }
 
     if (state!.recipes.length === 0) {
         select.appendChild(new Option('No recipes yet', ''));
     }
 
-    renderMealPlanChoices();
+    renderMealPlanVariants();
     openModal('meal-plan-modal');
+}
+
+/** Describes a recipe to plan with how long it takes, such as "Stew (prep 10m, cook 20m)" */
+function describePlannedRecipe(recipe: KitchenRecipe, name: string = recipe.name): string {
+    return `${name} (prep ${formatMinutes(recipe.prep_time)}, cook ${formatMinutes(recipe.cooking_time)})`;
+}
+
+/** Asks which variant of the chosen recipe to prepare, defaulting to the recipe itself, when it has any */
+function renderMealPlanVariants(): void {
+    const baseUuid = (document.getElementById('meal-plan-recipe') as HTMLSelectElement).value;
+    const base = state!.recipes.find((candidate) => candidate.uuid === baseUuid);
+    const variants = state!.recipes.filter((candidate) => candidate.parent_uuid === baseUuid);
+
+    const select = document.getElementById('meal-plan-variant') as HTMLSelectElement;
+    select.replaceChildren();
+    if (base !== undefined) {
+        select.appendChild(new Option(describePlannedRecipe(base, `${base.name} (base)`), base.uuid));
+    }
+    for (const variant of variants) {
+        select.appendChild(new Option(describePlannedRecipe(variant), variant.uuid));
+    }
+    select.value = baseUuid;
+    document.getElementById('meal-plan-variant-field')!.classList.toggle('hidden', variants.length === 0);
+
+    renderMealPlanChoices();
 }
 
 /** Asks which ingredient to use for each category the chosen recipe takes, listing those with enough in stock first */
 function renderMealPlanChoices(): void {
     const container = document.getElementById('meal-plan-choices') as HTMLElement;
     const template = document.getElementById('meal-plan-choice-template') as HTMLTemplateElement;
-    const recipeUuid = (document.getElementById('meal-plan-recipe') as HTMLSelectElement).value;
+    // The variant chosen, which is the recipe itself when it has none
+    const recipeUuid = (document.getElementById('meal-plan-variant') as HTMLSelectElement).value;
     const recipe = state!.recipes.find((candidate) => candidate.uuid === recipeUuid);
 
     container.replaceChildren();
+
+    // Ingredients with variants default to the one the recipe takes, with those short of stock greyed out
+    for (const requirement of recipe?.ingredients ?? []) {
+        if (requirement.options.length < 2) continue;
+
+        const field = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        field.querySelector('label')!.textContent = `${requirement.options[0].name} (${formatAmount(requirement.amount)})`;
+
+        const select = field.querySelector('select') as HTMLSelectElement;
+        select.name = `ingredients[${requirement.ingredient_uuid}]`;
+        for (const option of requirement.options) {
+            const element = new Option(describeIngredientOption(option), option.uuid);
+            element.disabled = option.available < requirement.amount;
+            select.appendChild(element);
+        }
+        select.value = requirement.ingredient_uuid;
+
+        container.appendChild(field);
+    }
+
     for (const requirement of recipe?.categories ?? []) {
         const field = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
         field.querySelector('label')!.textContent = `${requirement.category} (${formatAmount(requirement.amount)})`;
@@ -532,13 +711,57 @@ function renderMealPlanChoices(): void {
         select.appendChild(new Option(`Choose a ${requirement.category.toLowerCase()}...`, ''));
         const options = [...requirement.options].sort((a, b) => Number(b.available >= requirement.amount) - Number(a.available >= requirement.amount));
         for (const option of options) {
-            const element = new Option(`${option.name} (${formatAmount(option.available)} in stock)`, option.uuid);
+            const element = new Option(describeIngredientOption(option), option.uuid);
             element.disabled = option.available < requirement.amount;
             select.appendChild(element);
         }
 
         container.appendChild(field);
     }
+
+    renderEquipmentChoices(container, recipe, 'prep', false);
+}
+
+/** Describes an ingredient to choose with how much is in stock, and its quality when it has one, such as "Salt (Q2, 5 in stock)" */
+function describeIngredientOption(option: KitchenIngredientOption): string {
+    const quality = option.quality !== 0 ? `Q${option.quality}, ` : '';
+    return `${option.name} (${quality}${formatAmount(option.available)} in stock)`;
+}
+
+/**
+ * Asks which piece to use for each piece of equipment of a stage that has variants, defaulting to the equipment the
+ * recipe takes. Pieces without enough clean are greyed out
+ * @returns How many pieces of equipment can be chosen
+ */
+function renderEquipmentChoices(container: HTMLElement, recipe: KitchenRecipe | undefined, stage: 'prep' | 'cooking', clear = true): number {
+    const template = document.getElementById('meal-plan-choice-template') as HTMLTemplateElement;
+    if (clear) container.replaceChildren();
+
+    // The same equipment can be taken more than once, as a container and not
+    const needed = new Map<string, KitchenRecipeEquipment>();
+    for (const entry of recipe?.equipment ?? []) {
+        if (entry.stage !== stage || entry.options.length < 2) continue;
+        const existing = needed.get(entry.equipment_uuid);
+        needed.set(entry.equipment_uuid, existing !== undefined ? {...existing, amount: existing.amount + entry.amount} : entry);
+    }
+
+    for (const entry of needed.values()) {
+        const field = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        field.querySelector('label')!.textContent = `${entry.options[0].name} (${entry.amount})`;
+
+        const select = field.querySelector('select') as HTMLSelectElement;
+        select.name = `equipment[${entry.equipment_uuid}]`;
+        for (const option of entry.options) {
+            const element = new Option(`${option.name} (${option.clean} clean)`, option.uuid);
+            element.disabled = option.clean < entry.amount;
+            select.appendChild(element);
+        }
+        select.value = entry.equipment_uuid;
+
+        container.appendChild(field);
+    }
+
+    return needed.size;
 }
 
 /** Shows an ingredient amount with at most two decimals */
@@ -630,6 +853,7 @@ function renderEquipment(): void {
         const row = document.createElement('li');
         row.className = 'kitchen-equipment-row';
         row.title = `${piece.category_label} — ${describeUsage(piece)}`;
+        setupBoostTarget(row, 'equipment', {equipment_uuid: piece.uuid});
 
         // Warns when few pieces are left clean, as dirty or in use pieces can't be used
         if (piece.amount > 0) {
@@ -859,6 +1083,11 @@ function createMealCard(meal: Meal): HTMLElement {
     card.classList.toggle('spoiled', meal.spoiled);
     card.dataset.status = meal.status;
 
+    // Prepped and cooking meals take a meal boost dropped on them
+    if (meal.status === 'prepped' || meal.status === 'cooking') {
+        setupBoostTarget(card, 'meal', {meal_uuid: meal.uuid});
+    }
+
     // Meals still waiting on other meals take a finished one dropped on them
     if (meal.missing_meals.length > 0) {
         setupDropTarget(card, MEAL_MIME, (uuid) => supplyMeal(meal, uuid),
@@ -1080,9 +1309,22 @@ function openQualityModal(meal: Meal): void {
     document.getElementById('meal-quality-title')!.textContent = `${meal.name} is ready`;
 
     const input = document.getElementById('meal-quality-input') as HTMLInputElement;
-    input.value = meal.quality !== null ? String(meal.quality) : '';
+    // The quality asked for is how well it turned out, before what boosts and its ingredients added
+    input.value = meal.quality !== null ? String(meal.quality - meal.quality_bonus - meal.ingredient_quality) : '';
+
+    const extras = [];
+    if (meal.ingredient_quality !== 0) extras.push(`ingredients ${formatBonus(meal.ingredient_quality)}`);
+    if (meal.quality_bonus !== 0) extras.push(`boosts ${formatBonus(meal.quality_bonus)}`);
+    const hint = document.getElementById('meal-quality-hint') as HTMLElement;
+    hint.textContent = extras.length > 0 ? `Added on top: ${extras.join(', ')}` : '';
+    hint.classList.toggle('hidden', extras.length === 0);
     openModal('meal-quality-modal');
     input.focus();
+}
+
+/** Shows a quality added with its sign, such as "+3" or "-2" */
+function formatBonus(bonus: number): string {
+    return bonus > 0 ? `+${bonus}` : String(bonus);
 }
 
 async function saveQuality(): Promise<void> {
@@ -1127,6 +1369,14 @@ async function confirmScrapMeal(): Promise<void> {
 }
 
 function describeTimer(meal: Meal): string {
+    const timer = describeBaseTimer(meal);
+    if (meal.speed === null || meal.speed === 1) return timer;
+
+    // Equipment and boosts make it go faster or slower than normal
+    return timer === '' ? `×${meal.speed}` : `${timer} ×${meal.speed}`;
+}
+
+function describeBaseTimer(meal: Meal): string {
     if (meal.status === 'cooking') {
         return `${formatMinutes(meal.cooking_minutes_left ?? 0)} left`;
     }
@@ -1247,6 +1497,8 @@ export function formatMinutes(minutes: number): string {
 (<any>window).setServiceTime    = setServiceTime;
 (<any>window).openPlanMealModal = openPlanMealModal;
 (<any>window).planMeal          = planMeal;
+(<any>window).renderMealPlanVariants = renderMealPlanVariants;
+(<any>window).confirmCook       = confirmCook;
 (<any>window).renderMealPlanChoices = renderMealPlanChoices;
 (<any>window).confirmSupplyMeal = confirmSupplyMeal;
 (<any>window).confirmScrapMeal  = confirmScrapMeal;

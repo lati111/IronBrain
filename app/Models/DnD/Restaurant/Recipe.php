@@ -3,11 +3,14 @@
 namespace App\Models\DnD\Restaurant;
 
 use App\Models\DnD\Restaurant\Interfaces\RestaurantDataModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @inheritdoc
+ * @property string|null parent_uuid The uuid of the base recipe this is a variant of, if any. A variant's own stats and
+ *                                   components are its base recipe's with its changes applied
  * @property string name The display name of the recipe
  * @property string type What kind of recipe it is, such as a meal
  * @property string|null category The category of the recipe, which other recipes can require any meal of
@@ -20,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property integer fresh_for How long the dish stays fresh, in minutes
  * @property integer good_for How long the dish stays good, in hours
  * @property integer expires_in After how long the dish expires, in days
+ * @property array|null variant_changes For a variant, what it changes about its base recipe: the stats it adds as
+ *                                      stats, the components it adds as add and those it takes away as remove, both
+ *                                      per list of VARIANT_LISTS
  */
 class Recipe extends RestaurantDataModel
 {
@@ -28,8 +34,15 @@ class Recipe extends RestaurantDataModel
     /** @inheritdoc */
     protected $table = self::TABLE_NAME;
 
+    /** @var string[] The stats a variant adds to its base recipe's */
+    public const array VARIANT_STATS = ['price', 'portions', 'difficulty', 'prep_time', 'cooking_time', 'fresh_for', 'good_for', 'expires_in'];
+
+    /** @var string[] The lists a variant can add to or take away from its base recipe's */
+    public const array VARIANT_LISTS = ['ingredients', 'equipment', 'byproducts', 'categories', 'meals'];
+
     /** @inheritdoc */
     protected $casts = [
+        'variant_changes'   => 'array',
         'price'             => 'float',
         'portions'          => 'integer',
         'difficulty'        => 'integer',
@@ -40,7 +53,50 @@ class Recipe extends RestaurantDataModel
         'expires_in'        => 'integer',
     ];
 
+    /**
+     * Describes what a variant changes about its base recipe: what it adds to each stat, the components it adds in
+     * the same form as the recipe's own lists, and what it takes away from each list
+     * @return array|null The changes, or null when the recipe is no variant
+     */
+    public function describeVariantChanges(): ?array
+    {
+        if ($this->parent_uuid === null) {
+            return null;
+        }
+
+        $changes = $this->variant_changes ?? [];
+        $added = fn (string $list) => collect($changes['add'][$list] ?? [])
+            ->map(fn (array $attributes, $uuid) => array_merge(['uuid' => (string) $uuid], $attributes))->values()->all();
+
+        return [
+            'stats' => array_merge(array_fill_keys(self::VARIANT_STATS, 0), $changes['stats'] ?? []),
+            'ingredients' => $added('ingredients'),
+            'equipment' => $added('equipment'),
+            'byproducts' => $added('byproducts'),
+            'categories' => collect($changes['add']['categories'] ?? [])
+                ->map(fn ($amount, $category) => ['category' => (string) $category, 'amount' => (float) $amount])->values()->all(),
+            'meals' => array_values($changes['add']['meals'] ?? []),
+            'removed' => array_merge(array_fill_keys(self::VARIANT_LISTS, []), $changes['remove'] ?? []),
+        ];
+    }
+
     //| Relationships
+
+    /**
+     * The relationship for the base recipe this is a variant of
+     * @return BelongsTo
+     */
+    public function Parent(): BelongsTo {
+        return $this->belongsTo(Recipe::class, 'parent_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the variants of this recipe
+     * @return HasMany
+     */
+    public function Variants(): HasMany {
+        return $this->hasMany(Recipe::class, 'parent_uuid', 'uuid');
+    }
 
     /**
      * The relationship for the ingredient entries of this recipe

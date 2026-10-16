@@ -38,6 +38,7 @@
                         <button class="inventory-tab flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="employee" onclick="switchTab('employee')">Employees</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="player" onclick="switchTab('player')">Players</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="boost" onclick="switchTab('boost')">Boosts</button>
                     </div>
                 </div>
 
@@ -225,6 +226,46 @@
         </x-slot:buttons>
     </x-modal>
 
+    {{--| Create / edit boost modal. Boosts are activated during service, as often as wanted |--}}
+    <x-modal id="boost-modal">
+        <h3 id="boost-modal-title" class="title py-1">New Boost</h3>
+        <form id="boost-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveBoost()">
+            <x-form.input-wrapper label_text="Name">
+                <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Activated on">
+                <select name="target" class="underlined" onchange="updateBoostFields()" required>
+                    <option value="equipment">Equipment</option>
+                    <option value="meal">A prepped or cooking meal</option>
+                    <option value="area">The prep, cooking or cleaning area</option>
+                </select>
+            </x-form.input-wrapper>
+            {{--| The speed bonus adds to the speed of what it is on, as an equipment multiplier does |--}}
+            <div class="flex gap-3">
+                <x-form.input-wrapper label_text="Speed bonus" cls="flex-1">
+                    <input type="number" name="speed_bonus" class="underlined" min="0" max="100" step="0.01" value="0" required/>
+                </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="For (minutes)" cls="flex-1">
+                    <input type="number" name="duration" class="underlined" min="0" max="10080" step="1" value="0" required/>
+                </x-form.input-wrapper>
+            </div>
+            <x-form.input-wrapper label_text="Minutes of work done straight away">
+                <input type="number" name="minutes_off" class="underlined" min="0" max="99999" step="0.01" value="0" required/>
+            </x-form.input-wrapper>
+            <div id="boost-quality-field" class="hidden">
+                <x-form.input-wrapper label_text="Quality bonus">
+                    <input type="number" name="quality_bonus" class="underlined" min="-9999" max="9999" step="1" value="0"/>
+                </x-form.input-wrapper>
+            </div>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button id="boost-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteTypeModal('boost')">Delete</button>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('boost-modal')">Cancel</button>
+            <button id="boost-modal-submit" class="interactive px-5 py-2.5" onclick="saveBoost()">Create</button>
+        </x-slot:buttons>
+    </x-modal>
+
     {{--| Invite a player, who controls the employees assigned to them during service |--}}
     <x-modal id="player-modal">
         <h3 class="title py-1">Invite Player</h3>
@@ -251,7 +292,7 @@
         </x-slot:buttons>
     </x-modal>
 
-    {{--| Delete table / customer / employee modal |--}}
+    {{--| Delete table / customer / employee / boost modal |--}}
     <x-modal id="type-delete-modal">
         <h3 id="type-delete-title" class="title py-1"></h3>
         <p class="text-center">

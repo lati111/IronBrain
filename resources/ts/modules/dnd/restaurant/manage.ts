@@ -44,16 +44,39 @@ interface Player {
     username: string;
 }
 
+/** A boost activated during service, on a piece of equipment, a prepped or cooking meal, or an area of the kitchen */
+interface BoostType {
+    uuid: string;
+    name: string;
+    target: 'equipment' | 'meal' | 'area';
+    /** Added to the speed of what it is on while it lasts */
+    speed_bonus: number;
+    /** Minutes of prep or cooking done straight away */
+    minutes_off: number;
+    /** Added to the quality of a meal it is on */
+    quality_bonus: number;
+    /** How many minutes the speed bonus lasts */
+    duration: number;
+}
+
+/** What each kind of boost is activated on, as shown */
+const BOOST_TARGET_LABELS: Record<BoostType['target'], string> = {
+    equipment: 'Equipment',
+    meal:      'Meal',
+    area:      'Kitchen area',
+};
+
 interface Floor {
     rooms: Room[];
     tables: Table[];
     customers: Customer[];
     employees: Employee[];
     players: Player[];
+    boosts: BoostType[];
 }
 
-/** The sidebar lists tables, customers, employees and players */
-type SidebarTab = 'table' | 'customer' | 'employee' | 'player';
+/** The sidebar lists tables, customers, employees, players and boosts */
+type SidebarTab = 'table' | 'customer' | 'employee' | 'player' | 'boost';
 
 /** The tabs whose entries are edited in a modal of their own, and deleted from there */
 type EditableTab = Exclude<SidebarTab, 'player'>;
@@ -73,16 +96,18 @@ const TAB_LABELS: Record<SidebarTab, string> = {
     customer: 'Customer',
     employee: 'Employee',
     player:   'Player',
+    boost:    'Boost',
 };
 
 let apiUrl = '';
 let editUrl = '';
-let floor: Floor = {rooms: [], tables: [], customers: [], employees: [], players: []};
+let floor: Floor = {rooms: [], tables: [], customers: [], employees: [], players: [], boosts: []};
 let activeTab: SidebarTab = 'table';
 
 let editingTableUuid: string | null = null;
 let editingCustomerUuid: string | null = null;
 let editingEmployeeUuid: string | null = null;
+let editingBoostUuid: string | null = null;
 let pendingRoomDelete: string | null = null;
 let pendingDelete: {type: EditableTab, uuid: string} | null = null;
 let pendingPlayerRemove: Player | null = null;
@@ -133,6 +158,7 @@ function renderSidebar(): void {
         customer: renderCustomerRows,
         employee: renderEmployeeRows,
         player: renderPlayerRows,
+        boost: renderBoostRows,
     }[activeTab](list, search);
 
     if (list.childElementCount === 0) {
@@ -218,6 +244,31 @@ function renderPlayerRows(list: HTMLElement, search: string): number {
     return floor.players.length;
 }
 
+/** Renders the sidebar rows for boosts, returning how many boosts exist before filtering */
+function renderBoostRows(list: HTMLElement, search: string): number {
+    for (const boost of floor.boosts.filter((boost) => boost.name.toLowerCase().includes(search))) {
+        const row = createListRow();
+        setField(row, 'name', boost.name);
+        setField(row, 'meta', describeBoost(boost));
+        row.title = describeBoost(boost);
+        row.querySelector('[data-action="edit"]')!.addEventListener('click', () => openBoostModal(boost.uuid));
+
+        list.appendChild(row);
+    }
+
+    return floor.boosts.length;
+}
+
+/** Describes what a boost is for and does, such as "Equipment · +0.5 speed for 30 min, 5 min off" */
+function describeBoost(boost: BoostType): string {
+    const effects: string[] = [];
+    if (boost.speed_bonus > 0) effects.push(`+${boost.speed_bonus} speed for ${boost.duration} min`);
+    if (boost.minutes_off > 0) effects.push(`${boost.minutes_off} min off`);
+    if (boost.quality_bonus !== 0) effects.push(`${boost.quality_bonus > 0 ? '+' : ''}${boost.quality_bonus} quality`);
+
+    return `${BOOST_TARGET_LABELS[boost.target]} · ${effects.length > 0 ? effects.join(', ') : 'no effect'}`;
+}
+
 function renderRooms(): void {
     const list = document.getElementById('room-list') as HTMLElement;
     const template = document.getElementById('room-template') as HTMLTemplateElement;
@@ -283,6 +334,8 @@ function openCreateModal(): void {
         openCustomerModal(null);
     } else if (activeTab === 'employee') {
         openEmployeeModal(null);
+    } else if (activeTab === 'boost') {
+        openBoostModal(null);
     } else {
         openInvitePlayerModal();
     }
@@ -510,6 +563,53 @@ async function saveEmployee(): Promise<void> {
     setFloor(response.floor);
 }
 
+//| Boosts
+
+function openBoostModal(uuid: string | null): void {
+    const boost = uuid !== null ? floor.boosts.find((candidate) => candidate.uuid === uuid) ?? null : null;
+    if (uuid !== null && boost === null) return;
+
+    editingBoostUuid = uuid;
+    const form = document.getElementById('boost-form') as HTMLFormElement;
+    form.reset();
+
+    if (boost !== null) {
+        (form.elements.namedItem('name') as HTMLInputElement).value = boost.name;
+        (form.elements.namedItem('target') as HTMLSelectElement).value = boost.target;
+        for (const field of ['speed_bonus', 'duration', 'minutes_off', 'quality_bonus'] as const) {
+            (form.elements.namedItem(field) as HTMLInputElement).value = String(boost[field]);
+        }
+    }
+    updateBoostFields();
+
+    document.getElementById('boost-modal-title')!.textContent = boost !== null ? 'Edit Boost' : 'New Boost';
+    document.getElementById('boost-modal-submit')!.textContent = boost !== null ? 'Save' : 'Create';
+    document.getElementById('boost-modal-delete')!.classList.toggle('hidden', boost === null);
+    openModal('boost-modal');
+}
+
+/** Only meal boosts improve quality, so the quality field only shows for those */
+function updateBoostFields(): void {
+    const form = document.getElementById('boost-form') as HTMLFormElement;
+    const isMeal = (form.elements.namedItem('target') as HTMLSelectElement).value === 'meal';
+    document.getElementById('boost-quality-field')!.classList.toggle('hidden', !isMeal);
+}
+
+async function saveBoost(): Promise<void> {
+    const form = document.getElementById('boost-form') as HTMLFormElement;
+    if (!form.reportValidity()) return;
+
+    const editing = editingBoostUuid;
+    const url = editing !== null ? `${apiUrl}/boost/${editing}/edit` : `${apiUrl}/boost/create`;
+
+    const response = await submitForm(form, url);
+    if (response === null) return;
+
+    editingBoostUuid = null;
+    closeModal('boost-modal');
+    setFloor(response.floor);
+}
+
 //| Players
 
 function openInvitePlayerModal(): void {
@@ -545,7 +645,7 @@ async function removePlayer(): Promise<void> {
 
 /** The uuid of what is open in each edit modal */
 function getEditingUuid(type: EditableTab): string | null {
-    return {table: editingTableUuid, customer: editingCustomerUuid, employee: editingEmployeeUuid}[type];
+    return {table: editingTableUuid, customer: editingCustomerUuid, employee: editingEmployeeUuid, boost: editingBoostUuid}[type];
 }
 
 function openDeleteModal(type: EditableTab): void {
@@ -556,6 +656,7 @@ function openDeleteModal(type: EditableTab): void {
         table: () => getTable(uuid)?.name,
         customer: () => floor.customers.find((customer) => customer.uuid === uuid)?.name,
         employee: () => floor.employees.find((employee) => employee.uuid === uuid)?.name,
+        boost: () => floor.boosts.find((boost) => boost.uuid === uuid)?.name,
     }[type]();
 
     pendingDelete = {type, uuid};
@@ -586,6 +687,7 @@ async function confirmDelete(): Promise<void> {
         if (type === 'table') editingTableUuid = null;
         if (type === 'customer') editingCustomerUuid = null;
         if (type === 'employee') editingEmployeeUuid = null;
+        if (type === 'boost') editingBoostUuid = null;
     }
 }
 
@@ -633,6 +735,8 @@ function seatsLabel(seats: number): string {
 (<any>window).saveTable           = saveTable;
 (<any>window).saveCustomer        = saveCustomer;
 (<any>window).saveEmployee        = saveEmployee;
+(<any>window).saveBoost           = saveBoost;
+(<any>window).updateBoostFields   = updateBoostFields;
 (<any>window).invitePlayer        = invitePlayer;
 (<any>window).removePlayer        = removePlayer;
 (<any>window).openDeleteModal     = openDeleteModal;

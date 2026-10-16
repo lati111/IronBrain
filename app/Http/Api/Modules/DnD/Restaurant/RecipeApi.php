@@ -49,6 +49,11 @@ class RecipeApi extends AbstractApi
      */
     public function createRecipe(Request $request, string $restaurant_uuid): JsonResponse
     {
+        // A variant is made of the changes it makes to its base recipe, so it is saved apart
+        if ($request->filled('parent_uuid')) {
+            return $this->saveVariant($request, $restaurant_uuid, null);
+        }
+
         $validator = Validator::make($request->all(), array_merge([
             'name'        => 'required|string|max:64',
             'type'        => 'nullable|string|max:64',
@@ -107,6 +112,11 @@ class RecipeApi extends AbstractApi
      */
     public function editRecipe(Request $request, string $restaurant_uuid, string $recipe_uuid): JsonResponse
     {
+        $variant = Recipe::where('uuid', $recipe_uuid)->whereNotNull('parent_uuid')->first();
+        if ($variant !== null) {
+            return $this->saveVariant($request, $restaurant_uuid, $variant);
+        }
+
         $validator = Validator::make($request->all(), array_merge([
             'name'        => 'nullable|string|max:64',
             'type'        => 'nullable|string|max:64',
@@ -174,6 +184,11 @@ class RecipeApi extends AbstractApi
         $recipe = Recipe::where('uuid', $recipe_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
         if ($recipe === null) {
             return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
+        }
+
+        // Variants are made of their changes to the base recipe, which would be lost along with it
+        if ($recipe->Variants()->exists()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, 'Delete the variants of ' . $recipe->name . ' first');
         }
 
         $recipe->delete();
@@ -367,6 +382,129 @@ class RecipeApi extends AbstractApi
             if ($meals !== null) {
                 $this->recipeService->syncMeals($recipe, $meals);
             }
+
+            // Variants are their base recipe with their changes, so they change along with it
+            $this->recipeService->rebuildVariants($recipe);
         });
+    }
+
+    //| Variants
+
+    /**
+     * Creates or updates a variant of a recipe. A variant has a name and description of its own, while its stats are
+     * what it adds to its base recipe's, and its lists are what it adds to its base recipe's, with the remove lists
+     * holding what it takes away. Anything that is left out keeps its current value. Its own stats and lists are
+     * rebuilt from its base recipe afterwards
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param Recipe|null $variant The variant to update, or null to create one of the recipe given as parent_uuid
+     * @return JsonResponse The uuid of the variant and the updated inventory state in JSON format
+     */
+    private function saveVariant(Request $request, string $restaurant_uuid, ?Recipe $variant): JsonResponse
+    {
+        $creating = $variant === null;
+        $validator = Validator::make($request->all(), array_merge([
+            'name'        => ($creating ? 'required' : 'nullable') . '|string|max:64',
+            'parent_uuid' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            // What is added to the base recipe's stats, which can also take away
+            'price'       => 'nullable|numeric|min:-999999|max:999999',
+            'portions'    => 'nullable|integer|min:-999999|max:999999',
+            // What is taken away from each of the base recipe's lists
+            'remove'      => 'nullable|array',
+            'remove.*'    => 'nullable|array',
+            'remove.*.*'  => 'string|max:255',
+        ], array_fill_keys(self::INTEGER_FIELDS, 'nullable|integer|min:-999999|max:999999'), $this->getComponentRules()));
+
+        if ($validator->fails()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+        }
+
+        if ($creating) {
+            $base = Recipe::where('uuid', $request->get('parent_uuid'))->where('restaurant_uuid', $restaurant->uuid)->first();
+            if ($base === null) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
+            }
+            if ($base->parent_uuid !== null) {
+                return $this->respond(Response::HTTP_BAD_REQUEST, 'A variant can\'t have variants of its own');
+            }
+
+            $variant = new Recipe();
+            $variant->restaurant_uuid = $restaurant->uuid;
+            $variant->parent_uuid = $base->uuid;
+        } elseif ($variant->restaurant_uuid !== $restaurant->uuid) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Recipe not found');
+        }
+
+        $components = $this->resolveComponents($request, $restaurant);
+        if ($components instanceof JsonResponse) {
+            return $components;
+        }
+
+        $meals = $this->resolveMeals($request, $restaurant, $creating ? null : $variant);
+        if ($meals instanceof JsonResponse) {
+            return $meals;
+        }
+
+        $variant->name = $request->get('name') ?? $variant->name;
+        $variant->description = $request->has('description') ? $request->get('description') : $variant->description;
+        $variant->variant_changes = $this->getVariantChanges($request, $variant->variant_changes ?? [], $components, $meals);
+
+        DB::transaction(fn () => $this->recipeService->rebuildVariant($variant));
+
+        return $this->respond($creating ? Response::HTTP_CREATED : Response::HTTP_OK, $creating ? 'Variant created' : 'Variant updated', [
+            'uuid' => $variant->uuid,
+            'inventory' => $this->inventoryService->getInventory($restaurant),
+        ]);
+    }
+
+    /**
+     * Works out a variant's changes to its base recipe from the request, keeping whatever was left out as it was
+     * @param Request $request The request parameters as given by Laravel
+     * @param array $current The variant's current changes
+     * @param array $components The resolved components it adds per kind, where null means unchanged
+     * @param array|null $meals The meals it adds, as given by resolveMeals, or null when unchanged
+     * @return array The changes, as described by Recipe::variant_changes
+     */
+    private function getVariantChanges(Request $request, array $current, array $components, ?array $meals): array
+    {
+        $changes = ['stats' => $current['stats'] ?? [], 'add' => $current['add'] ?? [], 'remove' => $current['remove'] ?? []];
+
+        foreach (Recipe::VARIANT_STATS as $field) {
+            if ($request->filled($field)) {
+                $changes['stats'][$field] = $field === 'price' ? round((float) $request->get($field), 2) : (int) $request->get($field);
+            }
+        }
+
+        foreach ($components as $kind => $amounts) {
+            if ($amounts !== null) {
+                // Kept as plain values, as the stage of equipment is an enum
+                $changes['add'][$kind] = array_map(fn (array $attributes) => array_map(
+                    fn ($value) => $value instanceof EquipmentStage ? $value->value : $value, $attributes), $amounts);
+            }
+        }
+
+        $categories = $this->getCategories($request);
+        if ($categories !== null) {
+            $changes['add']['categories'] = $categories;
+        }
+        if ($meals !== null) {
+            $changes['add']['meals'] = $meals;
+        }
+
+        // Taken away by uuid, by category for ingredients taken by category, and by recipe uuid or category with the
+        // category prefix for meals
+        if ($request->has('remove')) {
+            foreach (Recipe::VARIANT_LISTS as $list) {
+                $changes['remove'][$list] = array_values(array_unique(array_map('strval', $request->input('remove.' . $list) ?? [])));
+            }
+        }
+
+        return $changes;
     }
 }

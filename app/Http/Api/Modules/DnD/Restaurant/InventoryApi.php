@@ -263,6 +263,8 @@ class InventoryApi extends AbstractApi
             'category'   => 'nullable|string|max:64',
             'expires_in' => 'required|integer|min:0',
             'size'       => 'required|numeric|gt:0|max:999999',
+            'quality'    => 'nullable|integer|min:-9999|max:9999',
+            'parent_uuid' => 'nullable|string|max:255',
             'icon'       => 'nullable|image|max:2048',
         ]);
 
@@ -275,12 +277,19 @@ class InventoryApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
         }
 
+        $parentUuid = $request->get('parent_uuid');
+        if ($parentUuid !== null && Ingredient::where('uuid', $parentUuid)->where('restaurant_uuid', $restaurant->uuid)->exists() === false) {
+            return $this->respond(Response::HTTP_NOT_FOUND, 'Parent ingredient not found');
+        }
+
         $ingredient = new Ingredient();
         $ingredient->restaurant_uuid = $restaurant->uuid;
+        $ingredient->parent_uuid     = $parentUuid;
         $ingredient->name            = $request->get('name');
         $ingredient->category        = $this->normalizeCategory($request->get('category'));
         $ingredient->expires_in      = (int) $request->get('expires_in');
         $ingredient->size            = round((float) $request->get('size'), 2);
+        $ingredient->quality         = (int) $request->get('quality', 0);
 
         if ($request->hasFile('icon')) {
             $ingredient->icon = FileStorage::putFile(self::INGREDIENT_ICON_PATH, $request->file('icon'));
@@ -360,6 +369,8 @@ class InventoryApi extends AbstractApi
             'category'   => 'nullable|string|max:64',
             'expires_in' => 'nullable|integer|min:0',
             'size'       => 'nullable|numeric|gt:0|max:999999',
+            'quality'    => 'nullable|integer|min:-9999|max:9999',
+            'parent_uuid' => 'nullable|string|max:255',
             'icon'       => 'nullable|image|max:2048',
         ]);
 
@@ -381,6 +392,18 @@ class InventoryApi extends AbstractApi
         $ingredient->category   = $request->has('category') ? $this->normalizeCategory($request->get('category')) : $ingredient->category;
         $ingredient->expires_in = $request->has('expires_in') ? (int) $request->get('expires_in') : $ingredient->expires_in;
         $ingredient->size       = $request->has('size') ? round((float) $request->get('size'), 2) : $ingredient->size;
+        $ingredient->quality    = $request->filled('quality') ? (int) $request->get('quality') : $ingredient->quality;
+
+        if ($request->has('parent_uuid')) {
+            $parentUuid = $request->get('parent_uuid');
+            if ($parentUuid === $ingredient->uuid) {
+                return $this->respond(Response::HTTP_BAD_REQUEST, 'An ingredient cannot be a variant of itself');
+            }
+            if ($parentUuid !== null && Ingredient::where('uuid', $parentUuid)->where('restaurant_uuid', $restaurant->uuid)->exists() === false) {
+                return $this->respond(Response::HTTP_NOT_FOUND, 'Parent ingredient not found');
+            }
+            $ingredient->parent_uuid = $parentUuid;
+        }
 
         if ($request->hasFile('icon')) {
             $oldIcon = $ingredient->icon;
