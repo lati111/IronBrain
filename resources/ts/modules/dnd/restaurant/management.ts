@@ -8,7 +8,7 @@ import {generalStorage, setInventory, state} from "./management/inventory";
 import {createEquipment, createIngredient} from "./management/item-types";
 import {addRecipeComponent, changeRecipeParent, saveRecipe, switchRecipeTab} from "./management/recipes";
 import {cancelDeleteType, deleteType, openCreateTypeModal, openDeleteTypeModal, renderSidebar, switchTab} from "./management/sidebar";
-import {createStorage, deleteStorage, openCreateStorageModal, setupStorageArea} from "./management/storages";
+import {createStorage, deleteStorage, openCreateStorageModal, openDeleteEditedStorageModal, setupStorageArea} from "./management/storages";
 import {ExpiredStack} from "./management/types";
 
 /** The inventory page: the storage spaces and what is stored in them, along with the ingredients, equipment, recipes
@@ -55,6 +55,7 @@ async function init(): Promise<void> {
 (<any>window).openCreateStorageModal = openCreateStorageModal;
 (<any>window).createStorage          = createStorage;
 (<any>window).deleteStorage          = deleteStorage;
+(<any>window).openDeleteEditedStorageModal = openDeleteEditedStorageModal;
 (<any>window).openCreateTypeModal    = openCreateTypeModal;
 (<any>window).createIngredient       = createIngredient;
 (<any>window).createEquipment        = createEquipment;

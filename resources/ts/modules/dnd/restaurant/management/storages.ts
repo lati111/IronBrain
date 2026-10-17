@@ -1,6 +1,6 @@
 import {closeModal, openModal} from "../../../../components/modal";
 import {createReorderableList, setField, setupDropTarget, showWhileDragging, submitForm} from "../shared";
-import {cloneTemplate, setIcon} from "../dom";
+import {cloneTemplate, setFormValues, setIcon, setModalMode} from "../dom";
 import {openAmountModal} from "./amount-modal";
 import {
     describe, generalStorage, getDefinition, getIcon, itemKey, postInventory, render, roundAmount, setInventory, state,
@@ -86,9 +86,11 @@ export function renderStorages(): void {
 
         if (state.isPlayer) {
             section.draggable = false;
+            section.querySelector('[data-action="edit"]')!.remove();
             section.querySelector('[data-action="delete"]')!.remove();
             section.querySelector('.inventory-storage-handle')?.remove();
         } else {
+            section.querySelector('[data-action="edit"]')!.addEventListener('click', () => openStorageModal(storage));
             section.querySelector('[data-action="delete"]')!.addEventListener('click', () => openDeleteStorageModal(storage));
         }
         setupItemDropTarget(section, storage.uuid);
@@ -245,8 +247,30 @@ async function saveStorageOrder(order: string[]): Promise<void> {
     }
 }
 
+/** The storage space open in the storage modal, or null when it is for a new one */
+let editingStorage: StorageSpace | null = null;
+
 export function openCreateStorageModal(): void {
-    (document.getElementById('storage-create-form') as HTMLFormElement).reset();
+    openStorageModal(null);
+}
+
+/** Opens the storage modal, to create a storage space or to edit one */
+function openStorageModal(storage: StorageSpace | null): void {
+    editingStorage = storage;
+    const form = document.getElementById('storage-create-form') as HTMLFormElement;
+    form.reset();
+
+    if (storage !== null) {
+        setFormValues(form, {
+            name: storage.name,
+            capacity: String(storage.capacity),
+            expiration_multiplier: String(storage.expiration_multiplier),
+        });
+    }
+
+    // Removing the background image only makes sense for a space that has one
+    document.getElementById('storage-remove-background')!.classList.toggle('hidden', storage?.background_image == null);
+    setModalMode('storage', 'Storage Space', storage !== null);
     openModal('storage-create-modal');
 }
 
@@ -254,11 +278,21 @@ export async function createStorage(): Promise<void> {
     const form = document.getElementById('storage-create-form') as HTMLFormElement;
     if (!form.reportValidity()) return;
 
-    const response = await submitForm(form, `${state.apiUrl}/storage/create`, ['background_image']);
+    const url = editingStorage !== null ? `${state.apiUrl}/storage/${editingStorage.uuid}/edit` : `${state.apiUrl}/storage/create`;
+    const response = await submitForm(form, url, ['background_image']);
     if (response === null) return;
 
+    editingStorage = null;
     closeModal('storage-create-modal');
     setInventory(response.inventory);
+}
+
+/** Asks to delete the storage space open in the storage modal */
+export function openDeleteEditedStorageModal(): void {
+    if (editingStorage === null) return;
+
+    closeModal('storage-create-modal');
+    openDeleteStorageModal(editingStorage);
 }
 
 function openDeleteStorageModal(storage: StorageSpace): void {

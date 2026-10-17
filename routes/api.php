@@ -239,6 +239,8 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.inventory.storage.create');
             Route::post('/storage/reorder', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'reorderStorages'])
                 ->name('api.dnd.restaurant.inventory.storage.reorder');
+            Route::post('/storage/{storage_uuid}/edit', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'editStorage'])
+                ->name('api.dnd.restaurant.inventory.storage.edit');
             Route::post('/storage/{storage_uuid}/delete', [\App\Http\Api\Modules\DnD\Restaurant\InventoryApi::class, 'deleteStorage'])
                 ->name('api.dnd.restaurant.inventory.storage.delete');
 

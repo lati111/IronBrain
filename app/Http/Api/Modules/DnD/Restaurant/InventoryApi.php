@@ -205,6 +205,63 @@ class InventoryApi extends AbstractInventoryApi
     }
 
     /**
+     * Updates a storage space. Any field that is left out keeps its current value. Its capacity can't go below what it
+     * holds, and its background image can be replaced or removed
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $storage_uuid The uuid of the storage space
+     * @return JsonResponse The updated inventory state in JSON format
+     */
+    public function editStorage(Request $request, string $restaurant_uuid, string $storage_uuid): JsonResponse
+    {
+        $invalid = $this->validateRequest($request, [
+            'name'                    => 'nullable|string|max:64',
+            'capacity'                => 'nullable|integer|min:1',
+            'expiration_multiplier'   => 'nullable|numeric|min:0',
+            'background_image'        => 'nullable|image|max:5120',
+            'remove_background_image' => 'nullable|boolean',
+        ]);
+        if ($invalid !== null) {
+            return $invalid;
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->notFound('Restaurant');
+        }
+
+        $storage = $this->findInRestaurant(Storage::class, $restaurant, $storage_uuid);
+        if ($storage === null) {
+            return $this->notFound('Storage');
+        }
+
+        // What is stored has to keep fitting, so the space has to be emptied out before it can shrink that far
+        if ($request->filled('capacity') && (int) $request->get('capacity') < $storage->getUsedCapacity()) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, sprintf('%s holds %s, so its capacity can\'t be lower than that',
+                $storage->name, round($storage->getUsedCapacity(), 2) + 0));
+        }
+
+        $storage->name                  = $request->get('name') ?? $storage->name;
+        $storage->capacity              = $request->filled('capacity') ? (int) $request->get('capacity') : $storage->capacity;
+        $storage->expiration_multiplier = $request->filled('expiration_multiplier') ? (float) $request->get('expiration_multiplier') : $storage->expiration_multiplier;
+
+        // A new image replaces the old one, which is also removed when asked to
+        $oldImage = $storage->background_image;
+        if ($request->hasFile('background_image')) {
+            $storage->background_image = FileStorage::putFile(self::STORAGE_IMAGE_PATH, $request->file('background_image'));
+        } elseif ($request->boolean('remove_background_image')) {
+            $storage->background_image = null;
+        }
+
+        $storage->save();
+        if ($oldImage !== null && $oldImage !== $storage->background_image) {
+            FileStorage::delete($oldImage);
+        }
+
+        return $this->respondWithInventory(Response::HTTP_OK, 'Storage space updated', $restaurant);
+    }
+
+    /**
      * Saves a new order for the restaurant's storage spaces
      * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant

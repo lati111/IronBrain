@@ -170,6 +170,7 @@
                 <span class="inventory-storage-handle">&#8942;&#8942;</span>
                 <span data-field="name" class="font-semibold flex-1 truncate"></span>
                 <span data-field="occupancy" class="text-sm"></span>
+                <button class="interactive px-1" data-action="edit" title="Edit storage space" draggable="false">&#9998;</button>
                 <button class="px-1" data-action="delete" title="Delete storage space">
                     <img src="{{asset('img/icons/x.svg')}}" alt="delete" class="interactive w-4 h-4" draggable="false">
                 </button>
@@ -179,9 +180,9 @@
         </section>
     </template>
 
-    {{--| Create storage modal |--}}
+    {{--| Create / edit storage modal |--}}
     <x-modal id="storage-create-modal">
-        <h3 class="title py-1">New Storage Space</h3>
+        <h3 id="storage-modal-title" class="title py-1">New Storage Space</h3>
         <form id="storage-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createStorage()">
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
@@ -195,11 +196,16 @@
             <x-form.input-wrapper label_text="Background image (optional)">
                 <x-form.input.file_uploader name="background_image" accepts="image/*"/>
             </x-form.input-wrapper>
+            {{-- Only offered while editing a storage space that has a background image --}}
+            <div id="storage-remove-background" class="hidden">
+                <x-form.input.checkbox name="remove_background_image" value="1" right_label="Remove the current background image"/>
+            </div>
             <button type="submit" class="hidden"></button>
         </form>
         <x-slot:buttons>
+            <button id="storage-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteEditedStorageModal()">Delete</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('storage-create-modal')">Cancel</button>
-            <button class="interactive px-5 py-2.5" dusk="confirm" onclick="createStorage()">Create</button>
+            <button id="storage-modal-submit" class="interactive px-5 py-2.5" dusk="confirm" onclick="createStorage()">Create</button>
         </x-slot:buttons>
     </x-modal>
 
