@@ -131,7 +131,10 @@ class IngredientPileTest extends AbstractFeatureTester
         $response = $this->withHeaders(['Accept' => 'application/json'])->actingAs($this->getAdminUser())
             ->get(route('api.dnd.restaurant.inventory.get', ['restaurant_uuid' => $this->restaurant->uuid]));
 
-        $this->assertEquals([['type' => 'ingredient', 'uuid' => $this->potato->uuid, 'amount' => 4]], $response->json('data.pile'));
+        $pile = $response->json('data.pile');
+        $this->assertCount(1, $pile);
+        $this->assertEquals(['type' => 'ingredient', 'uuid' => $this->potato->uuid, 'amount' => 4, 'days_left' => 7],
+            array_intersect_key($pile[0], array_flip(['type', 'uuid', 'amount', 'days_left'])));
         $this->assertEquals(4, collect($response->json('data.ingredients'))->firstWhere('name', 'Potato')['stored']);
     }
 

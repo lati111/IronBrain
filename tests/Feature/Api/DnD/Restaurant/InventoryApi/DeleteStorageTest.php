@@ -57,7 +57,10 @@ class DeleteStorageTest extends AbstractApiFeatureTester
         $response->assertOk();
         $this->assertNull(Storage::where('uuid', $this->storage->uuid)->first());
         $this->assertFalse(StorageIngredient::where('storage_uuid', $this->storage->uuid)->exists());
-        $this->assertEquals([['type' => 'ingredient', 'uuid' => $this->ingredient->uuid, 'amount' => 3]], $response->json('data.released'));
+        $released = $response->json('data.released');
+        $this->assertCount(1, $released);
+        $this->assertEquals(['type' => 'ingredient', 'uuid' => $this->ingredient->uuid, 'amount' => 3, 'days_left' => $this->ingredient->expires_in],
+            array_intersect_key($released[0], array_flip(['type', 'uuid', 'amount', 'days_left'])));
         $this->assertEquals([], $response->json('data.inventory.storages'));
         FileStorage::assertMissing('modules/dnd/restaurant/storage/test.jpg');
     }

@@ -61,9 +61,9 @@ class EditEquipmentTest extends AbstractApiFeatureTester implements PostOperatio
 
     public function test_numeric_field_validation(): void
     {
-        $this->assertIntegerValidation('cleaning_time', 'cleaning time');
+        $this->assertNumericValidation('cleaning_time', 'cleaning time');
         $this->assertNumericValidation('multiplier');
-        $this->assertIntegerValidation('size');
+        $this->assertNumericValidation('size');
     }
 
     //| save tests

@@ -8,6 +8,7 @@ use App\Models\DnD\Restaurant\Interfaces\DndRestaurantModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use InvalidArgumentException;
 
 /**
  * @inheritdoc
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property integer silver How much silver the restaurant has
  * @property integer gold How much gold the restaurant has
  * @property float shift_total What the orders placed during the current service are worth
+ * @property integer state_version How many changes have been made to the restaurant, so refreshing pages can tell when
+ *                                 nothing changed
  */
 class Restaurant extends DndRestaurantModel
 {
@@ -38,7 +41,11 @@ class Restaurant extends DndRestaurantModel
         'silver' => 'integer',
         'gold'   => 'integer',
         'shift_total' => 'float',
+        'state_version' => 'integer',
     ];
+
+    /** @var string[] The count of changes is bookkeeping for refreshing pages rather than part of the restaurant */
+    protected $hidden = ['state_version'];
 
     /**
      * Check whether a user may access this restaurant, either as owner or through granted access
@@ -52,6 +59,21 @@ class Restaurant extends DndRestaurantModel
         }
 
         return $this->Access()->where('user_uuid', $user->uuid)->exists();
+    }
+
+    /**
+     * Checks whether a user is one of the restaurant's players, who only control the employees assigned to them and
+     * move ingredients around, rather than its owner or one of its managers
+     * @param User $user The user to check
+     * @return bool Whether the user is a player
+     */
+    public function isPlayer(User $user): bool
+    {
+        if ($this->owner_uuid === $user->uuid) {
+            return false;
+        }
+
+        return $this->Access()->where('user_uuid', $user->uuid)->where('role', RestaurantUser::ROLE_PLAYER)->exists();
     }
 
     /**
@@ -139,6 +161,39 @@ class Restaurant extends DndRestaurantModel
     public function getTotalBits(): int
     {
         return $this->gold * 1000 + $this->silver * 100 + $this->copper * 10 + $this->bits;
+    }
+
+    /**
+     * Takes an amount off the restaurant's money. Each digit comes off its own coin, so 1234 bits takes a gold, two
+     * silver, three copper and four bits. A coin that runs short is made up by breaking one of the next coin up into
+     * ten. Does not save
+     * @param float $bits The amount in bits, rounded to whole bits
+     * @throws InvalidArgumentException Thrown when the restaurant has less money than that
+     */
+    public function spendMoney(float $bits): void
+    {
+        $amount = (int) round($bits);
+        if ($amount <= 0) {
+            return;
+        }
+
+        if ($amount > $this->getTotalBits()) {
+            throw new InvalidArgumentException(sprintf('Not enough money: %s needed, %s available',
+                self::formatMoney($amount), self::formatMoney($this->getTotalBits())));
+        }
+
+        $this->bits -= $amount % 10;
+        $this->copper -= intdiv($amount, 10) % 10;
+        $this->silver -= intdiv($amount, 100) % 10;
+        $this->gold -= intdiv($amount, 1000);
+
+        // Short coins borrow from the next one up, which may in turn borrow from the one above it
+        foreach ([['bits', 'copper'], ['copper', 'silver'], ['silver', 'gold']] as [$coin, $next]) {
+            while ($this->{$coin} < 0) {
+                $this->{$coin} += 10;
+                $this->{$next}--;
+            }
+        }
     }
 
     /**

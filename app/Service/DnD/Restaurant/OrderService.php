@@ -10,13 +10,28 @@ use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Sale;
 use App\Models\DnD\Restaurant\ServedMeal;
 use App\Models\DnD\Restaurant\Table;
+use App\Models\DnD\Restaurant\Work;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
+/**
+ * Orders at the tables: placing and editing them, bringing their portions, the portions being eaten, and finishing
+ * or cancelling them. Taking an order and bringing a portion are jobs for the table's waiter, which take time as the
+ * clock moves. An order is paid into the shift total once it is finished
+ */
 class OrderService
 {
-    public function __construct(private readonly KitchenService $kitchenService)
+    /** @var int How long taking an order takes the waiter for each customer seated at the table, in minutes */
+    public const int ORDER_MINUTES_PER_CUSTOMER = 2;
+    /** @var int How long bringing a plated portion to its table takes the waiter, in minutes */
+    public const int DELIVERY_MINUTES = 2;
+
+    public function __construct(
+        private readonly EquipmentService $equipmentService,
+        private readonly WorkService $workService,
+        private readonly SatisfactionService $satisfactionService,
+    )
     {
     }
 
@@ -30,8 +45,8 @@ class OrderService
         $now = $restaurant->getNow();
 
         return Order::where('restaurant_uuid', $restaurant->uuid)
-            ->whereIn('status', [Order::STATUS_OPEN, Order::STATUS_FULFILLED])
-            ->with('Items.Customer')
+            ->whereIn('status', Order::ACTIVE_STATUSES)
+            ->with(['Items.Customer', 'Items.ServedMeal'])
             ->orderBy('ordered_at')
             ->orderBy('created_at')
             ->get()
@@ -40,9 +55,14 @@ class OrderService
                 'table_uuid' => $order->table_uuid,
                 'status' => $order->status,
                 'total_price' => $order->total_price,
+                'tip' => $order->tip,
+                'discount' => $order->discount,
+                'payable' => $order->getPayable(),
                 'ordered_at' => $order->ordered_at->format('H:i'),
                 'ordered_minutes_ago' => $this->minutesSince($order->ordered_at, $now),
                 'fulfilled_minutes_ago' => $order->fulfilled_at !== null ? $this->minutesSince($order->fulfilled_at, $now) : null,
+                // How satisfied the table is with what has been served so far, or null before anything was
+                'satisfaction' => $this->satisfactionService->average($order->Items),
                 'items' => $order->Items->sortBy('created_at')->map(fn (OrderItem $item) => [
                     'uuid' => $item->uuid,
                     'recipe_uuid' => $item->recipe_uuid,
@@ -51,24 +71,39 @@ class OrderService
                     'customer_name' => $item->Customer?->name,
                     'price' => $item->price,
                     'served' => $item->served_at !== null,
+                    // A plate set aside for it, which the waiter is bringing
+                    'on_the_way' => $item->served_at === null && $item->ServedMeal !== null,
+                    'consumed' => $item->consumed_at !== null,
+                    'satisfaction' => $item->satisfaction,
                 ])->values()->all(),
             ])->values()->all();
     }
 
+    //| Placing & editing
+
     /**
-     * Places an order at a table. Each item is a single portion of a recipe, for one customer seated at the table or
-     * for the table as a whole, and becomes an entry of its own, at the recipe's sale price when it is on sale. The
-     * order's price is added to the restaurant's shift total
+     * Places an order at a table, which its waiter then takes, a while for each customer seated there. Each item is a
+     * single portion of a recipe, for one customer seated at the table or for the table as a whole, and becomes an
+     * entry of its own, at the recipe's sale price when it is on sale. It is paid for once finished
      * @param Restaurant $restaurant The restaurant
      * @param Table $table The table ordering
-     * @param array $items The items, each with a recipe and the customer it is for, or null for the table
+     * @param array $items The items, each with a recipe and the customer it is for, or null for the table. Without any,
+     *                     the waiter goes to take the order, and what was ordered is noted down once they are done
      * @return Order The placed order
-     * @throws InvalidArgumentException Thrown when nothing is ordered, or a customer isn't seated at the table
+     * @throws InvalidArgumentException Thrown when nobody waits the table, an order is already being taken there, or a
+     *                                  customer isn't seated there
      */
     public function placeOrder(Restaurant $restaurant, Table $table, array $items): Order
     {
-        if ($items === []) {
-            throw new InvalidArgumentException('Nothing was ordered');
+        if ($table->employee_uuid === null) {
+            throw new InvalidArgumentException('Nobody is waiting ' . $table->name);
+        }
+
+        // A waiter goes to take one order at a table at a time, which has to be noted down before the next
+        $beingTaken = Order::where('table_uuid', $table->uuid)->whereIn('status', [Order::STATUS_TAKING, Order::STATUS_TAKEN])
+            ->whereDoesntHave('Items')->exists();
+        if ($items === [] && $beingTaken) {
+            throw new InvalidArgumentException('An order is already being taken at ' . $table->name);
         }
 
         $sales = $restaurant->getSalePrices();
@@ -78,53 +113,122 @@ class OrderService
             $order->restaurant_uuid = $restaurant->uuid;
             $order->table_uuid = $table->uuid;
             $order->service_uuid = $restaurant->getCurrentService()?->uuid;
-            $order->status = Order::STATUS_OPEN;
+            $order->status = Order::STATUS_TAKING;
             $order->ordered_at = $restaurant->getNow();
             $order->total_price = 0;
             $order->save();
 
-            $total = 0;
             foreach ($items as ['recipe' => $recipe, 'customer' => $customer]) {
-                /** @var Recipe $recipe */
-                /** @var Customer|null $customer */
-                if ($customer !== null && $customer->table_uuid !== $table->uuid) {
-                    throw new InvalidArgumentException($customer->name . ' isn\'t seated at ' . $table->name);
-                }
-
-                $item = new OrderItem();
-                $item->order_uuid = $order->uuid;
-                $item->recipe_uuid = $recipe->uuid;
-                $item->customer_uuid = $customer?->uuid;
-                $price = $sales[$recipe->uuid] ?? $recipe->price;
-                $item->name = $recipe->name;
-                $item->price = $price;
-                $item->save();
-
-                $total += $price;
+                $this->addItem($order, $table, $recipe, $customer, $sales);
             }
 
-            $order->total_price = round($total, 2);
+            $order->recalculate($restaurant->getNow());
             $order->save();
 
-            $restaurant->shift_total = round($restaurant->shift_total + $total, 2);
-            $restaurant->save();
+            $minutes = $table->Customers()->count() * self::ORDER_MINUTES_PER_CUSTOMER;
+            $this->workService->queueOrderTaking($restaurant, $order, $table, $minutes);
 
-            return $order;
+            return $order->refresh();
         });
     }
 
     /**
-     * Brings a plated portion to a table, serving the oldest entry of that recipe the table still waits for. Once
-     * every entry of an order is served, the order is fulfilled
+     * Edits the items of an order. Items that are kept can be given to another customer, items that aren't served
+     * yet can be taken off, and new items can be added at the current price
+     * @param Restaurant $restaurant The restaurant
+     * @param Order $order The order
+     * @param array $entries The items the order should have: existing ones with their item and customer, and new
+     *                       ones with their recipe and customer
+     * @throws InvalidArgumentException Thrown when the order is done, a served item is taken off, nothing is left, or
+     *                                  a customer isn't seated at the table
+     */
+    public function editOrder(Restaurant $restaurant, Order $order, array $entries): void
+    {
+        $this->assertActive($order);
+        if ($entries === []) {
+            throw new InvalidArgumentException('Nothing was ordered');
+        }
+
+        // What was ordered is only known once the waiter is done taking it
+        if ($order->status === Order::STATUS_TAKING && !$order->Items()->exists()) {
+            throw new InvalidArgumentException('The order at ' . $order->Table->name . ' is still being taken');
+        }
+
+        $table = $order->Table;
+        $sales = $restaurant->getSalePrices();
+
+        DB::transaction(function () use ($restaurant, $order, $entries, $table, $sales) {
+            $kept = [];
+            foreach ($entries as $entry) {
+                /** @var OrderItem|null $item */
+                $item = $entry['item'] ?? null;
+                if ($item === null) {
+                    $kept[] = $this->addItem($order, $table, $entry['recipe'], $entry['customer'], $sales)->uuid;
+                    continue;
+                }
+
+                $this->assertSeated($entry['customer'], $table);
+                $item->customer_uuid = $entry['customer']?->uuid;
+                $item->save();
+                $kept[] = $item->uuid;
+            }
+
+            foreach ($order->Items()->whereNotIn('uuid', $kept)->get() as $removed) {
+                // What has been brought to the table, or is on its way there, can't be taken off the order anymore
+                if ($removed->served_at !== null) {
+                    throw new InvalidArgumentException($removed->name . ' has already been served');
+                }
+                if ($removed->ServedMeal()->exists()) {
+                    throw new InvalidArgumentException($removed->name . ' is on its way');
+                }
+                $removed->delete();
+            }
+
+            // Noting down what was ordered opens it to be served
+            if ($order->status === Order::STATUS_TAKEN) {
+                $order->status = Order::STATUS_OPEN;
+            }
+
+            $order->recalculate($restaurant->getNow());
+            $order->save();
+        });
+    }
+
+    /**
+     * Sets the tip the table gives and the discount they get, which change what they pay once the order is finished
+     * @param Order $order The order
+     * @param float $tip The tip, in bits
+     * @param float $discount The discount, in bits
+     * @throws InvalidArgumentException Thrown when the order is done
+     */
+    public function setTipAndDiscount(Order $order, float $tip, float $discount): void
+    {
+        $this->assertActive($order);
+
+        $order->tip = round($tip, 2);
+        $order->discount = round($discount, 2);
+        $order->save();
+    }
+
+    //| Serving & eating
+
+    /**
+     * Has the table's waiter bring a plated portion there, for the oldest entry of that recipe the table still waits
+     * for that has no plate on its way yet. The plate is set aside for that entry straight away, and serves it once
+     * the waiter arrives. Once every entry of an order is served, the order is fulfilled
      * @param Restaurant $restaurant The restaurant
      * @param ServedMeal $plate The plated portion
      * @param Table $table The table to bring it to
-     * @throws InvalidArgumentException Thrown when it was already served, or the table isn't waiting for it
+     * @throws InvalidArgumentException Thrown when it was already brought, nobody waits the table, or it isn't waiting for it
      */
     public function deliverPlate(Restaurant $restaurant, ServedMeal $plate, Table $table): void
     {
         if ($plate->order_item_uuid !== null) {
             throw new InvalidArgumentException('This plate has already been served');
+        }
+
+        if ($table->employee_uuid === null) {
+            throw new InvalidArgumentException('Nobody is waiting ' . $table->name);
         }
 
         DB::transaction(function () use ($restaurant, $plate, $table) {
@@ -135,6 +239,8 @@ class OrderService
                 ->where(Order::TABLE_NAME . '.status', Order::STATUS_OPEN)
                 ->where(OrderItem::TABLE_NAME . '.recipe_uuid', $plate->recipe_uuid)
                 ->whereNull(OrderItem::TABLE_NAME . '.served_at')
+                ->whereNotExists(fn ($query) => $query->from(ServedMeal::TABLE_NAME)
+                    ->whereColumn(ServedMeal::TABLE_NAME . '.order_item_uuid', OrderItem::TABLE_NAME . '.uuid'))
                 ->orderBy(Order::TABLE_NAME . '.ordered_at')
                 ->orderBy(OrderItem::TABLE_NAME . '.created_at')
                 ->lockForUpdate()
@@ -144,42 +250,108 @@ class OrderService
                 throw new InvalidArgumentException(sprintf('%s isn\'t waiting for %s', $table->name, $plate->Recipe->name));
             }
 
-            $now = $restaurant->getNow();
-            $item->served_at = $now;
-            $item->save();
-
             $plate->order_item_uuid = $item->uuid;
             $plate->save();
 
-            $order = $item->Order;
-            if ($order->Items()->whereNull('served_at')->doesntExist()) {
-                $order->status = Order::STATUS_FULFILLED;
-                $order->fulfilled_at = $now;
-                $order->save();
-            }
+            $this->workService->queueDelivery($restaurant, $plate, $table, self::DELIVERY_MINUTES);
         });
     }
 
     /**
-     * Finishes a fulfilled order once its meal has been eaten, which makes all its serving equipment dirty
+     * Marks a served portion as eaten, which returns its serving equipment dirty. The order stays until it is finished
+     * @param Restaurant $restaurant The restaurant
+     * @param OrderItem $item The portion
+     * @throws InvalidArgumentException Thrown when the order is done, or the portion isn't served or already eaten
+     */
+    public function consumeItem(Restaurant $restaurant, OrderItem $item): void
+    {
+        $this->assertActive($item->Order);
+        if ($item->served_at === null) {
+            throw new InvalidArgumentException($item->name . ' hasn\'t been served yet');
+        }
+        if ($item->consumed_at !== null) {
+            throw new InvalidArgumentException($item->name . ' has already been eaten');
+        }
+
+        DB::transaction(function () use ($restaurant, $item) {
+            $this->clearPlates($restaurant, [$item->uuid]);
+
+            $item->consumed_at = $restaurant->getNow();
+            $item->save();
+        });
+    }
+
+    /**
+     * Marks every served portion of an order that isn't eaten yet as eaten
      * @param Restaurant $restaurant The restaurant
      * @param Order $order The order
-     * @throws InvalidArgumentException Thrown when the order hasn't been fully served yet
+     * @throws InvalidArgumentException Thrown when the order is done, or nothing served is left to eat
      */
     public function consumeOrder(Restaurant $restaurant, Order $order): void
     {
-        if ($order->status !== Order::STATUS_FULFILLED) {
-            throw new InvalidArgumentException('Only fully served orders can be consumed');
+        $this->assertActive($order);
+
+        $items = $order->Items()->whereNotNull('served_at')->whereNull('consumed_at')->get();
+        if ($items->isEmpty()) {
+            throw new InvalidArgumentException('Nothing served is left to eat');
         }
 
+        DB::transaction(function () use ($restaurant, $items) {
+            foreach ($items as $item) {
+                $this->consumeItem($restaurant, $item);
+            }
+        });
+    }
+
+    //| Finishing & cancelling
+
+    /**
+     * Finishes an order, as the table pays and is done. What they pay goes into the shift total, and the serving
+     * equipment of anything still on the table returns dirty
+     * @param Restaurant $restaurant The restaurant
+     * @param Order $order The order
+     * @throws InvalidArgumentException Thrown when the order is already done
+     */
+    public function finishOrder(Restaurant $restaurant, Order $order): void
+    {
+        $this->assertActive($order);
+
         DB::transaction(function () use ($restaurant, $order) {
-            $plates = ServedMeal::whereIn('order_item_uuid', $order->Items()->pluck('uuid'))->get();
-            foreach ($plates as $plate) {
-                $this->kitchenService->releaseEquipment($restaurant, $plate->equipment ?? [], dirty: true);
-                $plate->delete();
+            $this->clearTable($restaurant, $order);
+
+            // Orders placed before they were paid on finishing are already in the shift total
+            if ($order->paid_at === null) {
+                $restaurant->shift_total = round($restaurant->shift_total + $order->getPayable(), 2);
+                $restaurant->save();
+                $order->paid_at = $restaurant->getNow();
             }
 
             $order->status = Order::STATUS_FINISHED;
+            $order->save();
+        });
+    }
+
+    /**
+     * Cancels an order, so nothing is paid for it. The serving equipment of anything on the table returns dirty
+     * @param Restaurant $restaurant The restaurant
+     * @param Order $order The order
+     * @throws InvalidArgumentException Thrown when the order is already done
+     */
+    public function cancelOrder(Restaurant $restaurant, Order $order): void
+    {
+        $this->assertActive($order);
+
+        DB::transaction(function () use ($restaurant, $order) {
+            $this->clearTable($restaurant, $order);
+
+            // Orders placed before they were paid on finishing are already in the shift total, which they leave again
+            if ($order->paid_at !== null) {
+                $restaurant->shift_total = round($restaurant->shift_total - $order->getPayable(), 2);
+                $restaurant->save();
+                $order->paid_at = null;
+            }
+
+            $order->status = Order::STATUS_CANCELLED;
             $order->save();
         });
     }
@@ -217,6 +389,71 @@ class OrderService
         $service = $restaurant->getCurrentService();
         if ($service !== null) {
             Sale::where('service_uuid', $service->uuid)->where('recipe_uuid', $recipe->uuid)->delete();
+        }
+    }
+
+    //| Helpers
+
+    /**
+     * Adds a portion of a recipe to an order, at its sale price when it is on sale
+     * @param array<string, float> $sales The sale prices, keyed by recipe uuid
+     * @throws InvalidArgumentException Thrown when the customer isn't seated at the table
+     */
+    private function addItem(Order $order, ?Table $table, Recipe $recipe, ?Customer $customer, array $sales): OrderItem
+    {
+        $this->assertSeated($customer, $table);
+
+        $item = new OrderItem();
+        $item->order_uuid = $order->uuid;
+        $item->recipe_uuid = $recipe->uuid;
+        $item->customer_uuid = $customer?->uuid;
+        $item->name = $recipe->name;
+        $item->price = $sales[$recipe->uuid] ?? $recipe->price;
+        $item->save();
+
+        return $item;
+    }
+
+    /**
+     * Clears the table of an order that is done: the plates on it or on their way are taken away, returning their
+     * serving equipment dirty, and the waiter stops taking it
+     */
+    private function clearTable(Restaurant $restaurant, Order $order): void
+    {
+        $this->clearPlates($restaurant, $order->Items()->pluck('uuid')->all());
+        Work::where('order_uuid', $order->uuid)->delete();
+    }
+
+    /**
+     * Takes the plates brought for order entries off the table, returning their serving equipment dirty. The jobs of
+     * bringing those still on their way go with them
+     * @param string[] $itemUuids The uuids of the order entries
+     */
+    private function clearPlates(Restaurant $restaurant, array $itemUuids): void
+    {
+        foreach (ServedMeal::whereIn('order_item_uuid', $itemUuids)->get() as $plate) {
+            $this->equipmentService->releaseEquipment($restaurant, $plate->equipment ?? [], dirty: true);
+            $plate->delete();
+        }
+    }
+
+    /**
+     * @throws InvalidArgumentException Thrown when the order is finished or cancelled
+     */
+    private function assertActive(Order $order): void
+    {
+        if (!$order->isActive()) {
+            throw new InvalidArgumentException('This order is already ' . $order->status);
+        }
+    }
+
+    /**
+     * @throws InvalidArgumentException Thrown when a customer isn't seated at the table
+     */
+    private function assertSeated(?Customer $customer, ?Table $table): void
+    {
+        if ($customer !== null && $table !== null && $customer->table_uuid !== $table->uuid) {
+            throw new InvalidArgumentException($customer->name . ' isn\'t seated at ' . $table->name);
         }
     }
 

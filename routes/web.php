@@ -105,20 +105,26 @@ Route::prefix('/arsenal')
     });
 
 //| dnd restaurant
+// Players of a restaurant may only see the pages that opt out of the manager guard
 Route::prefix('/dnd/restaurant')
-    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access'])
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access', 'dnd.restaurant.manager'])
     ->group(function() {
         Route::get('/', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showOverview'])
             ->name('dnd.restaurant.overview');
 
         Route::get('/{restaurant_uuid}/management', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManagement'])
-            ->name('dnd.restaurant.management');
+            ->name('dnd.restaurant.management')
+            ->withoutMiddleware('dnd.restaurant.manager');
 
         Route::get('/{restaurant_uuid}/manage', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManage'])
             ->name('dnd.restaurant.manage');
 
+        Route::get('/{restaurant_uuid}/finances', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showFinances'])
+            ->name('dnd.restaurant.finances');
+
         Route::get('/{restaurant_uuid}/service', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showService'])
-            ->name('dnd.restaurant.service');
+            ->name('dnd.restaurant.service')
+            ->withoutMiddleware('dnd.restaurant.manager');
         Route::post('/{restaurant_uuid}/service/start', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'startService'])
             ->name('dnd.restaurant.service.start');
     });

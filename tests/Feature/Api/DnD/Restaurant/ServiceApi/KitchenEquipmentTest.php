@@ -227,7 +227,8 @@ class KitchenEquipmentTest extends AbstractFeatureTester
         $response->assertOk();
         $this->assertEquals('08:00', $response->json('data.clock.time'));
         $this->assertUsage($cup, 0, 3);
-        $this->assertEquals(10, $response->json('data.stations.cleaning.jobs.0.minutes_left'));
+        // Each piece is a job of its own, cleaned one after the other by the single cleaner
+        $this->assertEquals([5, 10], array_column($response->json('data.stations.cleaning.jobs'), 'minutes_left'));
 
         $this->advance(10);
         $this->assertUsage($cup, 0, 1);
@@ -262,7 +263,7 @@ class KitchenEquipmentTest extends AbstractFeatureTester
 
         $response->assertOk();
         $this->assertEquals('08:00', $response->json('data.clock.time'));
-        $this->assertCount(2, $response->json('data.stations.cleaning.jobs'));
+        $this->assertCount(3, $response->json('data.stations.cleaning.jobs'));
 
         $this->advance(15);
         $this->assertUsage($cup, 0, 0);

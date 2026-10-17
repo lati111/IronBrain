@@ -3,10 +3,14 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Meal;
+use App\Models\DnD\Restaurant\Order;
 use App\Models\DnD\Restaurant\Restaurant;
+use App\Models\DnD\Restaurant\ServedMeal;
+use App\Models\DnD\Restaurant\Table;
 use App\Models\DnD\Restaurant\Work;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -14,87 +18,61 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * The work areas of the kitchen. Prep and cleaning are queued in their area, and worked through in order by the
- * employees there as the clock moves, at their combined speed. An area without employees gets nothing done. Finished
- * jobs stay until the whole queue of their area is done, so the area's total progress only ever goes up
+ * The work that takes time as the clock moves, done in the order it was queued unless a job is prioritised:
+ * - Prep is worked through one meal or conversion at a time, by everyone at prep together at their combined speed
+ * - Cleaning is done a piece at a time, each piece by a single cleaner at their own speed, so several cleaners clean
+ *   several pieces side by side
+ * - Waiters work through the jobs of the tables they wait one at a time: taking orders and bringing plated portions
+ * An area without employees gets nothing done
  */
 class WorkService
 {
-    public function __construct(private readonly KitchenService $kitchenService)
-    {
-    }
-
-    /**
-     * Describes the staff and the work areas: each employee with the task they are on, and each area with its speed,
-     * how far along its queue is in total, and the jobs still to do, each with its own progress and how many minutes
-     * are left until it is done
-     * @param Restaurant $restaurant The restaurant
-     * @return array The employees and the work areas
-     */
-    public function describe(Restaurant $restaurant): array
-    {
-        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
-
-        $stations = [];
-        $tasks = [];
-        foreach (WorkStation::cases() as $station) {
-            $speed = $this->getSpeed($employees, $station);
-            $all = $this->getQueue($restaurant, $station, lock: false, withFinished: true);
-            $queue = $all->filter(fn (Work $job) => !$job->isFinished())->values();
-            $totalWork = $all->sum('work');
-
-            $tasks[$station->value] = $queue->isNotEmpty()
-                ? $this->describeTask($queue->first())
-                : $station->label() . ' (idle)';
-
-            // Minutes left count up through the queue, as each job waits for the ones before it
-            $before = 0.0;
-            $stations[$station->value] = [
-                'speed' => $speed,
-                // Null while there is nothing to do
-                'progress' => $queue->isNotEmpty() && $totalWork > 0 ? round($all->sum('progress') / $totalWork, 4) : null,
-                'jobs' => $queue->map(function (Work $job) use (&$before, $speed) {
-                    $before += $job->getRemaining();
-                    return [
-                        'uuid' => $job->uuid,
-                        'meal_uuid' => $job->meal_uuid,
-                        'equipment_uuid' => $job->equipment_uuid,
-                        'amount' => $job->amount,
-                        'work' => $job->work,
-                        'progress' => $job->work > 0 ? round($job->progress / $job->work, 4) : 0,
-                        'minutes_left' => $speed > 0 ? (int) ceil(round($before / $speed, 4)) : null,
-                    ];
-                })->values()->all(),
-            ];
-        }
-
-        return [
-            'employees' => $employees->map(fn (Employee $employee) => [
-                'uuid' => $employee->uuid,
-                'name' => $employee->name,
-                'icon' => $employee->icon !== null ? asset('img/' . $employee->icon) : null,
-                'station' => $employee->station?->value,
-                'task' => $employee->station !== null ? $tasks[$employee->station->value] : 'Idle',
-            ])->values()->all(),
-            'stations' => $stations,
-        ];
+    public function __construct(
+        private readonly WorkQueueService $workQueueService,
+        private readonly KitchenService $kitchenService,
+        private readonly InventoryService $inventoryService,
+        private readonly BoostService $boostService,
+    ) {
     }
 
     //| Staff
 
     /**
-     * Puts an employee to work in a work area, or takes them out of their area when none is given. Work done so far
-     * is kept, as work is only done when the clock moves
+     * Puts an employee to work in a work area, which takes them off the tables they wait, or stops them working
+     * altogether when no area is given. Work done so far is kept, as work is only done when the clock moves
      * @param Employee $employee The employee
      * @param WorkStation|null $station The work area, or null to stop working
      */
     public function assignEmployee(Employee $employee, ?WorkStation $station): void
     {
-        $employee->station = $station;
-        $employee->save();
+        DB::transaction(function () use ($employee, $station) {
+            Table::where('employee_uuid', $employee->uuid)->update(['employee_uuid' => null]);
+
+            $employee->station = $station;
+            $employee->save();
+        });
     }
 
-    //| Queueing
+    /**
+     * Has an employee wait a table, taking its orders, which takes them out of their work area. An employee can wait
+     * several tables, while a table has a single waiter. Without an employee, the table is left without a waiter
+     * @param Table $table The table
+     * @param Employee|null $employee The employee, or null to leave the table without a waiter
+     */
+    public function assignWaiter(Table $table, ?Employee $employee): void
+    {
+        DB::transaction(function () use ($table, $employee) {
+            if ($employee !== null) {
+                $employee->station = null;
+                $employee->save();
+            }
+
+            $table->employee_uuid = $employee?->uuid;
+            $table->save();
+        });
+    }
+
+    //| Prep
 
     /**
      * Queues a planned meal to be prepped in the prep area. A recipe without prep time is prepped straight away
@@ -119,9 +97,70 @@ class WorkService
                 return;
             }
 
-            $this->createJob($restaurant, WorkStation::PREP, $minutes, meal: $meal);
+            $this->workQueueService->createJob($restaurant, WorkStation::PREP, $minutes, meal: $meal);
         });
     }
+
+    /**
+     * Queues an ingredient to be converted in the prep area, taking it from the stacks closest to expiring first.
+     * What it becomes goes in the pile once done, straight away when converting takes no time
+     * @param Restaurant $restaurant The restaurant
+     * @param Conversion $conversion The conversion
+     * @param float $amount How much of the input to convert
+     * @throws InvalidArgumentException Thrown when it would make nothing, or too little of the input is stored
+     */
+    public function queueConversion(Restaurant $restaurant, Conversion $conversion, float $amount): void
+    {
+        $amount = round($amount, 2);
+        $output = $conversion->getOutputFor($amount);
+        if ($output <= 0) {
+            throw new InvalidArgumentException('Too little to convert');
+        }
+
+        DB::transaction(function () use ($restaurant, $conversion, $amount, $output) {
+            $consumed = $this->inventoryService->takeForCooking($restaurant, $conversion->Input, $amount);
+
+            $minutes = round($amount * $conversion->minutes, 2);
+            if ($minutes <= 0) {
+                $this->inventoryService->addToPile($restaurant, $conversion->Output, $output);
+                return;
+            }
+
+            $job = $this->workQueueService->createJob($restaurant, WorkStation::PREP, $minutes);
+            $job->input_uuid = $conversion->input_uuid;
+            $job->input_amount = $amount;
+            $job->output_uuid = $conversion->output_uuid;
+            $job->output_amount = $output;
+            $job->consumed = $consumed;
+            $job->save();
+        });
+    }
+
+    /**
+     * Cancels a conversion that isn't done yet, putting the ingredients it took back where they came from
+     * @param Restaurant $restaurant The restaurant
+     * @param Work $job The conversion's job
+     * @throws InvalidArgumentException Thrown when the job isn't a conversion, or is already done
+     */
+    public function cancelConversion(Restaurant $restaurant, Work $job): void
+    {
+        if ($job->output_uuid === null) {
+            throw new InvalidArgumentException('Only conversions can be cancelled');
+        }
+
+        if ($job->isFinished()) {
+            throw new InvalidArgumentException('This conversion is already done');
+        }
+
+        DB::transaction(function () use ($restaurant, $job) {
+            $this->inventoryService->putBack($restaurant, $job->consumed ?? []);
+            $job->delete();
+
+            $this->workQueueService->clearIfDone($restaurant, WorkStation::PREP);
+        });
+    }
+
+    //| Cleaning
 
     /**
      * Queues dirty pieces of a piece of equipment to be cleaned in the cleaning area. Equipment without cleaning time
@@ -173,10 +212,103 @@ class WorkService
         });
     }
 
+    /**
+     * Queues pieces of equipment to be cleaned, or cleans them straight away when cleaning takes no time
+     * @param Restaurant $restaurant The restaurant
+     * @param Equipment $equipment The equipment, locked
+     * @param int $amount How many pieces
+     */
+    private function queueEquipment(Restaurant $restaurant, Equipment $equipment, int $amount): void
+    {
+        // Cleaning times can be fractions of a minute, and work is kept with two decimals
+        $minutes = round($equipment->cleaning_time * $amount, 2);
+        if ($minutes <= 0) {
+            $equipment->amount_dirty = max(0, $equipment->amount_dirty - $amount);
+            $equipment->save();
+            return;
+        }
+
+        // Each piece is a job of its own, as a piece is cleaned by a single cleaner
+        for ($piece = 0; $piece < $amount; $piece++) {
+            $this->workQueueService->createJob($restaurant, WorkStation::CLEANING, round($equipment->cleaning_time, 2), equipment: $equipment);
+        }
+    }
+
+    /**
+     * Gets how many dirty pieces of a piece of equipment aren't queued to be cleaned yet
+     * @param Equipment $equipment The equipment
+     * @return int How many pieces
+     */
+    private function getUnqueuedDirty(Equipment $equipment): int
+    {
+        $queued = (int) Work::where('equipment_uuid', $equipment->uuid)->whereColumn('progress', '<', 'work')->sum('amount');
+        return max(0, $equipment->amount_dirty - $queued);
+    }
+
+    //| Waiting
+
+    /**
+     * Has the waiter of a table take an order there, which takes them a while for everyone seated. An order taken
+     * in no time is open straight away
+     * @param Restaurant $restaurant The restaurant
+     * @param Order $order The order being taken, which is taking until the waiter is done
+     * @param Table $table The table
+     * @param float $minutes How long taking it takes
+     */
+    public function queueOrderTaking(Restaurant $restaurant, Order $order, Table $table, float $minutes): void
+    {
+        if ($minutes <= 0) {
+            $this->workQueueService->finishTakingOrder($order, $restaurant->getNow());
+            return;
+        }
+
+        $this->workQueueService->createJob($restaurant, WorkStation::WAITING, $minutes, table: $table, order: $order);
+    }
+
+    /**
+     * Has the waiter of a table bring a plated portion there. The portion counts as served once they arrive
+     * @param Restaurant $restaurant The restaurant
+     * @param ServedMeal $plate The plated portion, already set aside for the order entry it is brought for
+     * @param Table $table The table
+     * @param float $minutes How long bringing it takes
+     */
+    public function queueDelivery(Restaurant $restaurant, ServedMeal $plate, Table $table, float $minutes): void
+    {
+        if ($minutes <= 0) {
+            $this->workQueueService->finishDelivery($plate, $restaurant->getNow());
+            return;
+        }
+
+        $this->workQueueService->createJob($restaurant, WorkStation::WAITING, $minutes, table: $table, plate: $plate);
+    }
+
+    /**
+     * Moves a job to the front of its queue, so it is worked on next. Cleaning moves every piece of the equipment
+     * still to clean along with it, keeping them in order
+     * @param Work $job The job
+     */
+    public function prioritize(Work $job): void
+    {
+        $jobs = collect([$job]);
+        if ($job->station === WorkStation::CLEANING && $job->equipment_uuid !== null) {
+            $jobs = Work::where('station', WorkStation::CLEANING->value)->where('equipment_uuid', $job->equipment_uuid)
+                ->whereColumn('progress', '<', 'work')->orderBy('order')->orderBy('created_at')->get();
+        }
+
+        DB::transaction(function () use ($job, $jobs) {
+            $first = (int) Work::where('restaurant_uuid', $job->restaurant_uuid)->where('station', $job->station->value)->min('order');
+            foreach ($jobs->values() as $index => $moved) {
+                $moved->order = $first - $jobs->count() + $index;
+                $moved->save();
+            }
+        });
+    }
+
     //| Clock
 
     /**
-     * Moves the restaurant's time forward, with the work areas getting work done in the meantime
+     * Moves the restaurant's time forward, passing midnight into the next date if needed, with the work areas getting
+     * work done in the meantime
      * @param Restaurant $restaurant The restaurant
      * @param int $minutes How many minutes to move forward
      */
@@ -184,7 +316,9 @@ class WorkService
     {
         DB::transaction(function () use ($restaurant, $minutes) {
             $this->doWork($restaurant, $minutes);
-            $this->kitchenService->advanceTime($restaurant, $minutes);
+
+            $restaurant->setNow($restaurant->getNow()->addMinutes($minutes));
+            $restaurant->save();
         });
     }
 
@@ -200,9 +334,11 @@ class WorkService
         $target = Carbon::parse($now->format('Y-m-d') . ' ' . $time);
         $minutes = intdiv($target->getTimestamp() - $now->getTimestamp(), 60);
 
-        DB::transaction(function () use ($restaurant, $time, $minutes) {
+        DB::transaction(function () use ($restaurant, $target, $minutes) {
             $this->doWork($restaurant, $minutes);
-            $this->kitchenService->setTime($restaurant, $time);
+
+            $restaurant->setNow($target);
+            $restaurant->save();
         });
     }
 
@@ -217,7 +353,7 @@ class WorkService
         $this->advanceTime($restaurant, $this->kitchenService->getMinutesUntilDone($restaurant, $meal));
     }
 
-    //| Helpers
+    //| Doing work
 
     /**
      * Gets work done in every work area over a stretch of time. Each area works through its queue in order at the
@@ -231,143 +367,118 @@ class WorkService
             return;
         }
 
-        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->whereNotNull('station')->get();
+        $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->with('Tables')->get();
+        $start = $restaurant->getNow();
+        $end = $start->copy()->addSeconds((int) round($minutes * 60));
 
-        foreach (WorkStation::cases() as $station) {
-            $budget = round($minutes * $this->getSpeed($employees, $station), 4);
-            if ($budget <= 0) {
+        // Meals in a cooker cook on by themselves, at the speed of their cooker, equipment and boosts
+        $this->boostService->advanceCooking($restaurant, $start, $end);
+
+        foreach (WorkStation::areas() as $station) {
+            if ($station === WorkStation::CLEANING) {
+                $this->doCleaning($restaurant, $employees, $minutes, $start);
                 continue;
             }
 
-            foreach ($this->getQueue($restaurant, $station) as $job) {
-                $remaining = $job->getRemaining();
-                if ($budget < $remaining) {
-                    $job->progress = round($job->progress + $budget, 2);
+            $speed = $this->workQueueService->getSpeed($employees, $station);
+            if ($speed <= 0) {
+                continue;
+            }
+
+            $this->doPrep($restaurant, $speed, $start, $end);
+            $this->workQueueService->clearIfDone($restaurant, $station);
+        }
+
+        foreach ($this->workQueueService->getWaiters($employees) as $waiter) {
+            $this->doWaiting($waiter, $minutes, $start);
+        }
+    }
+
+    /**
+     * Gets prep done over a stretch of time. Everyone at prep works on the first job in the queue together, at their
+     * combined speed times the job's own speed, which depends on the equipment and boosts of its meal. As boosts run
+     * out partway through, the time is worked through in stretches between those moments
+     * @param Restaurant $restaurant The restaurant
+     * @param float $speed The combined speed of the employees at prep
+     * @param Carbon $start When the stretch of time started, in the restaurant's time
+     * @param Carbon $end When it ends
+     */
+    private function doPrep(Restaurant $restaurant, float $speed, Carbon $start, Carbon $end): void
+    {
+        $boosts = $this->boostService->getBoosts($restaurant, $start);
+        $queue = $this->workQueueService->getQueue($restaurant, WorkStation::PREP)->values();
+        $index = 0;
+        $at = $start->copy();
+
+        foreach ([...$this->boostService->getBoundaries($boosts, $start, $end), $end] as $until) {
+            while ($index < $queue->count() && $at->lt($until)) {
+                $job = $queue[$index];
+                $rate = $speed * $this->workQueueService->getJobSpeed($job, $at, $boosts);
+                $needed = $job->getRemaining() / $rate;
+                $available = ($until->getTimestamp() - $at->getTimestamp()) / 60;
+
+                if ($needed > $available) {
+                    $job->progress = round($job->progress + $available * $rate, 2);
                     $job->save();
+                    $at = $until->copy();
                     break;
                 }
 
-                $budget = round($budget - $remaining, 4);
-                $this->finishJob($restaurant, $job);
+                // The job finished partway through, once the work before it and its own was done
+                $at = $at->copy()->addSeconds((int) round($needed * 60));
+                $this->workQueueService->finishJob($restaurant, $job, $at);
+                $index++;
             }
 
-            // Once everything in the area is done, its finished jobs are cleared, starting its total over
-            if ($this->getQueue($restaurant, $station)->isEmpty()) {
-                Work::where('restaurant_uuid', $restaurant->uuid)->where('station', $station->value)->delete();
-            }
+            $at = $until->copy();
         }
     }
 
     /**
-     * Finishes a job: the meal is prepped, or the pieces of equipment are clean. The job stays, marked as finished,
-     * until the rest of its area's queue is done
+     * Gets cleaning done over a stretch of time, each cleaner on their own piece at their own speed
      * @param Restaurant $restaurant The restaurant
-     * @param Work $job The job
-     */
-    private function finishJob(Restaurant $restaurant, Work $job): void
-    {
-        if ($job->station === WorkStation::PREP) {
-            $meal = $job->Meal;
-            if ($meal !== null && $meal->status === Meal::STATUS_PLANNED) {
-                $this->kitchenService->finishPrep($restaurant, $meal);
-            }
-        } else {
-            $equipment = Equipment::where('uuid', $job->equipment_uuid)->lockForUpdate()->first();
-            if ($equipment !== null) {
-                $equipment->amount_dirty = max(0, $equipment->amount_dirty - $job->amount);
-                $equipment->save();
-            }
-        }
-
-        $job->progress = $job->work;
-        $job->save();
-    }
-
-    /**
-     * Queues pieces of equipment to be cleaned, or cleans them straight away when cleaning takes no time
-     * @param Restaurant $restaurant The restaurant
-     * @param Equipment $equipment The equipment, locked
-     * @param int $amount How many pieces
-     */
-    private function queueEquipment(Restaurant $restaurant, Equipment $equipment, int $amount): void
-    {
-        $minutes = $equipment->cleaning_time * $amount;
-        if ($minutes <= 0) {
-            $equipment->amount_dirty = max(0, $equipment->amount_dirty - $amount);
-            $equipment->save();
-            return;
-        }
-
-        $this->createJob($restaurant, WorkStation::CLEANING, $minutes, equipment: $equipment, amount: $amount);
-    }
-
-    /**
-     * Adds a job at the end of the queue of a work area
-     */
-    private function createJob(Restaurant $restaurant, WorkStation $station, float $minutes, ?Meal $meal = null, ?Equipment $equipment = null, int $amount = 1): Work
-    {
-        $job = new Work();
-        $job->restaurant_uuid = $restaurant->uuid;
-        $job->station = $station;
-        $job->meal_uuid = $meal?->uuid;
-        $job->equipment_uuid = $equipment?->uuid;
-        $job->amount = $amount;
-        $job->work = $minutes;
-        $job->progress = 0;
-        $job->order = (int) Work::where('restaurant_uuid', $restaurant->uuid)->where('station', $station->value)->max('order') + 1;
-        $job->save();
-
-        return $job;
-    }
-
-    /**
-     * Gets the queue of a work area, in the order its jobs are worked on
-     * @param bool $withFinished Whether to include the finished jobs that wait for the rest of the queue
-     * @return Collection<Work> The jobs
-     */
-    private function getQueue(Restaurant $restaurant, WorkStation $station, bool $lock = true, bool $withFinished = false): Collection
-    {
-        $query = Work::where('restaurant_uuid', $restaurant->uuid)
-            ->where('station', $station->value)
-            ->with(['Meal.Recipe', 'Equipment'])
-            ->orderBy('order')
-            ->orderBy('created_at');
-
-        if (!$withFinished) {
-            $query->whereColumn('progress', '<', 'work');
-        }
-
-        return $lock ? $query->lockForUpdate()->get() : $query->get();
-    }
-
-    /**
-     * Gets the combined speed of the employees working in a work area
      * @param Collection<Employee> $employees The restaurant's employees
-     * @param WorkStation $station The work area
-     * @return float The combined speed, or 0 when nobody works there
+     * @param float $minutes How many minutes pass
+     * @param Carbon $start When the stretch of time started, in the restaurant's time
      */
-    private function getSpeed(Collection $employees, WorkStation $station): float
+    private function doCleaning(Restaurant $restaurant, Collection $employees, float $minutes, Carbon $start): void
     {
-        return round($employees->filter(fn (Employee $employee) => $employee->station === $station)
-            ->sum(fn (Employee $employee) => $employee->getSpeed($station)), 2);
+        $queue = $this->workQueueService->getQueue($restaurant, WorkStation::CLEANING);
+        $schedule = $this->workQueueService->scheduleCleaning($restaurant, $queue, $this->workQueueService->getCleaners($employees), $start, $minutes);
+
+        foreach ($queue as $job) {
+            if (isset($schedule['finished'][$job->uuid])) {
+                $this->workQueueService->finishJob($restaurant, $job, $start->copy()->addSeconds((int) round($schedule['finished'][$job->uuid] * 60)));
+            } elseif (isset($schedule['progress'][$job->uuid])) {
+                $job->progress = round($job->progress + $schedule['progress'][$job->uuid], 2);
+                $job->save();
+            }
+        }
+
+        $this->workQueueService->clearIfDone($restaurant, WorkStation::CLEANING);
     }
 
     /**
-     * Gets how many dirty pieces of a piece of equipment aren't queued to be cleaned yet
+     * Has a waiter work through the jobs of their tables one at a time, at normal speed, over a stretch of time
+     * @param Employee $waiter The waiter, with their tables
+     * @param float $minutes How many minutes pass
+     * @param Carbon $start When the stretch of time started, in the restaurant's time
      */
-    private function getUnqueuedDirty(Equipment $equipment): int
+    private function doWaiting(Employee $waiter, float $minutes, Carbon $start): void
     {
-        $queued = (int) Work::where('equipment_uuid', $equipment->uuid)->whereColumn('progress', '<', 'work')->sum('amount');
-        return max(0, $equipment->amount_dirty - $queued);
-    }
+        $budget = $minutes;
+        $done = 0.0;
+        foreach ($this->workQueueService->getWaitingQueue($waiter->Tables->pluck('uuid')->all()) as $job) {
+            $remaining = $job->getRemaining();
+            if ($budget < $remaining) {
+                $job->progress = round($job->progress + $budget, 2);
+                $job->save();
+                break;
+            }
 
-    /**
-     * Describes the job a work area is on, such as "Prepping Stew" or "Cleaning 3 Plate"
-     */
-    private function describeTask(Work $job): string
-    {
-        return $job->station === WorkStation::PREP
-            ? 'Prepping ' . ($job->Meal?->Recipe?->name ?? 'a meal')
-            : sprintf('Cleaning %d %s', $job->amount, $job->Equipment?->name ?? 'equipment');
+            $budget = round($budget - $remaining, 4);
+            $done += $remaining;
+            $this->workQueueService->finishWaitingJob($job, $start->copy()->addSeconds((int) round($done * 60)));
+        }
     }
 }

@@ -16,7 +16,8 @@
     <div id="service"
          data-api-url="{{route('api.dnd.restaurant.floor.get', ['restaurant_uuid' => $restaurant->uuid])}}"
          data-service-url="{{route('api.dnd.restaurant.service.get', ['restaurant_uuid' => $restaurant->uuid])}}"
-         data-management-url="{{route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid])}}">
+         data-management-url="{{route('dnd.restaurant.management', ['restaurant_uuid' => $restaurant->uuid])}}"
+         data-player="{{$isPlayer ? 1 : 0}}">
 
         {{--| Top bar. Both sides share a width, so the title stays centred |--}}
         <div class="flex justify-between items-center mb-2">
@@ -29,12 +30,15 @@
                     <small id="service-date" class="text-gray-500"></small>
                     <input id="service-time" type="time" class="underlined service-clock" title="Current time" onchange="setServiceTime(this.value)">
                 </div>
-                <div class="flex items-center gap-1">
-                    @foreach([1 => '+1m', 5 => '+5m', 15 => '+15m', 60 => '+1h'] as $minutes => $label)
-                        <button class="service-clock-step interactive" onclick="advanceTime({{$minutes}})" dusk="advance-{{$minutes}}">{{$label}}</button>
-                    @endforeach
-                    <button class="interactive text-sm font-semibold ml-2" onclick="openEndServiceModal()" dusk="service-end">End service</button>
-                </div>
+                {{--| Players only control their employees, so the clock runs as whoever runs the service moves it |--}}
+                @unless($isPlayer)
+                    <div class="flex items-center gap-1">
+                        @foreach([1 => '+1m', 5 => '+5m', 15 => '+15m', 60 => '+1h'] as $minutes => $label)
+                            <button class="service-clock-step interactive" onclick="advanceTime({{$minutes}})" dusk="advance-{{$minutes}}">{{$label}}</button>
+                        @endforeach
+                        <button class="interactive text-sm font-semibold ml-2" onclick="openEndServiceModal()" dusk="service-end">End service</button>
+                    </div>
+                @endunless
                 <small class="text-gray-500">
                     Open {{substr($restaurant->opening_time, 0, 5)}} &ndash; {{substr($restaurant->closing_time, 0, 5)}}
                     &middot; shift total <span id="service-shift-total" class="font-semibold">0b</span>
@@ -45,7 +49,8 @@
         <div class="flex gap-3 items-start">
 
             {{--| Sidebar |--}}
-            {{--| Collapsed until opened, as the floor and kitchen need the room during service |--}}
+            {{--| Collapsed until opened, as the floor and kitchen need the room during service. Players have none |--}}
+            @unless($isPlayer)
             <aside id="inventory-sidebar" class="inventory-sidebar collapsed rounded shadow border gray-border">
                 <div class="flex items-center border-b">
                     <button class="inventory-sidebar-toggle interactive px-2" onclick="toggleSidebar()" title="Collapse / expand">
@@ -54,6 +59,8 @@
                     <div class="inventory-sidebar-body flex flex-1">
                         <button class="inventory-tab active flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="boost" onclick="switchTab('boost')">Boosts</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="sale" onclick="switchTab('sale')">Sales</button>
                     </div>
                 </div>
@@ -64,6 +71,7 @@
                     <button id="customer-create-button" class="interactive text-sm" onclick="openCreateCustomerModal()" dusk="customer-create">+ New Customer</button>
                 </div>
             </aside>
+            @endunless
 
             {{--| Floor |--}}
             <div class="service-floor flex-1 flex flex-col gap-2">
@@ -85,6 +93,8 @@
             {{--| Kitchen |--}}
             <aside class="service-kitchen rounded shadow border gray-border">
                 <div class="service-kitchen-title">Kitchen</div>
+                {{--| The boosts active now, with what they are on and how long they have left |--}}
+                <div id="kitchen-boosts" class="kitchen-boosts hidden"></div>
 
                 {{--| The areas sit side by side when there is room for it |--}}
                 <div class="kitchen-areas">
@@ -99,7 +109,7 @@
                         <div id="kitchen-serving" class="kitchen-meal-list kitchen-drop-zone"></div>
                     </section>
 
-                    <section class="kitchen-area">
+                    <section id="kitchen-cooking-area" class="kitchen-area">
                         <h4 class="kitchen-area-title">Cooking</h4>
                         <div id="kitchen-cookers" class="kitchen-cookers"></div>
                     </section>
@@ -108,7 +118,9 @@
                         <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Preparation</h4>
                             <div class="kitchen-area-staff" data-station-staff="prep"></div>
-                            <button class="interactive text-xs" onclick="openPlanMealModal()" dusk="meal-plan">+ Plan meal</button>
+                            @unless($isPlayer)
+                                <button class="interactive text-xs" onclick="openPlanMealModal()" dusk="meal-plan">+ Plan meal</button>
+                            @endunless
                         </div>
                         <div class="kitchen-total-progress hidden" data-station-progress="prep"><div></div></div>
                         <div id="kitchen-preparation" class="kitchen-meal-list"></div>
@@ -118,7 +130,9 @@
                         <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Equipment</h4>
                             <div class="kitchen-area-staff" data-station-staff="cleaning"></div>
-                            <button id="kitchen-clean-all" class="interactive text-xs disabled:opacity-40" onclick="cleanAllEquipment()" dusk="clean-all">Clean all</button>
+                            @unless($isPlayer)
+                                <button id="kitchen-clean-all" class="interactive text-xs disabled:opacity-40" onclick="cleanAllEquipment()" dusk="clean-all">Clean all</button>
+                            @endunless
                         </div>
                         <div class="kitchen-total-progress hidden" data-station-progress="cleaning"><div></div></div>
 
@@ -165,11 +179,18 @@
     {{--| Clicking a table, outside its seats, opens its menu to take or look at orders |--}}
     <template id="table-template">
         <div class="service-table">
-            <div class="flex justify-between gap-2">
-                <span data-field="name" class="font-semibold truncate"></span>
+            <div class="flex items-center gap-2">
+                <span data-field="name" class="font-semibold truncate flex-1"></span>
                 <span data-field="occupancy" class="text-sm text-gray-500"></span>
+                {{--| The employee waiting the table, dropped on it from the staff |--}}
+                <span class="service-table-waiter" data-waiter></span>
             </div>
             <span data-field="order" class="service-table-order"></span>
+            {{--| The job the waiter is on at the table, such as taking its order or bringing a plate |--}}
+            <div data-waiter-job class="service-table-job hidden">
+                <span data-field="job" class="truncate"></span>
+                <div class="service-table-job-bar"><div data-waiter-job-fill></div></div>
+            </div>
             {{--| How many of the ordered portions have been served |--}}
             <div data-order-progress class="service-table-progress hidden">
                 <div class="service-table-progress-bar"><div data-order-progress-fill class="service-table-progress-fill"></div></div>
@@ -189,6 +210,8 @@
     <template id="meal-card-template">
         <div class="kitchen-meal">
             <span data-field="name" class="font-semibold truncate flex-1 min-w-0"></span>
+            <span data-field="quality" class="kitchen-meal-quality"></span>
+            <span data-field="needs" class="kitchen-meal-needs" title="Meals still to be put in"></span>
             <span data-field="timer" class="text-xs text-gray-500 whitespace-nowrap"></span>
             <div class="kitchen-meal-actions flex gap-2 text-xs whitespace-nowrap" data-actions></div>
         </div>
@@ -215,13 +238,39 @@
         <h3 class="title py-1">Plan a meal</h3>
         <form id="meal-plan-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); planMeal()">
             <x-form.input-wrapper label_text="Recipe">
-                <select id="meal-plan-recipe" name="recipe_uuid" class="underlined" required></select>
+                <select id="meal-plan-recipe" class="underlined" required onchange="renderMealPlanVariants()"></select>
             </x-form.input-wrapper>
+            {{-- Which variant of the recipe to prepare, when it has any --}}
+            <div id="meal-plan-variant-field" class="contents">
+                <x-form.input-wrapper label_text="Variant">
+                    <select id="meal-plan-variant" name="recipe_uuid" class="underlined" required onchange="renderMealPlanChoices()"></select>
+                </x-form.input-wrapper>
+            </div>
+            {{-- Which ingredient to use for each category the recipe takes --}}
+            <div id="meal-plan-choices" class="contents"></div>
             <button type="submit" class="hidden"></button>
         </form>
+        <template id="meal-plan-choice-template">
+            <x-form.input-wrapper label_text="">
+                <select class="underlined" required></select>
+            </x-form.input-wrapper>
+        </template>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-plan-modal')">Cancel</button>
             <button class="interactive px-5 py-2.5" dusk="confirm" onclick="planMeal()">Plan</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Which variants of its cooking equipment a meal uses, asked when it is put in a cooker |--}}
+    <x-modal id="meal-cook-modal">
+        <h3 class="title py-1">Cooking equipment</h3>
+        <form id="meal-cook-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); confirmCook()">
+            <div id="meal-cook-equipment" class="contents"></div>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-cook-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="meal-cook-confirm" onclick="confirmCook()">Cook</button>
         </x-slot:buttons>
     </x-modal>
 
@@ -230,6 +279,22 @@
         <small id="meal-menu-status" class="meal-menu-status"></small>
         <div id="meal-menu-options" class="flex flex-col"></div>
     </div>
+
+    {{--| How well a meal turned out, asked for once it is done cooking or ready to serve |--}}
+    <x-modal id="meal-quality-modal">
+        <h3 id="meal-quality-title" class="title py-1"></h3>
+        <form id="meal-quality-form" class="w-full" onsubmit="event.preventDefault(); saveQuality()">
+            <x-form.input-wrapper label_text="Quality">
+                <input id="meal-quality-input" type="number" name="quality" class="underlined" min="-9999" max="9999" step="1" required/>
+            </x-form.input-wrapper>
+            {{-- What the ingredients and boosts add to the quality entered --}}
+            <p id="meal-quality-hint" class="text-sm text-center opacity-75 hidden"></p>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="putOffQuality()">Later</button>
+            <button class="interactive px-5 py-2.5" dusk="meal-quality-save" onclick="saveQuality()">Save</button>
+        </x-slot:buttons>
+    </x-modal>
 
     {{--| Confirmation before wasting a meal's ingredients |--}}
     <x-modal id="meal-scrap-modal">
@@ -243,13 +308,31 @@
         </x-slot:buttons>
     </x-modal>
 
+    {{--| Put a meal into another, plating the portions left over |--}}
+    <x-modal id="meal-supply-modal">
+        <h3 class="title py-1">Plate the leftovers?</h3>
+        <p id="meal-supply-text" class="text-center"></p>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('meal-supply-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="confirm" onclick="confirmSupplyMeal()">Put in &amp; plate</button>
+        </x-slot:buttons>
+    </x-modal>
+
     {{--| Take order modal. Recipes picked on the left each add a portion to the order on the right, for one customer |--}}
     <x-modal id="order-modal">
         <h3 id="order-modal-title" class="title py-1">Take order</h3>
         <div class="order-columns w-full">
             <section class="flex flex-col gap-1 min-w-0">
                 <span class="kitchen-area-title">Recipes</span>
-                <input id="order-recipe-search" type="search" class="underlined w-full text-sm" placeholder="Search..." oninput="renderOrderRecipes()">
+                {{-- Searches names, types and categories. Enter adds the first recipe found, escape clears the search --}}
+                <label class="order-search">
+                    <svg class="order-search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="8.5" cy="8.5" r="5.5"/>
+                        <path d="m13 13 4 4" stroke-linecap="round"/>
+                    </svg>
+                    <input id="order-recipe-search" type="search" placeholder="Search the menu..." autocomplete="off"
+                           oninput="renderOrderRecipes()" onkeydown="handleOrderSearchKey(event)">
+                </label>
                 <ul id="order-recipes" class="order-list"></ul>
             </section>
             <section class="flex flex-col gap-1 min-w-0">
@@ -264,31 +347,77 @@
         </x-slot:buttons>
     </x-modal>
 
-    {{--| Order details, from where a fully served order is finished once its meal has been eaten |--}}
+    {{--| Order details, where portions are marked as eaten, a tip or discount is given, and the order is finished |--}}
     <x-modal id="order-details-modal">
         <h3 id="order-details-title" class="title py-1"></h3>
         <p id="order-details-status" class="text-center text-sm text-gray-500"></p>
         <ul id="order-details-items" class="w-full"></ul>
-        <p class="w-full text-right">Total: <span id="order-details-total" class="font-semibold"></span></p>
+        <div class="flex gap-3 w-full">
+            <x-form.input-wrapper label_text="Discount" cls="flex-1">
+                <input id="order-discount" type="number" class="underlined" min="0" step="0.01" data-money/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Tip" cls="flex-1">
+                <input id="order-tip" type="number" class="underlined" min="0" step="0.01" data-money/>
+            </x-form.input-wrapper>
+        </div>
+        <div class="order-details-totals w-full">
+            <span>Items</span><span id="order-details-subtotal"></span>
+            <span class="font-semibold">Total</span><span id="order-details-total" class="font-semibold"></span>
+        </div>
         <x-slot:buttons>
+            <button class="interactive px-5 py-2.5" dusk="order-cancel" onclick="openCancelOrderModal()">Cancel order</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('order-details-modal')">Close</button>
-            <button id="order-consume" class="interactive px-5 py-2.5 hidden" dusk="order-consume" onclick="consumeOrder()">Meal consumed</button>
+            <button class="interactive px-5 py-2.5" dusk="order-edit" onclick="editOrder()">Edit</button>
+            <button id="order-consume" class="interactive px-5 py-2.5 hidden" dusk="order-consume" onclick="consumeOrder()">All consumed</button>
+            <button class="interactive px-5 py-2.5" dusk="order-finish" onclick="finishOrder()">Finish order</button>
         </x-slot:buttons>
     </x-modal>
 
-    {{--| End service modal, listing what was sold and the profit made |--}}
+    {{--| Confirmation before cancelling an order |--}}
+    <x-modal id="order-cancel-modal">
+        <h3 class="title py-1">Cancel order</h3>
+        <p class="text-center">Are you sure you want to cancel this order?</p>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="keepOrder()">Keep</button>
+            <button class="interactive px-5 py-2.5" dusk="order-cancel-confirm" onclick="cancelOrder()">Cancel order</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| End service modal, listing what was sold and the profit made. Only whoever runs the service ends it |--}}
+    @unless($isPlayer)
     <x-modal id="service-end-modal">
         <h3 class="title py-1">End service</h3>
         <p id="service-end-hours" class="text-center text-sm text-gray-500"></p>
         <ul id="service-end-items" class="w-full"></ul>
         <p class="w-full text-right">Profit: <span id="service-end-profit" class="font-semibold"></span></p>
+        {{--| Moving on to the next day ages the stored ingredients, as the +1 day button on the inventory page does |--}}
+        <label class="w-full flex items-center gap-2 text-sm">
+            <input id="service-end-advance-day" type="checkbox" checked dusk="service-end-advance-day">
+            Move on to the next day
+        </label>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('service-end-modal')">Cancel</button>
             <button class="interactive px-5 py-2.5" dusk="service-end-confirm" onclick="endService()">End service</button>
         </x-slot:buttons>
     </x-modal>
+    @endunless
 
     {{--| Adding an ingredient brought in during service to the pile |--}}
+    {{--| Queue a conversion in the prep area |--}}
+    <x-modal id="conversion-modal">
+        <h3 id="conversion-modal-title" class="title py-1"></h3>
+        <form id="conversion-form" class="w-full" onsubmit="event.preventDefault(); queueConversion()">
+            <x-form.input-wrapper label_text="Amount">
+                <input id="conversion-amount" type="number" name="amount" class="underlined" min="0.01" step="0.01" value="1" required/>
+            </x-form.input-wrapper>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('conversion-modal')">Cancel</button>
+            <button class="interactive px-5 py-2.5" dusk="conversion-confirm" onclick="queueConversion()">Convert</button>
+        </x-slot:buttons>
+    </x-modal>
+
     <x-modal id="pile-modal">
         <h3 id="pile-modal-title" class="title py-1"></h3>
         <form id="pile-form" class="w-full" onsubmit="event.preventDefault(); addToPile()">

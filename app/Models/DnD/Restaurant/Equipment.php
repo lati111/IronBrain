@@ -14,9 +14,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string name The display name of the equipment
  * @property string|null description The description of the equipment
  * @property EquipmentCategory category The category this equipment falls under
- * @property integer cleaning_time How long the equipment takes to clean, in minutes
+ * @property float cleaning_time How long the equipment takes to clean, in minutes
  * @property float multiplier The multiplier this equipment applies
- * @property integer size How much storage capacity a single piece of the equipment takes up
+ * @property float size How much storage capacity a single piece of the equipment takes up
  * @property bool requires_storage Whether this equipment must be placed in a storage space to be stored
  * @property integer amount_dirty How many pieces are dirty and need cleaning before they can be used, during service
  * @property integer amount_in_use How many pieces are being used by meals, during service
@@ -31,9 +31,9 @@ class Equipment extends RestaurantDataModel
     /** @inheritdoc */
     protected $casts = [
         'category'         => EquipmentCategory::class,
-        'cleaning_time'    => 'integer',
+        'cleaning_time'    => 'float',
         'multiplier'       => 'float',
-        'size'             => 'integer',
+        'size'             => 'float',
         'requires_storage' => 'boolean',
         'amount_dirty'     => 'integer',
         'amount_in_use'    => 'integer',

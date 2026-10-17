@@ -38,11 +38,13 @@ trait RestaurantTestHelper
         return $restaurant;
     }
 
-    protected function grantRestaurantAccess(Restaurant $restaurant, User $user): void
+    /** Gives a user access to a restaurant, as a manager with full control unless another role is given */
+    protected function grantRestaurantAccess(Restaurant $restaurant, User $user, string $role = RestaurantUser::ROLE_MANAGER): void
     {
         $access = new RestaurantUser();
         $access->restaurant_uuid = $restaurant->uuid;
         $access->user_uuid = $user->uuid;
+        $access->role = $role;
         $access->save();
     }
 
@@ -88,6 +90,15 @@ trait RestaurantTestHelper
         $employee->station = $station;
         $employee->save();
         return $employee;
+    }
+
+    /** Has a new employee wait a table, so orders can be taken there */
+    protected function assignTestWaiter(Table $table, string $name = 'Waiter'): Employee
+    {
+        $waiter = $this->createTestEmployee($table->getRestaurant(), null, $name);
+        $table->employee_uuid = $waiter->uuid;
+        $table->save();
+        return $waiter;
     }
 
     protected function createTestStorage(Restaurant $restaurant, int $capacity = 100, int $order = 0, string $name = 'Test Storage'): Storage
@@ -197,12 +208,14 @@ trait RestaurantTestHelper
         return $link;
     }
 
-    protected function storeIngredient(Storage $storage, Ingredient $ingredient, float $amount): StorageIngredient
+    /** Stores a stack of an ingredient, fresh unless the days it has left are given */
+    protected function storeIngredient(Storage $storage, Ingredient $ingredient, float $amount, ?float $daysLeft = null): StorageIngredient
     {
         $link = new StorageIngredient();
         $link->storage_uuid = $storage->uuid;
         $link->ingredient_uuid = $ingredient->uuid;
         $link->amount = $amount;
+        $link->days_left = $daysLeft ?? $ingredient->expires_in;
         $link->save();
         return $link;
     }
@@ -217,11 +230,12 @@ trait RestaurantTestHelper
         return $link;
     }
 
+    /** Gets how much of an ingredient a storage space holds, across all its stacks */
     protected function getStoredIngredientAmount(Storage $storage, Ingredient $ingredient): float
     {
         return (float) StorageIngredient::where('storage_uuid', $storage->uuid)
             ->where('ingredient_uuid', $ingredient->uuid)
-            ->value('amount');
+            ->sum('amount');
     }
 
     protected function ownEquipment(Restaurant $restaurant, Equipment $equipment, int $amount): OwnedEquipment

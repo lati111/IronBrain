@@ -13,22 +13,43 @@
 @section('onload_functions', 'init()')
 
 @section('content')
-    <div id="inventory" data-api-url="{{route('api.dnd.restaurant.inventory.get', ['restaurant_uuid' => $restaurant->uuid])}}">
+    {{--| Players only move ingredients between the storage spaces, so everything else is left out for them |--}}
+    <div id="inventory" data-api-url="{{route('api.dnd.restaurant.inventory.get', ['restaurant_uuid' => $restaurant->uuid])}}"
+         data-player="{{$isPlayer ? 1 : 0}}">
 
         {{--| Top bar |--}}
         <div class="flex justify-between items-center mb-4">
             {{--| Both sides share a width, so the title stays centred |--}}
             <div class="w-72 flex gap-4 whitespace-nowrap">
                 <a href="{{route('dnd.restaurant.overview')}}" class="interactive">&larr; Restaurants</a>
-                <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
+                @unless($isPlayer)
+                    <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
+                    <a href="{{route('dnd.restaurant.finances', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-finances">Finances</a>
+                @endunless
             </div>
-            <h1 class="title">Inventory</h1>
+            <div class="flex flex-col items-center">
+                <h1 class="title">Inventory</h1>
+                {{--| The restaurant's date, which ages the stored ingredients as it moves on |--}}
+                <div class="flex items-center gap-2 text-sm text-gray-500">
+                    <span id="inventory-date"></span>
+                    @unless($isPlayer)
+                        <button class="service-clock-step interactive" onclick="advanceDay()" dusk="advance-day">+1 day</button>
+                    @endunless
+                </div>
+            </div>
             <div class="w-72 flex justify-end gap-4 whitespace-nowrap">
-                <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
-                @if($restaurant->isInService())
-                    <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-continue">Continue service</a>
+                @if($isPlayer)
+                    {{--| Players join the service once it has been started |--}}
+                    @if($restaurant->isInService())
+                        <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-join">Join service</a>
+                    @endif
                 @else
-                    <button class="interactive font-semibold" onclick="openModal('service-start-modal')" dusk="service-start">Start service</button>
+                    <button class="interactive" onclick="openCreateStorageModal()" dusk="storage-create">+ New Storage Space</button>
+                    @if($restaurant->isInService())
+                        <a href="{{route('dnd.restaurant.service', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive font-semibold" dusk="service-continue">Continue service</a>
+                    @else
+                        <button class="interactive font-semibold" onclick="openModal('service-start-modal')" dusk="service-start">Start service</button>
+                    @endif
                 @endif
             </div>
         </div>
@@ -36,6 +57,7 @@
         <div class="flex gap-4 items-start">
 
             {{--| Sidebar |--}}
+            @unless($isPlayer)
             <aside id="inventory-sidebar" class="inventory-sidebar rounded shadow border gray-border">
                 <div class="flex items-center border-b">
                     <button class="inventory-sidebar-toggle interactive px-2" onclick="toggleSidebar()" title="Collapse / expand">
@@ -45,6 +67,7 @@
                         <button class="inventory-tab active flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="equipment" onclick="switchTab('equipment')">Equipment</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="recipe" onclick="switchTab('recipe')">Recipes</button>
+                        <button class="inventory-tab flex-1 py-2" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
                     </div>
                 </div>
 
@@ -54,6 +77,7 @@
                     <button id="inventory-create-type" class="interactive text-sm" onclick="openCreateTypeModal()">+ New Ingredient</button>
                 </div>
             </aside>
+            @endunless
 
             {{--| Storage area |--}}
             <div class="flex-1 flex flex-col gap-4 min-w-0">
@@ -67,12 +91,14 @@
                 </section>
 
                 {{--| General storage. Hidden while empty, which is always the case when the page loads |--}}
-                <section id="general-storage" class="inventory-storage inventory-general empty" data-drop-target="general">
-                    <div class="inventory-storage-header">
-                        <span class="font-semibold">General Storage</span>
-                    </div>
-                    <div class="inventory-storage-items" data-items></div>
-                </section>
+                @unless($isPlayer)
+                    <section id="general-storage" class="inventory-storage inventory-general empty" data-drop-target="general">
+                        <div class="inventory-storage-header">
+                            <span class="font-semibold">General Storage</span>
+                        </div>
+                        <div class="inventory-storage-items" data-items></div>
+                    </section>
+                @endunless
 
                 {{--| Storage spaces |--}}
                 <div id="storage-list" class="inventory-storage-list"></div>
@@ -82,10 +108,12 @@
     </div>
 
     {{--| Drop zone for removing items, pinned to the right edge of the viewport while an item is being dragged |--}}
-    <div id="discard-edge" data-drop-target="discard">
-        <img src="{{asset('img/icons/x.svg')}}" alt="" class="w-6 h-6">
-        <span class="text-sm">Remove</span>
-    </div>
+    @unless($isPlayer)
+        <div id="discard-edge" data-drop-target="discard">
+            <img src="{{asset('img/icons/x.svg')}}" alt="" class="w-6 h-6">
+            <span class="text-sm">Remove</span>
+        </div>
+    @endunless
 
     {{--| Templates |--}}
     <template id="list-row-template">
@@ -129,6 +157,8 @@
             <img data-field="icon" alt="" class="inventory-icon" draggable="false">
             <span data-field="name" class="truncate"></span>
             <span data-field="amount" class="inventory-item-amount"></span>
+            {{--| How many days the stack has left before it expires |--}}
+            <span data-field="expiry" class="inventory-item-expiry"></span>
         </div>
     </template>
 
@@ -140,6 +170,7 @@
                 <span class="inventory-storage-handle">&#8942;&#8942;</span>
                 <span data-field="name" class="font-semibold flex-1 truncate"></span>
                 <span data-field="occupancy" class="text-sm"></span>
+                <button class="interactive px-1" data-action="edit" title="Edit storage space" draggable="false">&#9998;</button>
                 <button class="px-1" data-action="delete" title="Delete storage space">
                     <img src="{{asset('img/icons/x.svg')}}" alt="delete" class="interactive w-4 h-4" draggable="false">
                 </button>
@@ -149,9 +180,9 @@
         </section>
     </template>
 
-    {{--| Create storage modal |--}}
+    {{--| Create / edit storage modal |--}}
     <x-modal id="storage-create-modal">
-        <h3 class="title py-1">New Storage Space</h3>
+        <h3 id="storage-modal-title" class="title py-1">New Storage Space</h3>
         <form id="storage-create-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); createStorage()">
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
@@ -165,11 +196,16 @@
             <x-form.input-wrapper label_text="Background image (optional)">
                 <x-form.input.file_uploader name="background_image" accepts="image/*"/>
             </x-form.input-wrapper>
+            {{-- Only offered while editing a storage space that has a background image --}}
+            <div id="storage-remove-background" class="hidden">
+                <x-form.input.checkbox name="remove_background_image" value="1" right_label="Remove the current background image"/>
+            </div>
             <button type="submit" class="hidden"></button>
         </form>
         <x-slot:buttons>
+            <button id="storage-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteEditedStorageModal()">Delete</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('storage-create-modal')">Cancel</button>
-            <button class="interactive px-5 py-2.5" dusk="confirm" onclick="createStorage()">Create</button>
+            <button id="storage-modal-submit" class="interactive px-5 py-2.5" dusk="confirm" onclick="createStorage()">Create</button>
         </x-slot:buttons>
     </x-modal>
 
@@ -180,11 +216,24 @@
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Category (optional)">
+                <input type="text" name="category" class="underlined" maxlength="64" placeholder="Category..." list="ingredient-category-options" autocomplete="off"/>
+                <datalist id="ingredient-category-options"></datalist>
+            </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Expires in (days)">
                 <input type="number" name="expires_in" class="underlined" min="0" value="7" required/>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Size">
                 <input type="number" name="size" class="underlined" min="0.01" step="0.01" value="1" required/>
+            </x-form.input-wrapper>
+            {{-- Meals add the average quality of the ingredients they are made with --}}
+            <x-form.input-wrapper label_text="Quality">
+                <input type="number" name="quality" class="underlined" min="-9999" max="9999" step="1" value="0" required/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Variant of (optional)">
+                <select id="ingredient-parent-select" name="parent_uuid" class="underlined">
+                    <option value="">None</option>
+                </select>
             </x-form.input-wrapper>
             <x-form.input-wrapper label_text="Icon (optional)">
                 <x-form.input.file_uploader name="icon" accepts="image/*"/>
@@ -217,10 +266,10 @@
             </x-form.input-wrapper>
             <div class="flex gap-3">
                 <x-form.input-wrapper label_text="Size" cls="flex-1">
-                    <input type="number" name="size" class="underlined" min="1" value="1" required/>
+                    <input type="number" name="size" class="underlined" min="0.01" step="0.01" value="1" required/>
                 </x-form.input-wrapper>
                 <x-form.input-wrapper label_text="Cleaning time (min)" cls="flex-1">
-                    <input type="number" name="cleaning_time" class="underlined" min="0" value="0" required/>
+                    <input type="number" name="cleaning_time" class="underlined" min="0" step="0.01" value="0" required/>
                 </x-form.input-wrapper>
                 <x-form.input-wrapper label_text="Multiplier" cls="flex-1">
                     <input type="number" name="multiplier" class="underlined" min="0" step="0.01" value="1" required/>
@@ -248,11 +297,18 @@
     {{--| Create / edit recipe modal |--}}
     <x-modal id="recipe-modal">
         <h3 id="recipe-modal-title" class="title py-1">New Recipe</h3>
-        @php($recipeComponentTabs = ['ingredient' => 'Ingredients', 'equipment' => 'Equipment', 'byproduct' => 'Byproducts'])
+        @php($recipeComponentTabs = ['ingredient' => 'Ingredients', 'meal' => 'Meals', 'equipment' => 'Equipment', 'byproduct' => 'Byproducts'])
         <form id="recipe-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveRecipe()">
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
+            {{-- A variant adds to or takes away from its base recipe, which is chosen when it is created --}}
+            <x-form.input-wrapper label_text="Variant of (optional)">
+                <select id="recipe-parent-select" name="parent_uuid" class="underlined" onchange="changeRecipeParent()">
+                    <option value="">None</option>
+                </select>
+            </x-form.input-wrapper>
+            <p id="recipe-variant-hint" class="text-sm text-gray-500 hidden"></p>
 
             {{--| Tabs |--}}
             <div class="flex border-b">
@@ -266,6 +322,17 @@
 
             {{--| Details |--}}
             <div class="recipe-panel flex flex-col gap-3" data-recipe-panel="details">
+                {{-- A variant takes its type and category from its base recipe --}}
+                <div id="recipe-type-row" class="flex gap-3">
+                    <x-form.input-wrapper label_text="Type" cls="flex-1">
+                        <input type="text" name="type" class="underlined" maxlength="64" value="meal" list="recipe-type-options" autocomplete="off" required/>
+                        <datalist id="recipe-type-options"></datalist>
+                    </x-form.input-wrapper>
+                    <x-form.input-wrapper label_text="Category (optional)" cls="flex-1">
+                        <input type="text" name="category" class="underlined" maxlength="64" placeholder="Category..." list="recipe-category-options" autocomplete="off"/>
+                        <datalist id="recipe-category-options"></datalist>
+                    </x-form.input-wrapper>
+                </div>
                 <div class="flex gap-3">
                     <x-form.input-wrapper label_text="Price" cls="flex-1">
                         <input type="number" name="price" class="underlined" min="0" step="0.01" value="0" data-money required/>
@@ -301,7 +368,7 @@
                 </div>
             </div>
 
-            {{--| Ingredients and equipment the recipe requires, and the ingredients it produces as byproducts |--}}
+            {{--| Ingredients, other meals and equipment the recipe requires, and the ingredients it produces as byproducts |--}}
             @foreach($recipeComponentTabs as $componentType => $componentLabel)
                 <div class="recipe-panel recipe-components hidden" data-recipe-panel="{{$componentType}}">
                     <ul id="recipe-{{$componentType}}-list" class="recipe-component-list"></ul>
@@ -351,6 +418,15 @@
     </x-modal>
 
     {{--| Delete storage modal |--}}
+    {{--| The stored ingredients that expired as the date moved on, which have been thrown away |--}}
+    <x-modal id="expired-modal">
+        <h3 class="title py-1">Expired</h3>
+        <ul id="expired-items" class="w-full"></ul>
+        <x-slot:buttons>
+            <button class="interactive px-5 py-2.5" onclick="closeModal('expired-modal')">Throw away</button>
+        </x-slot:buttons>
+    </x-modal>
+
     <x-modal id="storage-delete-modal">
         <h3 class="title py-1">Delete storage space</h3>
         <p class="text-center">
@@ -362,7 +438,34 @@
         </x-slot:buttons>
     </x-modal>
 
-    {{--| Delete ingredient / equipment / recipe modal |--}}
+    {{--| Create / edit conversion modal |--}}
+    <x-modal id="conversion-modal">
+        <h3 id="conversion-modal-title" class="title py-1">New Conversion</h3>
+        <form id="conversion-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); saveConversion()">
+            <x-form.input-wrapper label_text="Converts">
+                <select name="input_uuid" class="underlined" required></select>
+            </x-form.input-wrapper>
+            <div class="flex gap-3">
+                <x-form.input-wrapper label_text="Into" cls="flex-1">
+                    <select name="output_uuid" class="underlined" required></select>
+                </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Amount per piece" cls="w-32">
+                    <input type="number" name="output_amount" class="underlined" min="0.01" step="0.01" value="1" required/>
+                </x-form.input-wrapper>
+            </div>
+            <x-form.input-wrapper label_text="Minutes per piece during service">
+                <input type="number" name="minutes" class="underlined" min="0" step="0.01" value="0" required/>
+            </x-form.input-wrapper>
+            <button type="submit" class="hidden"></button>
+        </form>
+        <x-slot:buttons>
+            <button id="conversion-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteTypeModal('conversion')">Delete</button>
+            <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('conversion-modal')">Cancel</button>
+            <button id="conversion-modal-submit" class="interactive px-5 py-2.5" onclick="saveConversion()">Create</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Delete ingredient / equipment / recipe / conversion modal |--}}
     <x-modal id="type-delete-modal">
         <h3 id="type-delete-title" class="title py-1"></h3>
         <p class="text-center">

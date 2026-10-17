@@ -3,13 +3,15 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\ActiveBoost;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Order;
 use App\Models\DnD\Restaurant\OrderItem;
 use App\Models\DnD\Restaurant\Restaurant;
-use App\Models\DnD\Restaurant\ServedMeal;
 use App\Models\DnD\Restaurant\ServiceHistory;
+use App\Models\DnD\Restaurant\Table;
+use App\Models\DnD\Restaurant\Transaction;
 use App\Models\DnD\Restaurant\Work;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +20,7 @@ use InvalidArgumentException;
 /** Starting and ending services, each of which is logged in the service history */
 class ShiftService
 {
-    public function __construct(private readonly KitchenService $kitchenService)
+    public function __construct(private readonly OrderService $orderService)
     {
     }
 
@@ -64,6 +66,7 @@ class ShiftService
             $items = OrderItem::query()
                 ->join(Order::TABLE_NAME, Order::TABLE_NAME . '.uuid', '=', OrderItem::TABLE_NAME . '.order_uuid')
                 ->where(Order::TABLE_NAME . '.service_uuid', $service->uuid)
+                ->where(Order::TABLE_NAME . '.status', '!=', Order::STATUS_CANCELLED)
                 ->groupBy(OrderItem::TABLE_NAME . '.name')
                 ->orderBy(OrderItem::TABLE_NAME . '.name')
                 ->selectRaw(OrderItem::TABLE_NAME . '.name, COUNT(*) as amount, SUM(' . OrderItem::TABLE_NAME . '.price) as total')
@@ -84,9 +87,9 @@ class ShiftService
     }
 
     /**
-     * Ends the ongoing service. Its profit is added to the restaurant's money and logged in the service history,
-     * orders that are still going are finished, all dirty equipment is cleaned, the employees stop working, and the
-     * restaurant's current time is cleared
+     * Ends the ongoing service. Orders that are still going are finished and paid for, after which the profit is
+     * added to the restaurant's money and logged in the service history. All dirty equipment is cleaned, the
+     * employees stop working, and the restaurant's current time is cleared
      * @param Restaurant $restaurant The restaurant
      * @return array The summary of the service, as given by getSummary
      * @throws InvalidArgumentException Thrown when no service is ongoing
@@ -97,9 +100,9 @@ class ShiftService
             throw new InvalidArgumentException('No service is ongoing');
         }
 
-        $summary = $this->getSummary($restaurant);
-
-        DB::transaction(function () use ($restaurant) {
+        return DB::transaction(function () use ($restaurant) {
+            $this->finishOrders($restaurant);
+            $summary = $this->getSummary($restaurant);
             $now = $restaurant->getNow();
 
             // Services started before they were logged get a log from the opening time
@@ -114,44 +117,47 @@ class ShiftService
             $service->profit = $restaurant->shift_total;
             $service->save();
 
-            $this->finishOrders($restaurant);
+            // The profit is paid into the restaurant, which is logged as the day's finances
+            $transaction = new Transaction();
+            $transaction->restaurant_uuid = $restaurant->uuid;
+            $transaction->type = Transaction::TYPE_SERVICE;
+            $transaction->title = 'Daily finances';
+            $transaction->amount = $restaurant->shift_total;
+            $transaction->service_uuid = $service->uuid;
+            $transaction->occurred_at = $now;
+            $transaction->save();
 
             // Everything is washed up after closing, which takes no time off the clock as the service is over
             Equipment::where('restaurant_uuid', $restaurant->uuid)->update(['amount_dirty' => 0]);
-            Work::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::CLEANING->value)->delete();
+            Work::where('restaurant_uuid', $restaurant->uuid)
+                ->whereIn('station', [WorkStation::CLEANING->value, WorkStation::WAITING->value])
+                ->delete();
+
+            // Boosts last for the service they were activated in
+            ActiveBoost::where('restaurant_uuid', $restaurant->uuid)->delete();
 
             // The staff goes home, while prep that is still queued waits for the next service
             Employee::where('restaurant_uuid', $restaurant->uuid)->update(['station' => null]);
+            Table::where('restaurant_uuid', $restaurant->uuid)->update(['employee_uuid' => null]);
 
             $restaurant->addMoney($restaurant->shift_total);
             $restaurant->shift_total = 0;
             $restaurant->current_time = null;
             $restaurant->save();
-        });
 
-        return $summary;
+            return $summary;
+        });
     }
 
     /**
-     * Finishes the orders that are still being served or eaten, as their customers leave. The serving equipment of
-     * the portions brought to them becomes dirty
+     * Finishes the orders that are still being served or eaten, as their customers pay and leave
      * @param Restaurant $restaurant The restaurant
      */
     private function finishOrders(Restaurant $restaurant): void
     {
-        $orders = Order::where('restaurant_uuid', $restaurant->uuid)
-            ->whereIn('status', [Order::STATUS_OPEN, Order::STATUS_FULFILLED])
-            ->get();
-
+        $orders = Order::where('restaurant_uuid', $restaurant->uuid)->whereIn('status', Order::ACTIVE_STATUSES)->get();
         foreach ($orders as $order) {
-            $plates = ServedMeal::whereIn('order_item_uuid', $order->Items()->pluck('uuid'))->get();
-            foreach ($plates as $plate) {
-                $this->kitchenService->releaseEquipment($restaurant, $plate->equipment ?? [], dirty: true);
-                $plate->delete();
-            }
-
-            $order->status = Order::STATUS_FINISHED;
-            $order->save();
+            $this->orderService->finishOrder($restaurant, $order);
         }
     }
 }

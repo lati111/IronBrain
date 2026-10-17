@@ -24,12 +24,34 @@
 .inventory-tab {
     border-bottom: 2px solid transparent;
     color: rgb(107 114 128);
+    padding-inline: 0.625rem;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.inventory-tab:hover {
+    color: inherit;
+    border-bottom-color: rgb(229 231 235);
 }
 
 .inventory-tab.active {
     border-bottom-color: rgb(220 38 38);
     color: inherit;
     font-weight: 600;
+}
+
+/* The sidebars hold up to five tabs, which wrap onto a second row rather than crowding together. Each tab takes the
+   room its label needs and shares out what is left, so a row stays filled */
+.inventory-sidebar .inventory-sidebar-body:has(> .inventory-tab) {
+    flex-wrap: wrap;
+    column-gap: 0.25rem;
+    padding: 0.125rem 0.25rem 0;
+}
+
+.inventory-sidebar .inventory-tab {
+    flex: 1 1 auto;
+    font-size: 0.875rem;
+    padding-block: 0.5rem;
 }
 
 .inventory-list {
@@ -88,6 +110,23 @@
     gap: 0.5rem;
     padding: 0.25rem;
     border-bottom: 1px solid rgb(243 244 246);
+}
+
+/* What a variant keeps from its base recipe, which can be crossed out to take it away */
+.recipe-base-row {
+    background-color: rgb(249 250 251);
+}
+
+.recipe-base-row.removed [data-field="name"],
+.recipe-base-row.removed [data-field="amount"] {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+/* Variants are listed under their base recipe */
+.recipe-variant-row [data-field="name"] {
+    padding-left: 0.75rem;
+    color: rgb(75 85 99);
 }
 
 .inventory-icon {
@@ -259,6 +298,27 @@
     font-size: 0.75rem;
     font-weight: 600;
     color: rgb(75 85 99);
+}
+
+/* How many days an ingredient stack has left before it expires */
+.inventory-item-expiry {
+    font-size: 0.7rem;
+    color: rgb(107 114 128);
+    white-space: nowrap;
+}
+
+.inventory-item-expiry:empty {
+    display: none;
+}
+
+/* Stacks with a day or less left */
+.inventory-item.expiring {
+    border-color: rgb(249 115 22);
+}
+
+.inventory-item.expiring .inventory-item-expiry {
+    color: rgb(194 65 12);
+    font-weight: 600;
 }
 
 /*| Service |*/
@@ -600,6 +660,20 @@
     display: none;
 }
 
+/* The other meals a meal still waits on */
+.kitchen-meal-needs {
+    font-size: 0.75rem;
+    color: rgb(180 83 9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.kitchen-meal-needs:empty {
+    display: none;
+}
+
 .meal-menu-status:empty {
     display: none;
 }
@@ -721,7 +795,7 @@
 /* The recipes to pick from on the left, the order being taken on the right */
 .order-columns {
     display: grid;
-    grid-template-columns: 14rem minmax(20rem, 1fr);
+    grid-template-columns: 16rem minmax(20rem, 1fr);
     gap: 1rem;
 }
 
@@ -752,12 +826,93 @@
     background-color: rgb(254 242 242);
 }
 
+/* A recipe with variants, which opens to list them */
+.order-recipe-group {
+    font-weight: 500;
+    user-select: none;
+}
+
+.order-recipe-group.expanded {
+    background-color: rgb(249 250 251);
+}
+
+.order-recipe-variant {
+    padding-left: 1.5rem;
+}
+
+/* The menu's search bar */
+.order-search {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+    background-color: white;
+    cursor: text;
+}
+
+.order-search:focus-within {
+    border-color: rgb(248 113 113);
+    box-shadow: 0 0 0 2px rgb(254 226 226);
+}
+
+.order-search-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: rgb(156 163 175);
+}
+
+.order-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.875rem;
+}
+
+/* A type of recipe on the menu, such as meals or drinks, heading the recipes of that type */
+.order-recipe-type {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.375rem 0.5rem 0.25rem;
+    background-color: rgb(249 250 251);
+    border-bottom: 1px solid rgb(229 231 235);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(107 114 128);
+}
+
 .order-details-item {
     display: flex;
     gap: 0.75rem;
     padding: 0.25rem 0;
     border-bottom: 1px solid rgb(243 244 246);
     font-size: 0.875rem;
+}
+
+/* Eaten portions fade, as only their price still matters */
+.order-details-item.consumed {
+    opacity: 0.55;
+}
+
+/* What the items come to, and what the table pays after the discount and tip */
+.order-details-totals {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 1rem;
+    text-align: right;
+}
+
+.order-item.served {
+    color: rgb(21 128 61);
 }
 
 .order-details-item.served {
@@ -841,6 +996,27 @@
 
 .kitchen-employee-icon[data-station="cleaning"] {
     border-color: rgb(20 184 166);
+}
+
+.kitchen-employee-icon[data-station="tables"] {
+    border-color: rgb(245 158 11);
+}
+
+/* The icon of the employee waiting a table, in the table's header */
+.service-table-waiter {
+    display: flex;
+}
+
+.service-table-waiter:empty {
+    display: none;
+}
+
+.service-table-waiter .kitchen-employee-icon {
+    width: 1.375rem;
+    height: 1.375rem;
+    border-width: 1px;
+    font-size: 0.65rem;
+    cursor: grab;
 }
 
 .kitchen-employee-name {
@@ -972,4 +1148,230 @@
 .inventory-list-row.on-sale [data-field="meta"] {
     color: rgb(194 65 12);
     font-weight: 600;
+}
+
+/*| Quality |*/
+
+/* How well a meal turned out, next to its name */
+.kitchen-meal-quality {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgb(124 58 237);
+    white-space: nowrap;
+}
+
+.kitchen-meal-quality:empty {
+    display: none;
+}
+
+/* Plated portions that spoiled before they were brought out */
+.kitchen-plate.spoiled {
+    border-color: rgb(220 38 38);
+    background-color: rgb(254 242 242);
+    color: rgb(185 28 28);
+}
+
+/*| Waiters |*/
+
+/* The job the waiter is on at a table, with how far along it is */
+.service-table-job {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    font-size: 0.7rem;
+    color: rgb(180 83 9);
+}
+
+.service-table-job.hidden {
+    display: none;
+}
+
+.service-table-job-bar {
+    height: 2px;
+    background-color: rgb(0 0 0 / 0.06);
+}
+
+.service-table-job-bar > div {
+    height: 100%;
+    background-color: rgb(245 158 11);
+    transition: width 0.3s ease;
+}
+
+/*| Finances */
+
+.finance-list {
+    display: flex;
+    flex-direction: column;
+    max-width: 48rem;
+    margin: 0 auto;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+}
+
+.finance-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+}
+
+.finance-row + .finance-row {
+    border-top: 1px solid rgb(229 231 235);
+}
+
+.finance-row:hover,
+.finance-row:focus-visible {
+    background-color: rgb(249 250 251);
+}
+
+.finance-row-date {
+    width: 12rem;
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+    white-space: nowrap;
+}
+
+.finance-amount {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.finance-amount.positive {
+    color: rgb(21 128 61);
+}
+
+.finance-amount.negative {
+    color: rgb(185 28 28);
+}
+
+/* Wide enough for the order table, while staying within the screen */
+.finance-details {
+    width: min(48rem, 85vw);
+}
+
+.finance-section-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.finance-table {
+    width: 100%;
+    font-size: 0.875rem;
+    border-collapse: collapse;
+}
+
+.finance-table th {
+    text-align: left;
+    font-weight: 500;
+    color: rgb(107 114 128);
+    border-bottom: 1px solid rgb(229 231 235);
+}
+
+.finance-table th,
+.finance-table td {
+    padding: 0.25rem 0.5rem;
+}
+
+.finance-table tbody tr + tr td {
+    border-top: 1px solid rgb(243 244 246);
+}
+
+/* Amounts line up on the right */
+.finance-table th:last-child,
+.finance-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.finance-table tr.muted td {
+    color: rgb(156 163 175);
+}
+
+/* The description of a transaction, which can be read in full but not edited */
+.finance-description {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.25rem;
+    background-color: rgb(249 250 251);
+    resize: vertical;
+}
+
+/*| Players */
+
+/* A player's own employees stand out, while those of others can't be moved */
+.kitchen-employee.own .kitchen-employee-icon {
+    box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+
+.kitchen-employee.locked {
+    cursor: default;
+    opacity: 0.6;
+}
+
+/* How satisfied the customer was with a portion */
+.order-satisfaction {
+    font-size: 0.75rem;
+    color: rgb(202 138 4);
+    white-space: nowrap;
+}
+
+/*| Boosts */
+
+/* The boosts active now, shown under the kitchen's title */
+.kitchen-boosts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.kitchen-boost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    padding: 0 0.375rem;
+    border-radius: 9999px;
+    background-color: rgb(254 249 195);
+    color: rgb(133 77 14);
+    white-space: nowrap;
+}
+
+/* Cancels the boost, stopping it early */
+.kitchen-boost-cancel {
+    font-weight: 600;
+    line-height: 1;
+    opacity: 0.6;
+}
+
+.kitchen-boost-cancel:hover {
+    opacity: 1;
+}
+
+/* What a boost can be activated on, two columns of checkboxes */
+.boost-targets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem 1rem;
+    padding: 0.5rem 0.75rem 0.625rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+}
+
+.boost-targets legend {
+    padding: 0 0.25rem;
+    color: rgb(107 114 128);
+}
+
+.boost-target {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
 }

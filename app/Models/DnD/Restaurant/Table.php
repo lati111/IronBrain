@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null room_uuid The uuid of the room the table is placed in, or null when it has not been placed
  * @property string name The display name of the table
  * @property integer capacity How many customers can be seated at the table
+ * @property string|null employee_uuid The uuid of the employee waiting the table, who takes its orders
  */
 class Table extends RestaurantDataModel
 {
@@ -33,6 +34,14 @@ class Table extends RestaurantDataModel
      */
     public function Room(): BelongsTo {
         return $this->belongsTo(Room::class, 'room_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the employee waiting the table
+     * @return BelongsTo
+     */
+    public function Waiter(): BelongsTo {
+        return $this->belongsTo(Employee::class, 'employee_uuid', 'uuid');
     }
 
     /**

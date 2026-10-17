@@ -1,6 +1,6 @@
 import {getData} from "../../../main";
 import {openModal} from "../../../components/modal";
-import {formatMoney, postOnce} from "./shared";
+import {EXPIRED_STORAGE_KEY, formatMoney, postOnce} from "./shared";
 
 /** Ending the service, after a look at what was sold and the profit made */
 
@@ -64,9 +64,17 @@ function renderSummary(summary: ServiceSummary): void {
 }
 
 async function endService(): Promise<void> {
+    const formData = new FormData();
+    const advanceDay = (document.getElementById('service-end-advance-day') as HTMLInputElement).checked;
+    formData.append('advance_day', advanceDay ? '1' : '0');
+
     try {
-        const response = await postOnce(`${getRoot().dataset.serviceUrl}/end`);
+        const response = await postOnce(`${getRoot().dataset.serviceUrl}/end`, formData);
         if (!response?.ok) return;
+
+        if (response.data.expired.length > 0) {
+            sessionStorage.setItem(EXPIRED_STORAGE_KEY, JSON.stringify(response.data.expired));
+        }
 
         // The management page shows the message as a toast once it has loaded
         const url = new URL(getRoot().dataset.managementUrl!);
