@@ -41,6 +41,7 @@ return new class extends Migration
         $this->upStateVersion();
         $this->upBoosts();
         $this->upIngredientQuality();
+        $this->upMealFreshness();
         $this->upRecipeVariants();
     }
 
@@ -50,6 +51,7 @@ return new class extends Migration
     public function down(): void
     {
         $this->downRecipeVariants();
+        $this->downMealFreshness();
         $this->downIngredientQuality();
         $this->downBoosts();
         $this->downStateVersion();
@@ -538,8 +540,9 @@ return new class extends Migration
     //| Boosts
 
     /**
-     * Boosts are configured per restaurant and activated during service, speeding up equipment, a single cooker, a
-     * meal or a whole area for a while, cutting time off straight away, or improving a meal. Cooking keeps the
+     * Boosts are configured per restaurant and activated during service on any of their targets, speeding up a single
+     * cooker, other equipment, a meal or a whole area for a while, cutting time off straight away, or improving a
+     * meal. Cooking keeps the
      * progress made rather than only when it ends, so time cooked at a boosted rate stays cooked once a boost runs out.
      * Meals cooking so far get the progress their end time comes down to, so they still finish when they would have
      */
@@ -549,14 +552,16 @@ return new class extends Migration
             $table->uuid('uuid')->primary();
             $table->foreignUuid('restaurant_uuid');
             $table->string('name', 64);
-            // What it is activated on: a piece of equipment, a meal, or a whole area
-            $table->string('target', 16);
+            // What it can be activated on: a cooker, other equipment, an area, or a meal by how far along it is
+            $table->json('targets')->nullable();
             // Added to the speed of what it is on while it lasts, as a multiplier is
             $table->decimal('speed_bonus', 8, 2)->default(0);
             // Minutes of prep or cooking done straight away when activated
             $table->decimal('minutes_off', 8, 2)->default(0);
             // Added to the quality of a meal it is activated on
             $table->integer('quality_bonus')->default(0);
+            // Minutes added to how long a meal it is activated on stays fresh once served
+            $table->integer('fresh_for_bonus')->default(0);
             // How many minutes of the restaurant's time the speed bonus lasts
             $table->unsignedInteger('duration')->default(0);
             $table->timestamps();
@@ -656,6 +661,27 @@ return new class extends Migration
         Schema::table('dnd__restaurant_ingredient', function (Blueprint $table) {
             $table->dropForeign(['parent_uuid']);
             $table->dropColumn(['parent_uuid', 'quality']);
+        });
+    }
+
+    //| Meal freshness
+
+    /**
+     * Boosts can make a meal stay fresh for longer once it is served. Meals made so far have nothing added, so they
+     * stay fresh as long as they would have
+     */
+    private function upMealFreshness(): void
+    {
+        Schema::table('dnd__restaurant_meal', function (Blueprint $table) {
+            // Added to the recipe's fresh for time by boosts, in minutes
+            $table->integer('fresh_for_bonus')->default(0)->after('ingredient_quality');
+        });
+    }
+
+    private function downMealFreshness(): void
+    {
+        Schema::table('dnd__restaurant_meal', function (Blueprint $table) {
+            $table->dropColumn('fresh_for_bonus');
         });
     }
 

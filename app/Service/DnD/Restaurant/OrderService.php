@@ -87,18 +87,23 @@ class OrderService
      * entry of its own, at the recipe's sale price when it is on sale. It is paid for once finished
      * @param Restaurant $restaurant The restaurant
      * @param Table $table The table ordering
-     * @param array $items The items, each with a recipe and the customer it is for, or null for the table
+     * @param array $items The items, each with a recipe and the customer it is for, or null for the table. Without any,
+     *                     the waiter goes to take the order, and what was ordered is noted down once they are done
      * @return Order The placed order
-     * @throws InvalidArgumentException Thrown when nothing is ordered, nobody waits the table, or a customer isn't seated there
+     * @throws InvalidArgumentException Thrown when nobody waits the table, an order is already being taken there, or a
+     *                                  customer isn't seated there
      */
     public function placeOrder(Restaurant $restaurant, Table $table, array $items): Order
     {
-        if ($items === []) {
-            throw new InvalidArgumentException('Nothing was ordered');
-        }
-
         if ($table->employee_uuid === null) {
             throw new InvalidArgumentException('Nobody is waiting ' . $table->name);
+        }
+
+        // A waiter goes to take one order at a table at a time, which has to be noted down before the next
+        $beingTaken = Order::where('table_uuid', $table->uuid)->whereIn('status', [Order::STATUS_TAKING, Order::STATUS_TAKEN])
+            ->whereDoesntHave('Items')->exists();
+        if ($items === [] && $beingTaken) {
+            throw new InvalidArgumentException('An order is already being taken at ' . $table->name);
         }
 
         $sales = $restaurant->getSalePrices();
@@ -144,6 +149,11 @@ class OrderService
             throw new InvalidArgumentException('Nothing was ordered');
         }
 
+        // What was ordered is only known once the waiter is done taking it
+        if ($order->status === Order::STATUS_TAKING && !$order->Items()->exists()) {
+            throw new InvalidArgumentException('The order at ' . $order->Table->name . ' is still being taken');
+        }
+
         $table = $order->Table;
         $sales = $restaurant->getSalePrices();
 
@@ -172,6 +182,11 @@ class OrderService
                     throw new InvalidArgumentException($removed->name . ' is on its way');
                 }
                 $removed->delete();
+            }
+
+            // Noting down what was ordered opens it to be served
+            if ($order->status === Order::STATUS_TAKEN) {
+                $order->status = Order::STATUS_OPEN;
             }
 
             $order->recalculate($restaurant->getNow());

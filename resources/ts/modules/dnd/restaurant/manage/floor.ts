@@ -1,4 +1,4 @@
-import {postOnce} from "../shared";
+import {BoostTarget, postOnce} from "../shared";
 import {renderRooms} from "./rooms";
 import {renderSidebar} from "./sidebar";
 
@@ -46,17 +46,19 @@ export interface Player {
     username: string;
 }
 
-/** A boost activated during service, on a piece of equipment, a prepped or cooking meal, or an area of the kitchen */
+/** A boost activated during service on any of its targets */
 export interface BoostType {
     uuid: string;
     name: string;
-    target: 'equipment' | 'meal' | 'area';
+    targets: BoostTarget[];
     /** Added to the speed of what it is on while it lasts */
     speed_bonus: number;
     /** Minutes of prep or cooking done straight away */
     minutes_off: number;
     /** Added to the quality of a meal it is on */
     quality_bonus: number;
+    /** Minutes added to how long a meal it is on stays fresh once served */
+    fresh_for_bonus: number;
     /** How many minutes the speed bonus lasts */
     duration: number;
 }

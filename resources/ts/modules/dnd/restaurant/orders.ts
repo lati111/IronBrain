@@ -61,8 +61,10 @@ export function openOrderModal(table: OrderTable, customers: SeatedCustomer[], o
         served: item.served || item.on_the_way,
     }));
 
-    document.getElementById('order-modal-title')!.textContent = order !== null ? `Edit order for ${table.name}` : `Order for ${table.name}`;
-    document.getElementById('order-place')!.textContent = order !== null ? 'Save order' : 'Place order';
+    // A taken order is new as far as what was ordered goes, so it is placed rather than edited
+    const editing = order !== null && order.status !== 'taken';
+    document.getElementById('order-modal-title')!.textContent = editing ? `Edit order for ${table.name}` : `Order for ${table.name}`;
+    document.getElementById('order-place')!.textContent = editing ? 'Save order' : 'Place order';
     (document.getElementById('order-recipe-search') as HTMLInputElement).value = '';
 
     renderOrderRecipes();
@@ -264,6 +266,11 @@ async function placeOrder(): Promise<void> {
         editingOrder = null;
         closeModal('order-modal');
     }
+}
+
+/** Whether the order modal is open, so a taken order isn't offered on top of it */
+export function isOrderModalOpen(): boolean {
+    return !document.getElementById('order-modal')!.classList.contains('hidden');
 }
 
 (<any>window).placeOrder           = placeOrder;

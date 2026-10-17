@@ -1,4 +1,4 @@
-import {formatMoney, setField, setupDropTarget} from "./shared";
+import {describeSpeedBonus, formatMoney, setField, setupDropTarget} from "./shared";
 import {getDraggedMeal, MEAL_MIME, setupBoostTarget, setupPlateDrag} from "./kitchen/drag";
 import {
     addAction, cloneTemplate, createNote, createProgressBar, describeJobTimer, formatMinutes, makeReadOnly,
@@ -30,9 +30,9 @@ export async function initKitchen(url: string): Promise<void> {
     }, () => getDraggedMeal()?.status === 'done');
 
     // A boost on an area is dropped on the area itself
-    setupBoostTarget(document.getElementById('kitchen-prep-area') as HTMLElement, 'area', {area: 'prep'});
-    setupBoostTarget(document.getElementById('kitchen-cooking-area') as HTMLElement, 'area', {area: 'cooking'});
-    setupBoostTarget(document.getElementById('kitchen-cleaning-area') as HTMLElement, 'area', {area: 'cleaning'});
+    setupBoostTarget(document.getElementById('kitchen-prep-area') as HTMLElement, 'prep_area', {area: 'prep'});
+    setupBoostTarget(document.getElementById('kitchen-cooking-area') as HTMLElement, 'cooking_area', {area: 'cooking'});
+    setupBoostTarget(document.getElementById('kitchen-cleaning-area') as HTMLElement, 'cleaning_area', {area: 'cleaning'});
 
     setupStaffDropTargets();
 
@@ -68,8 +68,20 @@ function renderActiveBoosts(): void {
     for (const boost of getState().active_boosts) {
         const chip = document.createElement('span');
         chip.className = 'kitchen-boost';
-        chip.textContent = `⚡ ${boost.name} · ${boost.target_name} · ${formatMinutes(boost.minutes_left)}`;
-        chip.title = `+${boost.speed_bonus} speed on ${boost.target_name} for another ${formatMinutes(boost.minutes_left)}`;
+        chip.textContent = `${boost.name} · ${boost.target_name} · ${formatMinutes(boost.minutes_left)}`;
+        chip.title = `${describeSpeedBonus(boost.speed_bonus)} on ${boost.target_name} for another ${formatMinutes(boost.minutes_left)}`;
+
+        // Whoever runs the service can stop a boost early
+        if (!isPlayer()) {
+            const cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'kitchen-boost-cancel';
+            cancel.textContent = '×';
+            cancel.title = `Cancel ${boost.name}`;
+            cancel.addEventListener('click', () => post(`/boost/active/${boost.uuid}/cancel`));
+            chip.appendChild(cancel);
+        }
+
         container.appendChild(chip);
     }
 
@@ -142,7 +154,7 @@ function createCookerSlot(name: string, cookerUuid: string, slot: number, meal: 
     setupDropTarget(element, MEAL_MIME, (uuid) => chooseCookingEquipment(uuid, cookerUuid, slot),
         () => meal === null && getDraggedMeal()?.status === 'prepped');
     // A boost on equipment dropped here is on this one cooker only
-    setupBoostTarget(element, 'equipment', {equipment_uuid: cookerUuid, cooker_slot: String(slot)});
+    setupBoostTarget(element, 'cooker', {equipment_uuid: cookerUuid, cooker_slot: String(slot)});
 
     return element;
 }

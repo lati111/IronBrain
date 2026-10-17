@@ -97,8 +97,8 @@ export function getTableOrders(table: OrderTable): Order[] {
  */
 function renderOrderIndicator(element: HTMLElement, orders: Order[]): void {
     const indicator = element.querySelector('[data-field="order"]') as HTMLElement;
-    // Orders still being taken wait as well
-    const waiting = orders.filter((order) => order.status === 'open' || order.status === 'taking');
+    // Orders still being taken, or waiting to be noted down, wait as well
+    const waiting = orders.filter((order) => order.status === 'open' || order.status === 'taking' || order.status === 'taken');
     const fulfilled = orders.filter((order) => order.status === 'fulfilled');
 
     indicator.classList.toggle('waiting', waiting.length > 0);

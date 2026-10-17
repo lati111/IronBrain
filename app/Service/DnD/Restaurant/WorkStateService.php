@@ -84,7 +84,7 @@ class WorkStateService
                     'amount' => $job->amount,
                     'work' => $job->work,
                     'progress' => $this->getProgress($job),
-                    'minutes_left' => isset($finishedAt[$job->uuid]) ? (int) ceil(round($finishedAt[$job->uuid], 4)) : null,
+                    'minutes_left' => isset($finishedAt[$job->uuid]) ? Minutes::display($finishedAt[$job->uuid]) : null,
                 ])->values()->all(),
             ];
         }
@@ -125,7 +125,7 @@ class WorkStateService
             $queue = $this->workQueueService->getWaitingQueue($waiter->Tables->pluck('uuid')->all(), lock: false);
             foreach ($queue as $job) {
                 $before += $job->getRemaining();
-                $jobs[] = $this->describeWaitingJob($job, (int) ceil(round($before, 4)));
+                $jobs[] = $this->describeWaitingJob($job, Minutes::display($before));
                 $waited[] = $job->uuid;
             }
 

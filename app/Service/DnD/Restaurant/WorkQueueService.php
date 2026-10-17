@@ -307,7 +307,8 @@ class WorkQueueService
     }
 
     /**
-     * The waiter is done taking an order, which opens it to be served
+     * The waiter is done taking an order. An order started without anything on it is then taken, waiting for what was
+     * ordered to be noted down, while one placed with its items straight away opens to be served
      * @param Order $order The order
      * @param Carbon $at When they were done, in the restaurant's time
      */
@@ -317,7 +318,9 @@ class WorkQueueService
             return;
         }
 
-        $order->status = Order::STATUS_OPEN;
+        $order->status = $order->Items()->exists() ? Order::STATUS_OPEN : Order::STATUS_TAKEN;
+        // The table has ordered once the waiter has taken it, which is what its waiting is counted from
+        $order->ordered_at = $at;
         $order->recalculate($at);
         $order->save();
     }

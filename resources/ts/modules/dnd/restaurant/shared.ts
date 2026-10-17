@@ -218,7 +218,9 @@ export function setupDropTarget(element: HTMLElement, mime: string, onDrop: (dat
         if (!event.dataTransfer!.types.includes(mime) || !accepts()) return;
 
         event.preventDefault();
-        event.dataTransfer!.dropEffect = 'move';
+        // The drop effect has to be one the drag allows, or the browser cancels the drop without a drop event. Boosts
+        // can be used again, so they are copied rather than moved
+        event.dataTransfer!.dropEffect = event.dataTransfer!.effectAllowed === 'copy' ? 'copy' : 'move';
         element.classList.add('drop-hover');
     });
 
@@ -312,4 +314,39 @@ export function createReorderableList(list: HTMLElement, options: ReorderableLis
             }
         });
     };
+}
+
+//| Boosts
+
+/** What a boost can be activated on: a single cooker, other equipment, an area, or a meal by how far along it is */
+export type BoostTarget = 'cooker' | 'equipment' | 'cooking_area' | 'prep_area' | 'cleaning_area'
+    | 'planned_meal' | 'prepped_meal' | 'cooking_meal' | 'cooked_meal';
+
+/** How each boost target is shown, in the order they are offered */
+export const BOOST_TARGET_LABELS: Record<BoostTarget, string> = {
+    cooker:        'Cooker',
+    equipment:     'Equipment',
+    cooking_area:  'Cooking area',
+    prep_area:     'Prepping area',
+    cleaning_area: 'Cleaning area',
+    planned_meal:  'Planned meal',
+    prepped_meal:  'Prepped meal',
+    cooking_meal:  'Cooking meal',
+    cooked_meal:   'Cooked meal',
+};
+
+/** The boost targets that are meals, which quality and freshness bonuses are for */
+export const MEAL_BOOST_TARGETS: BoostTarget[] = ['planned_meal', 'prepped_meal', 'cooking_meal', 'cooked_meal'];
+
+/** Describes a boost's speed bonus as how much faster it makes things, such as "+10% speed" */
+export function describeSpeedBonus(bonus: number): string {
+    return `+${Math.round(bonus * 1000) / 10}% speed`;
+}
+
+/** Describes what a boost's effects on a meal are, such as "+2 quality" and "+30 min fresh" */
+export function describeMealBoostEffects(boost: {quality_bonus: number, fresh_for_bonus: number}): string[] {
+    const effects: string[] = [];
+    if (boost.quality_bonus !== 0) effects.push(`${boost.quality_bonus > 0 ? '+' : ''}${boost.quality_bonus} quality`);
+    if (boost.fresh_for_bonus !== 0) effects.push(`${boost.fresh_for_bonus > 0 ? '+' : ''}${boost.fresh_for_bonus} min fresh`);
+    return effects;
 }

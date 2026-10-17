@@ -1,5 +1,5 @@
 import {openModal, closeModal} from "../../../../components/modal";
-import {setField, setupDropTarget} from "../shared";
+import {BoostTarget, setField, setupDropTarget} from "../shared";
 import {getDraggedMeal, MEAL_MIME, setupBoostTarget, setupMealDrag} from "./drag";
 import {addAction, cloneTemplate, createProgressBar, describeJobTimer, formatMinutes, makeReadOnly} from "./elements";
 import {onRightClick, toggleMenu} from "./menu";
@@ -17,6 +17,15 @@ let pendingSupply: {meal: Meal, source: Meal, leftover: number} | null = null;
 
 //| Meal cards
 
+/** The boost target a meal is, by its status */
+const MEAL_BOOST_TARGET: Record<Meal['status'], BoostTarget> = {
+    planned: 'planned_meal',
+    prepped: 'prepped_meal',
+    cooking: 'cooking_meal',
+    done:    'cooked_meal',
+    serving: 'cooked_meal',
+};
+
 export function createMealCard(meal: Meal): HTMLElement {
     const card = cloneTemplate('meal-card-template');
     const actions = card.querySelector('[data-actions]') as HTMLElement;
@@ -28,10 +37,8 @@ export function createMealCard(meal: Meal): HTMLElement {
     card.classList.toggle('spoiled', meal.spoiled);
     card.dataset.status = meal.status;
 
-    // Prepped and cooking meals take a meal boost dropped on them
-    if (meal.status === 'prepped' || meal.status === 'cooking') {
-        setupBoostTarget(card, 'meal', {meal_uuid: meal.uuid});
-    }
+    // Meals take the boosts for how far along they are: planned, prepped, cooking, or cooked once done
+    setupBoostTarget(card, MEAL_BOOST_TARGET[meal.status], {meal_uuid: meal.uuid});
 
     // Meals still waiting on other meals take a finished one dropped on them
     if (meal.missing_meals.length > 0) {

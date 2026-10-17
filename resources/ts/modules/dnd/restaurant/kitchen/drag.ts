@@ -1,4 +1,4 @@
-import {setupDropTarget} from "../shared";
+import {BoostTarget, setupDropTarget} from "../shared";
 import {postParameters} from "./state";
 import {Employee, Meal, Plate, ServiceBoost} from "./types";
 
@@ -77,8 +77,8 @@ export function setupEmployeeDrag(element: HTMLElement, employee: Employee): voi
     element.addEventListener('dragend', () => draggedEmployee = null);
 }
 
-/** Sets up an element to take a boost of a kind dropped on it, activating it there */
-export function setupBoostTarget(element: HTMLElement, target: ServiceBoost['target'], parameters: Record<string, string>): void {
+/** Sets up an element to take the boosts that can be activated on what it is, activating them there */
+export function setupBoostTarget(element: HTMLElement, target: BoostTarget, parameters: Record<string, string>): void {
     setupDropTarget(element, BOOST_MIME, (uuid) => postParameters(`/boost/${uuid}/activate`, parameters),
-        () => draggedBoost?.target === target);
+        () => draggedBoost?.targets.includes(target) ?? false);
 }

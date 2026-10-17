@@ -329,15 +329,15 @@ class KitchenService
     }
 
     /**
-     * Gets when a meal spoils once it is in the serving area: after the recipe's fresh for time from now, unless it
-     * would have spoiled sooner anyway
+     * Gets when a meal spoils once it is in the serving area: after the recipe's fresh for time from now, with what
+     * boosts added to it, unless it would have spoiled sooner anyway
      * @param Meal $meal The meal
      * @param Carbon $now The restaurant's current time
      * @return Carbon When it spoils
      */
     private function getServedExpiry(Meal $meal, Carbon $now): Carbon
     {
-        $freshUntil = $now->copy()->addMinutes($meal->getRecipe()->fresh_for);
+        $freshUntil = $now->copy()->addMinutes(max(0, $meal->getRecipe()->fresh_for + $meal->fresh_for_bonus));
         return $meal->expires_at !== null && $meal->expires_at->lt($freshUntil) ? $meal->expires_at->copy() : $freshUntil;
     }
 

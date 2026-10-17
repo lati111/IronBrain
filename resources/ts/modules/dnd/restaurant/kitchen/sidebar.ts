@@ -1,5 +1,5 @@
 import {openModal, closeModal} from "../../../../components/modal";
-import {formatMoney, refreshMoneyInputs, setField, setupMoneyInput} from "../shared";
+import {describeMealBoostEffects, describeSpeedBonus, formatMoney, refreshMoneyInputs, setField, setupMoneyInput} from "../shared";
 import {setupBoostDrag} from "./drag";
 import {cloneTemplate, createEmptyRow, formatMinutes} from "./elements";
 import {getServiceState, post} from "./state";
@@ -156,12 +156,12 @@ function fillBoostRow(row: HTMLElement, boost: ServiceBoost): void {
     setupBoostDrag(row, boost);
 }
 
-/** Describes what a boost does, such as "+0.5 speed for 30m · 5m off" */
+/** Describes what a boost does, such as "+10% speed for 30m · 5m off" */
 function describeBoostEffects(boost: ServiceBoost): string {
     const effects: string[] = [];
-    if (boost.speed_bonus > 0) effects.push(`+${boost.speed_bonus} speed for ${formatMinutes(boost.duration)}`);
+    if (boost.speed_bonus > 0) effects.push(`${describeSpeedBonus(boost.speed_bonus)} for ${formatMinutes(boost.duration)}`);
     if (boost.minutes_off > 0) effects.push(`${formatMinutes(boost.minutes_off)} off`);
-    if (boost.quality_bonus !== 0) effects.push(`${boost.quality_bonus > 0 ? '+' : ''}${boost.quality_bonus} quality`);
+    effects.push(...describeMealBoostEffects(boost));
     return effects.length > 0 ? effects.join(' · ') : 'No effect';
 }
 

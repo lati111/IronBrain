@@ -153,6 +153,8 @@ Route::prefix('/dnd/restaurant')
                 ->name('api.dnd.restaurant.service.conversion.cancel');
             Route::post('/boost/{boost_uuid}/activate', [\App\Http\Api\Modules\DnD\Restaurant\WorkApi::class, 'activateBoost'])
                 ->name('api.dnd.restaurant.service.boost.activate');
+            Route::post('/boost/active/{active_boost_uuid}/cancel', [\App\Http\Api\Modules\DnD\Restaurant\WorkApi::class, 'cancelBoost'])
+                ->name('api.dnd.restaurant.service.boost.cancel');
             Route::post('/table/{table_uuid}/waiter', [\App\Http\Api\Modules\DnD\Restaurant\WorkApi::class, 'assignWaiter'])
                 ->name('api.dnd.restaurant.service.table.waiter')
                 ->withoutMiddleware('dnd.restaurant.manager');

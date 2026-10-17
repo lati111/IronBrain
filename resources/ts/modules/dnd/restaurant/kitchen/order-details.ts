@@ -85,7 +85,10 @@ function renderOrderDetails(): void {
 /** Describes how far along an order is, with how long ago it was placed or fully served */
 export function describeOrder(order: Order): string {
     if (order.status === 'taking') {
-        return `Being taken, ordered ${formatMinutes(order.ordered_minutes_ago)} ago`;
+        return `Being taken for ${formatMinutes(order.ordered_minutes_ago)}`;
+    }
+    if (order.status === 'taken') {
+        return 'Taken, waiting to be noted down';
     }
 
     const served = order.items.filter((item) => item.served).length;

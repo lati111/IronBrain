@@ -1,5 +1,5 @@
 import {closeModal, openModal} from "../../../../components/modal";
-import {submitForm} from "../shared";
+import {BoostTarget, MEAL_BOOST_TARGETS, submitForm} from "../shared";
 import {setFormValues, setModalMode} from "../dom";
 import {EditableTab, getTable, Player, postFloor, setFloor, state, TAB_LABELS} from "./floor";
 
@@ -116,27 +116,38 @@ export function openBoostModal(uuid: string | null): void {
     const form = prepareEditModal('boost', uuid);
     if (boost !== null) {
         setFormValues(form, {
-            name:          boost.name,
-            target:        boost.target,
-            speed_bonus:   String(boost.speed_bonus),
-            duration:      String(boost.duration),
-            minutes_off:   String(boost.minutes_off),
-            quality_bonus: String(boost.quality_bonus),
+            name:            boost.name,
+            speed_bonus:     String(boost.speed_bonus),
+            duration:        String(boost.duration),
+            minutes_off:     String(boost.minutes_off),
+            quality_bonus:   String(boost.quality_bonus),
+            fresh_for_bonus: String(boost.fresh_for_bonus),
         });
+        getBoostTargetInputs().forEach((input) => input.checked = boost.targets.includes(input.value as BoostTarget));
     }
     updateBoostFields();
 
     showEditModal('boost', boost !== null);
 }
 
-/** Only meal boosts improve quality, so the quality field only shows for those */
+/** The checkboxes of what the boost in the boost modal can be activated on */
+function getBoostTargetInputs(): HTMLInputElement[] {
+    return [...document.querySelectorAll<HTMLInputElement>('#boost-form input[name="targets[]"]')];
+}
+
+/**
+ * Only boosts that can be activated on a meal improve quality and freshness, so those fields only show for them. At
+ * least one target has to be chosen, which the first checkbox reports when none is
+ */
 export function updateBoostFields(): void {
-    const form = document.getElementById('boost-form') as HTMLFormElement;
-    const isMeal = (form.elements.namedItem('target') as HTMLSelectElement).value === 'meal';
-    document.getElementById('boost-quality-field')!.classList.toggle('hidden', !isMeal);
+    const inputs = getBoostTargetInputs();
+    const chosen = inputs.filter((input) => input.checked).map((input) => input.value as BoostTarget);
+    document.getElementById('boost-meal-fields')!.classList.toggle('hidden', !chosen.some((target) => MEAL_BOOST_TARGETS.includes(target)));
+    inputs[0].setCustomValidity(chosen.length === 0 ? 'Choose at least one thing it can be activated on' : '');
 }
 
 export async function saveBoost(): Promise<void> {
+    updateBoostFields();
     await saveEditModal('boost');
 }
 

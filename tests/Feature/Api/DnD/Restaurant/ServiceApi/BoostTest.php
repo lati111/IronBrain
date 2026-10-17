@@ -10,15 +10,17 @@ use App\Models\DnD\Restaurant\Meal;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\ServedMeal;
+use App\Models\DnD\Restaurant\Work;
 use App\Service\DnD\Restaurant\ShiftService;
 use Illuminate\Testing\TestResponse;
 use Tests\Feature\AbstractFeatureTester;
 use Tests\Traits\DnD\RestaurantTestHelper;
 
 /**
- * Covers boosts: configured on the manage page and activated during service, they add to the speed of equipment,
- * a meal or an area for a while, do minutes of work straight away, and improve a meal's quality. Equipment multipliers
- * count towards speed as well. The stew preps in 10 minutes and cooks in 20, and the service starts at 12:00
+ * Covers boosts: configured on the manage page and activated during service on any of their targets, they add to the
+ * speed of a cooker, equipment, a meal or an area for a while, do minutes of work straight away, and improve a meal's
+ * quality and how long it stays fresh. Equipment multipliers count towards speed as well. The stew preps in 10 minutes,
+ * cooks in 20 and stays fresh for 30 once served, and the service starts at 12:00
  */
 class BoostTest extends AbstractFeatureTester
 {
@@ -45,12 +47,24 @@ class BoostTest extends AbstractFeatureTester
             ->postJson(route($route, array_merge(['restaurant_uuid' => $this->restaurant->uuid], $routeParameters)), $parameters);
     }
 
-    private function createBoost(string $target, float $speed = 0, int $duration = 0, float $minutesOff = 0, int $quality = 0): Boost
+    /** @var array<string, string[]> The targets of the kinds of boost there were before a boost could have several */
+    private const array TARGET_GROUPS = [
+        'equipment' => [Boost::TARGET_COOKER, Boost::TARGET_EQUIPMENT],
+        'meal'      => [Boost::TARGET_PREPPED_MEAL, Boost::TARGET_COOKING_MEAL],
+        'area'      => [Boost::TARGET_PREP_AREA, Boost::TARGET_COOKING_AREA, Boost::TARGET_CLEANING_AREA],
+    ];
+
+    /**
+     * Creates a boost named Haste
+     * @param string|string[] $targets Its targets, or one of the TARGET_GROUPS for all of those
+     */
+    private function createBoost(string|array $targets, float $speed = 0, int $duration = 0, float $minutesOff = 0, int $quality = 0, int $freshFor = 0): Boost
     {
         $boost = new Boost();
         $boost->restaurant_uuid = $this->restaurant->uuid;
         $boost->name = 'Haste';
-        $boost->target = $target;
+        $boost->targets = is_string($targets) ? self::TARGET_GROUPS[$targets] : $targets;
+        $boost->fresh_for_bonus = $freshFor;
         $boost->speed_bonus = $speed;
         $boost->duration = $duration;
         $boost->minutes_off = $minutesOff;
@@ -95,19 +109,26 @@ class BoostTest extends AbstractFeatureTester
     public function test_boosts_are_configured_on_the_manage_page(): void
     {
         $response = $this->callService('api.dnd.restaurant.floor.boost.create', [
-            'name' => 'Sharpened knives', 'target' => 'equipment', 'speed_bonus' => 0.5, 'duration' => 30, 'minutes_off' => 2, 'quality_bonus' => 4,
+            'name' => 'Sharpened knives', 'targets' => ['equipment', 'cooker'], 'speed_bonus' => 0.5, 'duration' => 30, 'minutes_off' => 2,
+            'quality_bonus' => 4, 'fresh_for_bonus' => 10,
         ]);
 
         $response->assertCreated();
-        // Only meals get better, so equipment boosts leave quality alone
-        $this->assertEquals(['name' => 'Sharpened knives', 'target' => 'equipment', 'speed_bonus' => 0.5, 'minutes_off' => 2, 'quality_bonus' => 0, 'duration' => 30],
+        // Only meals get better, so boosts without a meal target leave quality and freshness alone. Targets are kept in
+        // the order they are offered in
+        $this->assertEquals(['name' => 'Sharpened knives', 'targets' => ['cooker', 'equipment'], 'speed_bonus' => 0.5, 'minutes_off' => 2,
+            'quality_bonus' => 0, 'fresh_for_bonus' => 0, 'duration' => 30],
             array_diff_key(collect($response->json('data.floor.boosts'))->firstWhere('uuid', $response->json('data.uuid')), ['uuid' => 0]));
 
         $uuid = $response->json('data.uuid');
         $this->callService('api.dnd.restaurant.floor.boost.edit', [
-            'name' => 'Blessing', 'target' => 'meal', 'speed_bonus' => 0, 'duration' => 0, 'minutes_off' => 0, 'quality_bonus' => 4,
+            'name' => 'Blessing', 'targets' => ['prepped_meal', 'planned_meal'], 'speed_bonus' => 0, 'duration' => 0, 'minutes_off' => 0,
+            'quality_bonus' => 4, 'fresh_for_bonus' => 15,
         ], ['boost_uuid' => $uuid])->assertOk();
-        $this->assertEquals(4, Boost::find($uuid)->quality_bonus);
+        $boost = Boost::find($uuid);
+        $this->assertEquals(['planned_meal', 'prepped_meal'], $boost->targets);
+        $this->assertEquals(4, $boost->quality_bonus);
+        $this->assertEquals(15, $boost->fresh_for_bonus);
 
         $this->callService('api.dnd.restaurant.floor.boost.delete', [], ['boost_uuid' => $uuid])->assertOk();
         $this->assertNull(Boost::find($uuid));
@@ -116,13 +137,23 @@ class BoostTest extends AbstractFeatureTester
     public function test_a_speed_bonus_needs_a_duration(): void
     {
         $response = $this->callService('api.dnd.restaurant.floor.boost.create', [
-            'name' => 'Haste', 'target' => 'area', 'speed_bonus' => 1, 'duration' => 0, 'minutes_off' => 0,
+            'name' => 'Haste', 'targets' => ['prep_area'], 'speed_bonus' => 1, 'duration' => 0, 'minutes_off' => 0,
         ]);
 
         $response->assertBadRequest();
         $this->assertEquals('A speed bonus needs a duration', $response->json('message'));
-        $this->callService('api.dnd.restaurant.floor.boost.create', ['name' => 'Haste', 'target' => 'nowhere', 'speed_bonus' => 0, 'duration' => 0, 'minutes_off' => 0])
+    }
+
+    public function test_a_boost_needs_at_least_one_known_target(): void
+    {
+        foreach ([[], ['nowhere'], ['cooker', 'cooker']] as $targets) {
+            $this->callService('api.dnd.restaurant.floor.boost.create', ['name' => 'Haste', 'targets' => $targets, 'speed_bonus' => 0, 'duration' => 0, 'minutes_off' => 0])
+                ->assertBadRequest();
+        }
+        $this->callService('api.dnd.restaurant.floor.boost.create', ['name' => 'Haste', 'speed_bonus' => 0, 'duration' => 0, 'minutes_off' => 0])
             ->assertBadRequest();
+
+        $this->assertEquals(0, Boost::where('restaurant_uuid', $this->restaurant->uuid)->count());
     }
 
     //| equipment multipliers
@@ -190,6 +221,56 @@ class BoostTest extends AbstractFeatureTester
         $this->assertEquals(Meal::STATUS_DONE, $this->getStatus($meal));
     }
 
+    public function test_a_boost_adds_to_what_the_equipment_gives(): void
+    {
+        // The stove alone makes it 200%, so the stew cooks in 10 minutes. A boost of 10% adds to that, making it 210%
+        $this->stove->multiplier = 2;
+        $this->stove->save();
+        $meal = $this->createPreppedMeal();
+        $this->cook($meal);
+
+        $response = $this->activate($this->createBoost('equipment', 0.1, 60), ['equipment_uuid' => $this->stove->uuid, 'cooker_slot' => 1])->assertOk();
+
+        $this->assertEquals(2.1, collect($response->json('data.meals'))->firstWhere('uuid', $meal->uuid)['speed']);
+        // 20 minutes of cooking at 210% takes 9 minutes and 32 seconds rather than 10 minutes
+        $this->assertEquals($this->restaurant->fresh()->getNow()->addSeconds(572)->toDateTimeString(), $meal->fresh()->cooking_ends_at->toDateTimeString());
+    }
+
+    public function test_the_time_left_is_rounded_to_the_nearest_minute(): void
+    {
+        // 30 minutes of cooking at 110% takes 27 minutes and 16 seconds, which shows as 27 rather than 28
+        $this->stew->cooking_time = 30;
+        $this->stew->save();
+        $meal = $this->createPreppedMeal();
+        $this->cook($meal);
+
+        $response = $this->activate($this->createBoost('equipment', 0.1, 60), ['equipment_uuid' => $this->stove->uuid, 'cooker_slot' => 1])->assertOk();
+
+        $this->assertEquals(27, collect($response->json('data.meals'))->firstWhere('uuid', $meal->uuid)['cooking_minutes_left']);
+    }
+
+    public function test_time_left_shows_at_least_a_minute_until_it_is_done(): void
+    {
+        $this->assertEquals(1, \App\Service\DnD\Restaurant\Minutes::display(0.2));
+        $this->assertEquals(0, \App\Service\DnD\Restaurant\Minutes::display(0));
+        $this->assertEquals(0, \App\Service\DnD\Restaurant\Minutes::display(-3));
+        $this->assertEquals(28, \App\Service\DnD\Restaurant\Minutes::display(27.5));
+    }
+
+    public function test_boost_bonuses_add_up_with_the_equipment(): void
+    {
+        $this->stove->multiplier = 2;
+        $this->stove->save();
+        $meal = $this->createPreppedMeal();
+        $this->cook($meal);
+
+        $this->activate($this->createBoost('equipment', 0.1, 60), ['equipment_uuid' => $this->stove->uuid, 'cooker_slot' => 1])->assertOk();
+        $response = $this->activate($this->createBoost('meal', 0.25, 60), ['meal_uuid' => $meal->uuid])->assertOk();
+
+        // 200% from the stove, plus 10% and 25% from the boosts
+        $this->assertEquals(2.35, collect($response->json('data.meals'))->firstWhere('uuid', $meal->uuid)['speed']);
+    }
+
     public function test_the_prep_area_can_be_boosted(): void
     {
         $this->createTestEmployee($this->restaurant, WorkStation::PREP);
@@ -255,7 +336,147 @@ class BoostTest extends AbstractFeatureTester
         $this->assertEquals(13, ServedMeal::where('restaurant_uuid', $this->restaurant->uuid)->value('quality'));
     }
 
+    //| freshness
+
+    public function test_a_cooked_meal_stays_fresh_longer_once_served(): void
+    {
+        $meal = $this->createPreppedMeal();
+        $this->cook($meal);
+        $this->advance(20);
+        $this->activate($this->createBoost([Boost::TARGET_COOKED_MEAL], freshFor: 15), ['meal_uuid' => $meal->uuid])->assertOk();
+
+        $this->callService('api.dnd.restaurant.service.meal.serve', [], ['meal_uuid' => $meal->uuid])->assertOk();
+
+        // Fresh for its 30 minutes, and the 15 the boost added
+        $now = $this->restaurant->fresh()->getNow();
+        $this->assertEquals($now->copy()->addMinutes(45)->toDateTimeString(), $meal->fresh()->expires_at->toDateTimeString());
+    }
+
+    public function test_a_served_meal_spoils_later_straight_away(): void
+    {
+        $meal = $this->createPreppedMeal();
+        $this->cook($meal);
+        $this->advance(20);
+        $this->callService('api.dnd.restaurant.service.meal.serve', [], ['meal_uuid' => $meal->uuid])->assertOk();
+        $expires = $meal->fresh()->expires_at;
+
+        $this->activate($this->createBoost([Boost::TARGET_COOKED_MEAL], freshFor: 10), ['meal_uuid' => $meal->uuid])->assertOk();
+
+        $this->assertEquals($expires->copy()->addMinutes(10)->toDateTimeString(), $meal->fresh()->expires_at->toDateTimeString());
+    }
+
+    //| meals by how far along they are
+
+    public function test_cooking_and_cooked_meals_are_told_apart(): void
+    {
+        $meal = $this->createPreppedMeal();
+        $this->cook($meal);
+        $cooking = $this->createBoost([Boost::TARGET_COOKING_MEAL], quality: 1);
+        $cooked = $this->createBoost([Boost::TARGET_COOKED_MEAL], quality: 1);
+
+        // While it cooks, only a boost for cooking meals takes
+        $response = $this->activate($cooked, ['meal_uuid' => $meal->uuid]);
+        $response->assertBadRequest();
+        $this->assertEquals("Haste can't be used on a cooking meal", $response->json('message'));
+        $this->activate($cooking, ['meal_uuid' => $meal->uuid])->assertOk();
+
+        // Once it is done, only a boost for cooked meals does
+        $this->advance(20);
+        $this->activate($cooking, ['meal_uuid' => $meal->uuid])->assertBadRequest();
+        $this->activate($cooked, ['meal_uuid' => $meal->uuid])->assertOk();
+        $this->assertEquals(2, $meal->fresh()->quality_bonus);
+    }
+
+    public function test_a_planned_meal_gets_prep_done_straight_away(): void
+    {
+        $meal = $this->createTestMeal($this->restaurant, $this->stew);
+        $this->callService('api.dnd.restaurant.service.meal.prepare', [], ['meal_uuid' => $meal->uuid])->assertOk();
+
+        $this->activate($this->createBoost([Boost::TARGET_PLANNED_MEAL], minutesOff: 4), ['meal_uuid' => $meal->uuid])->assertOk();
+
+        $this->assertEquals(6, Work::where('meal_uuid', $meal->uuid)->first()->getRemaining());
+    }
+
     //| activating
+
+    //| stacking
+
+    public function test_the_same_boost_does_not_stack_on_the_same_thing(): void
+    {
+        $boost = $this->createBoost('equipment', 1, 60);
+        $this->activate($boost, ['equipment_uuid' => $this->stove->uuid, 'cooker_slot' => 1])->assertOk();
+
+        $response = $this->activate($boost, ['equipment_uuid' => $this->stove->uuid, 'cooker_slot' => 1]);
+        $response->assertBadRequest();
+        $this->assertEquals('Haste is already active on Stove 1', $response->json('message'));
+
+        // It still goes on something else, and another boost still stacks on the same cooker
+        $this->activate($boost, ['equipment_uuid' => $this->stove->uuid])->assertOk();
+        $this->activate($this->createBoost('equipment', 1, 60), ['equipment_uuid' => $this->stove->uuid, 'cooker_slot' => 1])->assertOk();
+        $this->assertEquals(3, ActiveBoost::where('restaurant_uuid', $this->restaurant->uuid)->count());
+    }
+
+    public function test_a_boost_can_be_activated_again_once_it_ran_out(): void
+    {
+        $boost = $this->createBoost('area', 1, 10);
+        $this->activate($boost, ['area' => 'prep'])->assertOk();
+        $this->advance(10);
+
+        $this->activate($boost, ['area' => 'prep'])->assertOk();
+    }
+
+    //| cancelling
+
+    public function test_a_boost_can_be_cancelled(): void
+    {
+        // Cooking twice as fast for 5 minutes does 10 of the 20 minutes, after which the rest takes 10 more
+        $meal = $this->createPreppedMeal();
+        $this->cook($meal);
+        $response = $this->activate($this->createBoost('area', 1, 60), ['area' => 'cooking'])->assertOk();
+        $active = $response->json('data.active_boosts.0.uuid');
+        $this->advance(5);
+
+        $response = $this->callService('api.dnd.restaurant.service.boost.cancel', [], ['active_boost_uuid' => $active])->assertOk();
+
+        $this->assertEquals([], $response->json('data.active_boosts'));
+        $described = collect($response->json('data.meals'))->firstWhere('uuid', $meal->uuid);
+        $this->assertEquals(1, $described['speed']);
+        $this->assertEquals(10, $described['cooking_minutes_left']);
+        $this->assertEquals(10, $meal->fresh()->cooking_progress);
+
+        // It can't be cancelled twice, and can be activated again straight away
+        $this->callService('api.dnd.restaurant.service.boost.cancel', [], ['active_boost_uuid' => $active])->assertBadRequest();
+        $this->assertEquals('Haste has already run out', $this->callService('api.dnd.restaurant.service.boost.cancel', [], ['active_boost_uuid' => $active])->json('message'));
+    }
+
+    public function test_cancelling_a_boost_of_another_restaurant_is_not_found(): void
+    {
+        $other = $this->createTestRestaurant($this->getAdminUser(), 'Other');
+        $active = new ActiveBoost();
+        $active->restaurant_uuid = $other->uuid;
+        $active->name = 'Haste';
+        $active->speed_bonus = 1;
+        $active->area = 'prep';
+        $active->starts_at = now();
+        $active->expires_at = now()->addHour();
+        $active->save();
+
+        $this->callService('api.dnd.restaurant.service.boost.cancel', [], ['active_boost_uuid' => $active->uuid])->assertNotFound();
+    }
+
+    public function test_a_boost_is_only_activated_on_its_targets(): void
+    {
+        $knife = $this->createTestEquipment($this->restaurant, 1, 'Knife', false);
+        $this->ownEquipment($this->restaurant, $knife, 1);
+        $boost = $this->createBoost([Boost::TARGET_COOKER], 1, 10);
+
+        $response = $this->activate($boost, ['equipment_uuid' => $knife->uuid]);
+        $response->assertBadRequest();
+        $this->assertEquals("Haste can't be used on equipment", $response->json('message'));
+        $this->activate($boost, ['area' => 'cooking'])->assertBadRequest();
+
+        $this->activate($boost, ['equipment_uuid' => $this->stove->uuid, 'cooker_slot' => 1])->assertOk();
+    }
 
     public function test_boosts_are_only_activated_on_what_they_are_for(): void
     {

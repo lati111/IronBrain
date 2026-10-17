@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property float total_price What the items of the order are worth together
  * @property float tip What the table gives on top of the price, in bits
  * @property float discount What is taken off the price, in bits
- * @property Carbon ordered_at When the order was placed, in the restaurant's time
+ * @property Carbon ordered_at When the table ordered, in the restaurant's time: once the waiter is done taking the
+ *                           order, or while they still are, when they went to take it
  * @property Carbon|null fulfilled_at When the last entry was served, in the restaurant's time
  * @property Carbon|null paid_at When the order's money went into the shift total, in the restaurant's time
  */
@@ -25,6 +26,8 @@ class Order extends RestaurantDataModel
 {
     /** @var string The waiter is still taking the order */
     public const string STATUS_TAKING = 'taking';
+    /** @var string The waiter has taken the order, and what was ordered has yet to be noted down */
+    public const string STATUS_TAKEN = 'taken';
     /** @var string Some of the entries still have to be served */
     public const string STATUS_OPEN = 'open';
     /** @var string Every entry has been served, and the meal is being eaten */
@@ -34,7 +37,7 @@ class Order extends RestaurantDataModel
     /** @var string The order was called off, and nothing is paid for it */
     public const string STATUS_CANCELLED = 'cancelled';
     /** @var string[] The statuses of orders that are still being served or eaten */
-    public const array ACTIVE_STATUSES = [self::STATUS_TAKING, self::STATUS_OPEN, self::STATUS_FULFILLED];
+    public const array ACTIVE_STATUSES = [self::STATUS_TAKING, self::STATUS_TAKEN, self::STATUS_OPEN, self::STATUS_FULFILLED];
 
     /** @inheritdoc */
     public const string TABLE_NAME = 'dnd__restaurant_order';
@@ -62,14 +65,15 @@ class Order extends RestaurantDataModel
 
     /**
      * Recalculates what the items are worth, and whether the order is fulfilled: it is once everything is served, and
-     * becomes open again when items are added that still have to be served. An order still being taken stays so.
+     * becomes open again when items are added that still have to be served. An order still being taken, or taken but
+     * not noted down yet, stays so.
      * Does not save
      * @param Carbon $now The restaurant's current time
      */
     public function recalculate(Carbon $now): void
     {
         $this->total_price = round((float) $this->Items()->sum('price'), 2);
-        if ($this->status === self::STATUS_TAKING) {
+        if ($this->status === self::STATUS_TAKING || $this->status === self::STATUS_TAKEN) {
             return;
         }
 

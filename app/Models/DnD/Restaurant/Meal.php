@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property integer portions_left How many portions are left to be plated once cooked
  * @property integer|null quality How well the meal turned out, set once it is finished
  * @property integer quality_bonus Added to the quality by boosts, so the quality it is served at is both together
+ * @property integer fresh_for_bonus Added to the recipe's fresh for time by boosts, in minutes
  * @property integer ingredient_quality The average quality of the ingredients it was made with, also added to the
  *                                      quality it is served at
  * @property string|null cooker_uuid The uuid of the cooker equipment the meal is in, while cooking
@@ -56,6 +57,7 @@ class Meal extends RestaurantDataModel
         'quality'         => 'integer',
         'quality_bonus'   => 'integer',
         'ingredient_quality' => 'integer',
+        'fresh_for_bonus' => 'integer',
         'cooking_progress' => 'float',
         'cooker_slot'     => 'integer',
         'cooking_ends_at' => 'datetime',

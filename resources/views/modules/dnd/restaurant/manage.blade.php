@@ -233,16 +233,25 @@
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
-            <x-form.input-wrapper label_text="Activated on">
-                <select name="target" class="underlined" onchange="updateBoostFields()" required>
-                    <option value="equipment">Equipment</option>
-                    <option value="meal">A prepped or cooking meal</option>
-                    <option value="area">The prep, cooking or cleaning area</option>
-                </select>
-            </x-form.input-wrapper>
-            {{--| The speed bonus adds to the speed of what it is on, as an equipment multiplier does |--}}
+            {{--| What it can be dropped on during service, at least one |--}}
+            <fieldset class="boost-targets">
+                <legend class="text-sm">Can be activated on</legend>
+                @foreach([
+                    'cooker' => 'Cooker', 'equipment' => 'Equipment',
+                    'cooking_area' => 'Cooking area', 'prep_area' => 'Prepping area', 'cleaning_area' => 'Cleaning area',
+                    'planned_meal' => 'Planned meal', 'prepped_meal' => 'Prepped meal', 'cooking_meal' => 'Cooking meal',
+                    'cooked_meal' => 'Cooked meal',
+                ] as $boostTarget => $boostTargetLabel)
+                    <label class="boost-target">
+                        <input type="checkbox" name="targets[]" value="{{$boostTarget}}" class="w-4 h-4 text-red-600 focus:ring-red-500"
+                               onchange="updateBoostFields()" @if($boostTarget === 'equipment') checked @endif>
+                        <span>{{$boostTargetLabel}}</span>
+                    </label>
+                @endforeach
+            </fieldset>
+            {{--| The speed bonus adds to the speed of what it is on, as an equipment multiplier does, where 1 is 100% |--}}
             <div class="flex gap-3">
-                <x-form.input-wrapper label_text="Speed bonus" cls="flex-1">
+                <x-form.input-wrapper label_text="Speed bonus (0.1 = +10% speed)" cls="flex-1">
                     <input type="number" name="speed_bonus" class="underlined" min="0" max="100" step="0.01" value="0" required/>
                 </x-form.input-wrapper>
                 <x-form.input-wrapper label_text="For (minutes)" cls="flex-1">
@@ -252,9 +261,13 @@
             <x-form.input-wrapper label_text="Minutes of work done straight away">
                 <input type="number" name="minutes_off" class="underlined" min="0" max="99999" step="0.01" value="0" required/>
             </x-form.input-wrapper>
-            <div id="boost-quality-field" class="hidden">
-                <x-form.input-wrapper label_text="Quality bonus">
+            {{--| Only for boosts that can be activated on a meal |--}}
+            <div id="boost-meal-fields" class="flex gap-3 hidden">
+                <x-form.input-wrapper label_text="Quality bonus" cls="flex-1">
                     <input type="number" name="quality_bonus" class="underlined" min="-9999" max="9999" step="1" value="0"/>
+                </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Fresh for (+ minutes)" cls="flex-1">
+                    <input type="number" name="fresh_for_bonus" class="underlined" min="-99999" max="99999" step="1" value="0"/>
                 </x-form.input-wrapper>
             </div>
             <button type="submit" class="hidden"></button>

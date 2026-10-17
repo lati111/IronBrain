@@ -3,6 +3,7 @@ namespace App\Http\Api\Modules\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
+use App\Models\DnD\Restaurant\ActiveBoost;
 use App\Models\DnD\Restaurant\Boost;
 use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Employee;
@@ -281,7 +282,7 @@ class WorkApi extends AbstractServiceApi
         $invalid = $this->validateRequest($request, [
             'equipment_uuid' => 'nullable|string|max:255',
             'meal_uuid'      => 'nullable|string|max:255',
-            'area'           => ['nullable', 'string', Rule::in(Boost::AREAS)],
+            'area'           => ['nullable', 'string', Rule::in(array_keys(Boost::AREAS))],
             // A single cooker of the equipment, rather than all of it
             'cooker_slot'    => 'nullable|integer|min:1',
         ]);
@@ -299,9 +300,9 @@ class WorkApi extends AbstractServiceApi
             return $this->notFound('Boost');
         }
 
-        // Only what the boost is for is looked at, so other targets given along are left alone
+        // A boost is dropped on a single thing, which is whichever of these is given
         $equipment = null;
-        if ($boost->target === Boost::TARGET_EQUIPMENT && $request->filled('equipment_uuid')) {
+        if ($request->filled('equipment_uuid')) {
             $equipment = $this->findInRestaurant(Equipment::class, $restaurant, $request->get('equipment_uuid'));
             if ($equipment === null) {
                 return $this->notFound('Equipment');
@@ -309,17 +310,39 @@ class WorkApi extends AbstractServiceApi
         }
 
         $meal = null;
-        if ($boost->target === Boost::TARGET_MEAL && $request->filled('meal_uuid')) {
+        if ($request->filled('meal_uuid')) {
             $meal = $this->findInRestaurant(Meal::class, $restaurant, $request->get('meal_uuid'));
             if ($meal === null) {
                 return $this->notFound('Meal');
             }
         }
 
-        $area = $boost->target === Boost::TARGET_AREA ? $request->get('area') : null;
+        $area = $request->get('area');
         $cookerSlot = $equipment !== null && $request->filled('cooker_slot') ? (int) $request->get('cooker_slot') : null;
 
         return $this->attempt($restaurant, $boost->name . ' activated',
             fn () => $this->boostActivationService->activateBoost($restaurant, $boost, $equipment, $meal, $area, $cookerSlot));
+    }
+
+    /**
+     * Cancels a boost that is active, so it stops right away
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $active_boost_uuid The uuid of the active boost
+     * @return JsonResponse The updated service state in JSON format
+     */
+    public function cancelBoost(string $restaurant_uuid, string $active_boost_uuid): JsonResponse
+    {
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->notFound('Restaurant');
+        }
+
+        $active = $this->findInRestaurant(ActiveBoost::class, $restaurant, $active_boost_uuid);
+        if ($active === null) {
+            return $this->notFound('Boost');
+        }
+
+        return $this->attempt($restaurant, $active->name . ' cancelled',
+            fn () => $this->boostActivationService->cancelBoost($restaurant, $active));
     }
 }

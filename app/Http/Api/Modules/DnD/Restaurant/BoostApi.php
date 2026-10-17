@@ -74,18 +74,22 @@ class BoostApi extends AbstractApi
     }
 
     /**
-     * Creates or updates a boost from the request. Only meal boosts improve quality, and a speed bonus needs a
-     * duration to last for
+     * Creates or updates a boost from the request. Only boosts that can be activated on a meal improve quality or
+     * freshness, and a speed bonus needs a duration to last for
      * @param string|null $boost_uuid The uuid of the boost to update, or null to create one
      */
     private function saveBoost(Request $request, string $restaurant_uuid, ?string $boost_uuid): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'name'          => 'required|string|max:64',
-            'target'        => ['required', 'string', Rule::in(Boost::TARGETS)],
+            // What it can be activated on, at least one
+            'targets'         => 'required|array|min:1',
+            'targets.*'       => ['required', 'string', 'distinct', Rule::in(Boost::TARGETS)],
             'speed_bonus'   => 'required|numeric|min:0|max:100',
             'minutes_off'   => 'required|numeric|min:0|max:99999',
             'quality_bonus' => 'nullable|integer|min:-9999|max:9999',
+            // In minutes, which can also make a meal go off sooner
+            'fresh_for_bonus' => 'nullable|integer|min:-99999|max:99999',
             // In minutes of the restaurant's time, at most a week
             'duration'      => 'required|integer|min:0|max:10080',
         ]);
@@ -110,10 +114,12 @@ class BoostApi extends AbstractApi
 
         $boost->restaurant_uuid = $restaurant->uuid;
         $boost->name = trim($request->get('name'));
-        $boost->target = $request->get('target');
+        // Kept in the order the targets are offered in, so the same choice always reads the same
+        $boost->targets = array_values(array_intersect(Boost::TARGETS, $request->get('targets')));
         $boost->speed_bonus = round((float) $request->get('speed_bonus'), 2);
         $boost->minutes_off = round((float) $request->get('minutes_off'), 2);
-        $boost->quality_bonus = $boost->target === Boost::TARGET_MEAL ? (int) $request->get('quality_bonus', 0) : 0;
+        $boost->quality_bonus = $boost->allowsMeals() ? (int) $request->get('quality_bonus', 0) : 0;
+        $boost->fresh_for_bonus = $boost->allowsMeals() ? (int) $request->get('fresh_for_bonus', 0) : 0;
         $boost->duration = (int) $request->get('duration');
         $boost->save();
 

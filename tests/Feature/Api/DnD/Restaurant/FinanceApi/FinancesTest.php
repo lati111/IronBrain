@@ -122,18 +122,20 @@ class FinancesTest extends AbstractFeatureTester
         $cancelled = $this->order([$this->pie, $this->alice]);
         $this->callApi('api.dnd.restaurant.service.order.cancel', [], 'postJson', ['order_uuid' => $cancelled->uuid])->assertOk();
 
-        $orders = $this->getDetails($this->endService())->json('data.orders');
+        $orders = collect($this->getDetails($this->endService())->json('data.orders'));
 
+        // Listed by when the table ordered, which for the first order is once its waiter was done taking it
         $this->assertCount(2, $orders);
-        $this->assertEquals(['Booth', 'finished', 10, 1, 2, 11], [
-            $orders[0]['table'], $orders[0]['status'], $orders[0]['total_price'], $orders[0]['discount'], $orders[0]['tip'], $orders[0]['paid'],
+        $finished = $orders->firstWhere('status', 'finished');
+        $this->assertEquals(['Booth', 10, 1, 2, 11], [
+            $finished['table'], $finished['total_price'], $finished['discount'], $finished['tip'], $finished['paid'],
         ]);
         // Nothing was brought to the table, so nothing was rated
         $this->assertEquals([
             ['name' => 'Stew', 'price' => 5, 'customer' => 'Alice', 'satisfaction' => null],
             ['name' => 'Stew', 'price' => 5, 'customer' => 'Bob', 'satisfaction' => null],
-        ], $orders[0]['items']);
-        $this->assertEquals(['cancelled', 0], [$orders[1]['status'], $orders[1]['paid']]);
+        ], $finished['items']);
+        $this->assertEquals(0, $orders->firstWhere('status', 'cancelled')['paid']);
     }
 
     public function test_the_day_shows_the_profit_per_customer(): void

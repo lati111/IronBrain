@@ -1,3 +1,4 @@
+import {BoostTarget} from "../shared";
 /** The service state as the server sends it, shared by the kitchen and the floor */
 
 export type MealStatus = 'planned' | 'prepped' | 'cooking' | 'done' | 'serving';
@@ -162,8 +163,9 @@ export interface OrderItem {
 export interface Order {
     uuid: string;
     table_uuid: string | null;
-    /** Taking while the waiter takes it, then open until everything is served */
-    status: 'taking' | 'open' | 'fulfilled';
+    /** Taking while the waiter takes it, taken until what was ordered is noted down, then open until everything is
+     * served */
+    status: 'taking' | 'taken' | 'open' | 'fulfilled';
     /** What the items are worth together */
     total_price: number;
     tip: number;
@@ -229,10 +231,13 @@ interface ConversionJob {
 export interface ServiceBoost {
     uuid: string;
     name: string;
-    target: 'equipment' | 'meal' | 'area';
+    /** What it can be dropped on */
+    targets: BoostTarget[];
     speed_bonus: number;
     minutes_off: number;
     quality_bonus: number;
+    /** Minutes added to how long a meal it is dropped on stays fresh once served */
+    fresh_for_bonus: number;
     duration: number;
 }
 

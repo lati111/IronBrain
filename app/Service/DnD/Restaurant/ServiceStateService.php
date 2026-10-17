@@ -120,10 +120,12 @@ class ServiceStateService
             ->map(fn (Boost $boost) => [
                 'uuid' => $boost->uuid,
                 'name' => $boost->name,
-                'target' => $boost->target,
+                // What it can be activated on, of the Boost::TARGET constants
+                'targets' => $boost->targets ?? [],
                 'speed_bonus' => $boost->speed_bonus,
                 'minutes_off' => $boost->minutes_off,
                 'quality_bonus' => $boost->quality_bonus,
+                'fresh_for_bonus' => $boost->fresh_for_bonus,
                 'duration' => $boost->duration,
             ])->values()->all();
     }
@@ -367,13 +369,13 @@ class ServiceStateService
     }
 
     /**
-     * Gets how many minutes are left until a moment, rounded up and never below zero
+     * Gets how many minutes are left until a moment, rounded for showing
      * @param Carbon $now The restaurant's current time
      * @param Carbon $moment The moment
      * @return int The minutes left
      */
     private function minutesUntil(Carbon $now, Carbon $moment): int
     {
-        return max(0, (int) ceil(($moment->getTimestamp() - $now->getTimestamp()) / 60));
+        return Minutes::until($now, $moment);
     }
 }

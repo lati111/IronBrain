@@ -31,8 +31,9 @@ class OrderApi extends AbstractServiceApi
     //| Placing & editing
 
     /**
-     * Places an order at a table. Sent as JSON, with an item for each portion: a recipe, and the one customer it is
-     * for, or none when it is for the table
+     * Places an order at a table. Without items, the table's waiter goes to take the order, after which what was
+     * ordered is noted down by editing it. Sent as JSON, any items each being a portion: a recipe, and the one customer
+     * it is for, or none when it is for the table
      * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant
      * @return JsonResponse The updated service state in JSON format
@@ -41,7 +42,7 @@ class OrderApi extends AbstractServiceApi
     {
         $invalid = $this->validateRequest($request, [
             'table_uuid'            => 'required|string|max:255',
-            'items'                 => 'required|array|min:1|max:200',
+            'items'                 => 'nullable|array|max:200',
             'items.*.recipe_uuid'   => 'required|string|max:255',
             'items.*.customer_uuid' => 'nullable|string|max:255',
         ]);
@@ -59,12 +60,13 @@ class OrderApi extends AbstractServiceApi
             return $this->notFound('Table');
         }
 
-        $items = $this->resolveOrderItems($restaurant, null, $request->get('items'));
+        $items = $this->resolveOrderItems($restaurant, null, $request->get('items') ?? []);
         if ($items instanceof JsonResponse) {
             return $items;
         }
 
-        return $this->attempt($restaurant, 'Order placed', fn () => $this->orderService->placeOrder($restaurant, $table, $items), Response::HTTP_CREATED);
+        $message = $items === [] ? 'Taking the order' : 'Order placed';
+        return $this->attempt($restaurant, $message, fn () => $this->orderService->placeOrder($restaurant, $table, $items), Response::HTTP_CREATED);
     }
 
     /**

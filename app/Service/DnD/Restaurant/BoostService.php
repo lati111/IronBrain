@@ -15,7 +15,8 @@ use Illuminate\Support\Collection;
  * How fast meals are prepped and cooked, and cooking as the clock moves. A meal works at normal speed, plus what the
  * equipment it uses in a stage adds: each piece adds its multiplier less one, so a multiplier of 1.5 adds half. The
  * cooker counts for cooking. Active boosts add their bonus on top while they last, whether they are on the meal, on
- * equipment it uses, or on the area it is in. As boosts run out partway through, time is worked through in stretches
+ * equipment it uses, or on the area it is in, so everything adds up: normal speed is 100%, equipment with a multiplier
+ * of 2 adds 100% to make 200%, and a boost of 0.1 adds 10% to make 210%. As boosts run out partway through, time is worked through in stretches
  * between the moments they expire, keeping what was done at each speed
  */
 class BoostService
@@ -71,14 +72,14 @@ class BoostService
                 'meal_uuid' => $boost->meal_uuid,
                 'area' => $boost->area,
                 'target_name' => $this->describeTarget($boost),
-                'minutes_left' => max(0, (int) ceil(($boost->expires_at->getTimestamp() - $now->getTimestamp()) / 60)),
+                'minutes_left' => Minutes::until($now, $boost->expires_at),
             ])->values()->all();
     }
 
     /**
      * Names what an active boost is on, such as "Stove 2", "Stew" or "Cooking area"
      */
-    private function describeTarget(ActiveBoost $boost): string
+    public function describeTarget(ActiveBoost $boost): string
     {
         if ($boost->Equipment !== null) {
             return $boost->cooker_slot !== null ? $boost->Equipment->name . ' ' . $boost->cooker_slot : $boost->Equipment->name;
@@ -90,7 +91,8 @@ class BoostService
     //| Speeds
 
     /**
-     * Gets how fast a meal is worked on in a stage at a moment
+     * Gets how fast a meal is worked on in a stage at a moment: normal speed, plus what its equipment and its active
+     * boosts add
      * @param Meal $meal The meal
      * @param EquipmentStage $stage The stage: prep or cooking
      * @param Carbon $at The moment, in the restaurant's time

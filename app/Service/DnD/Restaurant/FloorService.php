@@ -64,10 +64,12 @@ class FloorService
             ->map(fn (Boost $boost) => [
                 'uuid' => $boost->uuid,
                 'name' => $boost->name,
-                'target' => $boost->target,
+                // What it can be activated on, of the Boost::TARGET constants
+                'targets' => $boost->targets ?? [],
                 'speed_bonus' => $boost->speed_bonus,
                 'minutes_off' => $boost->minutes_off,
                 'quality_bonus' => $boost->quality_bonus,
+                'fresh_for_bonus' => $boost->fresh_for_bonus,
                 'duration' => $boost->duration,
             ])->values()->all(),
             // The users invited to play, who control the employees assigned to them

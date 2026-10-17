@@ -6,9 +6,10 @@ import {cloneTemplate, pluralize} from "./kitchen/elements";
 import {toggleMenu} from "./kitchen/menu";
 import {describeOrder, openOrderDetails} from "./kitchen/order-details";
 import {getAddButton, initSidebar, KitchenTab, renderKitchenTab, renderSidebarList} from "./kitchen/sidebar";
-import {isIdle, isPlayer, onServiceState} from "./kitchen/state";
+import {getServiceState, isIdle, isPlayer, onServiceState, post as postService} from "./kitchen/state";
 import {assignWaiter, getTableOrders, getWaiter, renderTableService} from "./kitchen/tables";
-import {openOrderModal, SeatedCustomer} from "./orders";
+import {Order} from "./kitchen/types";
+import {isOrderModalOpen, openOrderModal, SeatedCustomer} from "./orders";
 import "./shift";
 
 interface Room {
@@ -72,6 +73,7 @@ async function init(): Promise<void> {
     onServiceState(() => {
         renderFloor();
         if (activeTab !== 'customer') renderSidebar();
+        offerTakenOrder();
     });
 
     // During service the floor and kitchen need the room, so the customer list starts closed. Players have none
@@ -262,9 +264,15 @@ function openTableMenu(table: Table, anchor: HTMLElement): void {
     const waiter = getWaiter(table);
 
     toggleMenu(anchor, waiter !== null ? `${status} · ${waiter.name}` : `${status} · no waiter`, (option) => {
-        // Orders are taken by the table's waiter
+        // Orders are taken by the table's waiter, one at a time, and noted down once they have taken it
+        const taken = orders.find((order) => order.status === 'taken');
+        if (taken !== undefined) {
+            option('Note down order', () => openOrderModal(orderTable, getSeatedCustomers(table), taken));
+        }
         if (waiter !== null) {
-            option('Take order', () => openOrderModal(orderTable, getSeatedCustomers(table)));
+            if (!orders.some((order) => order.status === 'taking' || order.status === 'taken')) {
+                option('Take order', () => startOrder(table));
+            }
             option(`Remove ${waiter.name}`, () => assignWaiter(table, null));
         }
 
@@ -273,6 +281,44 @@ function openTableMenu(table: Table, anchor: HTMLElement): void {
                 () => openOrderDetails(order, orderTable, getSeatedCustomers(table)));
         }
     });
+}
+
+//| Taking orders
+
+/** The taken orders whose modal was closed without noting them down, which aren't offered again until reloading */
+const putOffOrders = new Set<string>();
+/** The taken order the order modal was opened for by itself, to tell when it was closed without being noted down */
+let offeredOrder: string | null = null;
+
+/** Sends the table's waiter to take an order, after which what was ordered is noted down */
+async function startOrder(table: Table): Promise<void> {
+    await postService('/order', JSON.stringify({table_uuid: table.uuid}));
+}
+
+/**
+ * Opens the order modal for an order the waiter is done taking, so what was ordered can be noted down. Closing it
+ * puts that order off, after which it is still noted down from the table's menu. Only whoever runs the service notes
+ * orders down, and never on top of another modal
+ */
+function offerTakenOrder(): void {
+    if (isPlayer()) return;
+
+    const orders = getServiceState()?.orders ?? [];
+    if (offeredOrder !== null && !isOrderModalOpen()) {
+        if (orders.some((order) => order.uuid === offeredOrder && order.status === 'taken')) {
+            putOffOrders.add(offeredOrder);
+        }
+        offeredOrder = null;
+    }
+
+    if (document.querySelector('.modal:not(.hidden)') !== null) return;
+
+    const order = orders.find((candidate: Order) => candidate.status === 'taken' && !putOffOrders.has(candidate.uuid));
+    const table = order !== undefined ? floor.tables.find((candidate) => candidate.uuid === order.table_uuid) : undefined;
+    if (order === undefined || table === undefined) return;
+
+    offeredOrder = order.uuid;
+    openOrderModal({uuid: table.uuid, name: table.name}, getSeatedCustomers(table), order);
 }
 
 /** The customers seated at a table, in the order of their seats */

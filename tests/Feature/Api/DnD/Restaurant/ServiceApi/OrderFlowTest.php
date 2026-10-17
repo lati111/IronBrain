@@ -123,7 +123,8 @@ class OrderFlowTest extends AbstractFeatureTester
         $this->assertEquals(2, $order->Items()->where('customer_uuid', $this->bilbo->uuid)->count());
         $this->assertEquals(1, $order->Items()->whereNull('customer_uuid')->count());
         $this->assertEquals(20.0, $order->total_price);
-        $this->assertEquals('12:00', $order->ordered_at->format('H:i'));
+        // The table ordered once the waiter was done taking it, after 4 minutes
+        $this->assertEquals('12:04', $order->ordered_at->format('H:i'));
         $this->assertEquals('Stew', $response->json('data.orders.0.items.0.name'));
 
         // Nothing is paid until the order is finished
@@ -150,9 +151,78 @@ class OrderFlowTest extends AbstractFeatureTester
         $this->assertEquals(0.0, $this->restaurant->fresh()->shift_total);
     }
 
-    public function test_an_order_needs_something_ordered(): void
+    //| taking an order first
+
+    /** Sends the waiter to take an order, without saying what is ordered yet */
+    private function startOrder(): Order
     {
-        $this->placeOrder([])->assertBadRequest();
+        $this->callService('order.place', ['table_uuid' => $this->table->uuid])->assertCreated();
+        return Order::where('table_uuid', $this->table->uuid)->latest('ordered_at')->first();
+    }
+
+    private function noteOrder(Order $order, array $items): TestResponse
+    {
+        return $this->callService('order.edit', ['items' => $items], ['order_uuid' => $order->uuid]);
+    }
+
+    public function test_an_order_is_taken_before_what_was_ordered_is_noted_down(): void
+    {
+        $order = $this->startOrder();
+        $this->assertEquals(Order::STATUS_TAKING, $order->status);
+        $this->assertEquals(0, $order->Items()->count());
+
+        // While the waiter is still at the table, nothing can be noted down yet
+        $response = $this->noteOrder($order, [$this->item($this->bilbo)]);
+        $response->assertBadRequest();
+        $this->assertEquals('The order at Booth is still being taken', $response->json('message'));
+
+        // Once they are done, the order waits for what was ordered
+        $this->advance(OrderService::ORDER_MINUTES_PER_CUSTOMER * 2);
+        $this->assertEquals(Order::STATUS_TAKEN, $order->fresh()->status);
+
+        // The table ordered once the waiter was done, so that is what its waiting counts from
+        $this->assertEquals('12:04', $order->fresh()->ordered_at->format('H:i'));
+        $response = $this->advance(3);
+        $this->assertEquals(3, collect($response->json('data.orders'))->firstWhere('uuid', $order->uuid)['ordered_minutes_ago']);
+
+        // Noting it down opens it to be served
+        $this->noteOrder($order, [$this->item($this->bilbo), $this->item($this->frodo)])->assertOk();
+        $order->refresh();
+        $this->assertEquals(Order::STATUS_OPEN, $order->status);
+        $this->assertEquals(2, $order->Items()->count());
+        $this->assertEquals(10, $order->total_price);
+    }
+
+    public function test_one_order_is_taken_at_a_table_at_a_time(): void
+    {
+        $this->startOrder();
+
+        $response = $this->callService('order.place', ['table_uuid' => $this->table->uuid]);
+        $response->assertBadRequest();
+        $this->assertEquals('An order is already being taken at Booth', $response->json('message'));
+
+        // Still so once it is taken, until what was ordered is noted down
+        $this->advance(OrderService::ORDER_MINUTES_PER_CUSTOMER * 2);
+        $this->callService('order.place', ['table_uuid' => $this->table->uuid])->assertBadRequest();
+    }
+
+    public function test_a_taken_order_can_be_cancelled(): void
+    {
+        $order = $this->startOrder();
+        $this->advance(OrderService::ORDER_MINUTES_PER_CUSTOMER * 2);
+
+        $this->callService('order.cancel', [], ['order_uuid' => $order->uuid])->assertOk();
+
+        $this->assertEquals(Order::STATUS_CANCELLED, $order->fresh()->status);
+        // The table can order again
+        $this->startOrder();
+    }
+
+    public function test_an_order_placed_with_its_items_still_opens_once_taken(): void
+    {
+        $this->placeOrder([$this->item($this->bilbo)])->assertCreated();
+
+        $this->assertEquals(Order::STATUS_OPEN, Order::where('table_uuid', $this->table->uuid)->value('status'));
     }
 
     //| plating

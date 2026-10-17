@@ -1,4 +1,4 @@
-import {setField} from "../shared";
+import {BOOST_TARGET_LABELS, describeMealBoostEffects, describeSpeedBonus, setField} from "../shared";
 import {cloneTemplate} from "../dom";
 import {BoostType, getRoom, getTable, seatsLabel, SidebarTab, state, TAB_LABELS} from "./floor";
 import {
@@ -8,12 +8,6 @@ import {setupTableDrag} from "./rooms";
 
 /** The sidebar lists the tables, customers, employees, players and boosts of the restaurant */
 
-/** What each kind of boost is activated on, as shown */
-const BOOST_TARGET_LABELS: Record<BoostType['target'], string> = {
-    equipment: 'Equipment',
-    meal:      'Meal',
-    area:      'Kitchen area',
-};
 
 export function renderSidebar(): void {
     const list = document.getElementById('inventory-list') as HTMLElement;
@@ -123,11 +117,12 @@ function renderBoostRows(list: HTMLElement, search: string): number {
 /** Describes what a boost is for and does, such as "Equipment · +0.5 speed for 30 min, 5 min off" */
 function describeBoost(boost: BoostType): string {
     const effects: string[] = [];
-    if (boost.speed_bonus > 0) effects.push(`+${boost.speed_bonus} speed for ${boost.duration} min`);
+    if (boost.speed_bonus > 0) effects.push(`${describeSpeedBonus(boost.speed_bonus)} for ${boost.duration} min`);
     if (boost.minutes_off > 0) effects.push(`${boost.minutes_off} min off`);
-    if (boost.quality_bonus !== 0) effects.push(`${boost.quality_bonus > 0 ? '+' : ''}${boost.quality_bonus} quality`);
+    effects.push(...describeMealBoostEffects(boost));
 
-    return `${BOOST_TARGET_LABELS[boost.target]} · ${effects.length > 0 ? effects.join(', ') : 'no effect'}`;
+    const targets = boost.targets.map((target) => BOOST_TARGET_LABELS[target]).join(', ');
+    return `${targets} · ${effects.length > 0 ? effects.join(', ') : 'no effect'}`;
 }
 
 export function switchTab(tab: SidebarTab): void {
