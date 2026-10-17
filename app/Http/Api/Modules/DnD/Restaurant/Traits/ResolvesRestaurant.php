@@ -3,6 +3,7 @@
 namespace App\Http\Api\Modules\DnD\Restaurant\Traits;
 
 use App\Models\DnD\Restaurant\Restaurant;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 trait ResolvesRestaurant
@@ -20,5 +21,18 @@ trait ResolvesRestaurant
         }
 
         return $restaurant;
+    }
+
+    /**
+     * Gets one of the restaurant's records, such as a meal, a table or an employee
+     * @template T of Model
+     * @param class-string<T> $model The model of the record
+     * @param Restaurant $restaurant The restaurant
+     * @param string|null $uuid The uuid of the record
+     * @return T|null The record, or null if it does not belong to the restaurant
+     */
+    private function findInRestaurant(string $model, Restaurant $restaurant, ?string $uuid): ?Model
+    {
+        return $model::where('uuid', $uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
     }
 }

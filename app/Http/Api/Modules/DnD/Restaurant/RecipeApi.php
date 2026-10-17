@@ -9,7 +9,7 @@ use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\Restaurant;
-use App\Service\DnD\Restaurant\InventoryService;
+use App\Service\DnD\Restaurant\InventoryStateService;
 use App\Service\DnD\Restaurant\RecipeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +36,7 @@ class RecipeApi extends AbstractApi
 
     public function __construct(
         private readonly RecipeService $recipeService,
-        private readonly InventoryService $inventoryService,
+        private readonly InventoryStateService $inventoryStateService,
     ) {
     }
 
@@ -98,7 +98,7 @@ class RecipeApi extends AbstractApi
 
         return $this->respond(Response::HTTP_CREATED, 'Recipe created', [
             'uuid' => $recipe->uuid,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
+            'inventory' => $this->inventoryStateService->getInventory($restaurant),
         ]);
     }
 
@@ -164,7 +164,7 @@ class RecipeApi extends AbstractApi
 
         return $this->respond(Response::HTTP_OK, 'Recipe updated', [
             'uuid' => $recipe->uuid,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
+            'inventory' => $this->inventoryStateService->getInventory($restaurant),
         ]);
     }
 
@@ -194,7 +194,7 @@ class RecipeApi extends AbstractApi
         $recipe->delete();
 
         return $this->respond(Response::HTTP_OK, 'Recipe deleted', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
+            'inventory' => $this->inventoryStateService->getInventory($restaurant),
         ]);
     }
 
@@ -459,7 +459,7 @@ class RecipeApi extends AbstractApi
 
         return $this->respond($creating ? Response::HTTP_CREATED : Response::HTTP_OK, $creating ? 'Variant created' : 'Variant updated', [
             'uuid' => $variant->uuid,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
+            'inventory' => $this->inventoryStateService->getInventory($restaurant),
         ]);
     }
 

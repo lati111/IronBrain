@@ -1,9 +1,6 @@
 <?php
 namespace App\Http\Api\Modules\DnD\Restaurant;
 
-use App\Enum\ErrorEnum;
-use App\Enum\DnD\Restaurant\EquipmentCategory;
-use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
@@ -15,23 +12,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage as FileStorage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 
-class InventoryApi extends AbstractApi
+/**
+ * The restaurant's stock: its storage spaces, moving items between them, the days passing, and equipment owned outright
+ */
+class InventoryApi extends AbstractInventoryApi
 {
     use ResolvesRestaurant;
 
     /** @var string The folder storage background images are saved in */
     private const string STORAGE_IMAGE_PATH = 'modules/dnd/restaurant/storage';
-    /** @var string The folder ingredient icons are saved in */
-    private const string INGREDIENT_ICON_PATH = 'modules/dnd/restaurant/ingredient';
-
-    public function __construct(private readonly InventoryService $inventoryService)
-    {
-    }
 
     /**
      * Gets the full inventory state of a restaurant
@@ -42,11 +35,13 @@ class InventoryApi extends AbstractApi
     {
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+            return $this->notFound('Restaurant');
         }
 
-        return $this->respond(Response::HTTP_OK, 'Inventory retrieved', $this->inventoryService->getInventory($restaurant));
+        return $this->respond(Response::HTTP_OK, 'Inventory retrieved', $this->inventoryStateService->getInventory($restaurant));
     }
+
+    //| Stock
 
     /**
      * Moves an amount of an ingredient or equipment between storage spaces and the unsaved general storage
@@ -56,7 +51,7 @@ class InventoryApi extends AbstractApi
      */
     public function transferItem(Request $request, string $restaurant_uuid): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $invalid = $this->validateRequest($request, [
             'type'              => ['required', 'string', Rule::in([InventoryService::TYPE_INGREDIENT, InventoryService::TYPE_EQUIPMENT])],
             'item_uuid'         => 'required|string|max:255',
             // Ingredients can be moved in fractions, while equipment is checked to be whole when moving it
@@ -67,14 +62,13 @@ class InventoryApi extends AbstractApi
             'stack_uuid'        => 'nullable|string|max:255',
             'days_left'         => 'nullable|numeric|gt:0|max:999999',
         ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        if ($invalid !== null) {
+            return $invalid;
         }
 
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+            return $this->notFound('Restaurant');
         }
 
         $fromUuid = $request->get('from_storage_uuid');
@@ -90,19 +84,15 @@ class InventoryApi extends AbstractApi
         }
 
         $model = $request->get('type') === InventoryService::TYPE_INGREDIENT ? Ingredient::class : Equipment::class;
-        $item = $model::where('uuid', $request->get('item_uuid'))
-            ->where('restaurant_uuid', $restaurant->uuid)
-            ->first();
-
+        $item = $this->findInRestaurant($model, $restaurant, $request->get('item_uuid'));
         if ($item === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Item not found');
+            return $this->notFound('Item');
         }
 
-        // The pile of ingredients brought in during service can be moved from and to as well
-        $from = $fromUuid === InventoryService::PILE ? InventoryService::PILE : ($fromUuid !== null ? $this->getStorage($restaurant, $fromUuid) : null);
-        $to = $toUuid === InventoryService::PILE ? InventoryService::PILE : ($toUuid !== null ? $this->getStorage($restaurant, $toUuid) : null);
+        $from = $this->getLocation($restaurant, $fromUuid);
+        $to = $this->getLocation($restaurant, $toUuid);
         if (($fromUuid !== null && $from === null) || ($toUuid !== null && $to === null)) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Storage not found');
+            return $this->notFound('Storage');
         }
 
         try {
@@ -112,9 +102,7 @@ class InventoryApi extends AbstractApi
             return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
         }
 
-        return $this->respond(Response::HTTP_OK, 'Item moved', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
+        return $this->respondWithInventory(Response::HTTP_OK, 'Item moved', $restaurant);
     }
 
     /**
@@ -126,16 +114,56 @@ class InventoryApi extends AbstractApi
     {
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+            return $this->notFound('Restaurant');
         }
 
         $expired = $this->inventoryService->advanceDay($restaurant);
 
-        return $this->respond(Response::HTTP_OK, 'A day has passed', [
-            'expired' => $expired,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
+        return $this->respondWithInventory(Response::HTTP_OK, 'A day has passed', $restaurant, ['expired' => $expired]);
     }
+
+    /**
+     * Adjusts how much of an equipment type a restaurant directly owns. Only applies to equipment that does not
+     * require storage, as it is never placed in a storage space
+     * @param Request $request The request parameters as given by Laravel
+     * @param string $restaurant_uuid The uuid of the restaurant
+     * @param string $equipment_uuid The uuid of the equipment
+     * @return JsonResponse The updated inventory state in JSON format
+     */
+    public function adjustOwnedEquipment(Request $request, string $restaurant_uuid, string $equipment_uuid): JsonResponse
+    {
+        $invalid = $this->validateRequest($request, [
+            'amount' => 'required|integer',
+        ]);
+        if ($invalid !== null) {
+            return $invalid;
+        }
+
+        $amount = (int) $request->get('amount');
+        if ($amount === 0) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, 'Amount cannot be zero');
+        }
+
+        $restaurant = $this->getRestaurant($restaurant_uuid);
+        if ($restaurant === null) {
+            return $this->notFound('Restaurant');
+        }
+
+        $equipment = $this->findInRestaurant(Equipment::class, $restaurant, $equipment_uuid);
+        if ($equipment === null) {
+            return $this->notFound('Equipment');
+        }
+
+        try {
+            $this->inventoryService->adjustOwnedEquipment($restaurant, $equipment, $amount);
+        } catch (InvalidArgumentException $exception) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
+        }
+
+        return $this->respondWithInventory(Response::HTTP_OK, 'Equipment updated', $restaurant);
+    }
+
+    //| Storage spaces
 
     /**
      * Creates a new storage space at the end of the restaurant's storage spaces
@@ -145,20 +173,19 @@ class InventoryApi extends AbstractApi
      */
     public function createStorage(Request $request, string $restaurant_uuid): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $invalid = $this->validateRequest($request, [
             'name'                  => 'required|string|max:64',
             'capacity'              => 'required|integer|min:1',
             'expiration_multiplier' => 'required|numeric|min:0',
             'background_image'      => 'nullable|image|max:5120',
         ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        if ($invalid !== null) {
+            return $invalid;
         }
 
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+            return $this->notFound('Restaurant');
         }
 
         $storage = new Storage();
@@ -174,9 +201,7 @@ class InventoryApi extends AbstractApi
 
         $storage->save();
 
-        return $this->respond(Response::HTTP_CREATED, 'Storage space created', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
+        return $this->respondWithInventory(Response::HTTP_CREATED, 'Storage space created', $restaurant);
     }
 
     /**
@@ -187,18 +212,17 @@ class InventoryApi extends AbstractApi
      */
     public function reorderStorages(Request $request, string $restaurant_uuid): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $invalid = $this->validateRequest($request, [
             'order'   => 'required|array',
             'order.*' => 'required|string|max:255',
         ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+        if ($invalid !== null) {
+            return $invalid;
         }
 
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+            return $this->notFound('Restaurant');
         }
 
         $order = array_values($request->get('order'));
@@ -213,9 +237,7 @@ class InventoryApi extends AbstractApi
             }
         });
 
-        return $this->respond(Response::HTTP_OK, 'Storage spaces reordered', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
+        return $this->respondWithInventory(Response::HTTP_OK, 'Storage spaces reordered', $restaurant);
     }
 
     /**
@@ -228,15 +250,15 @@ class InventoryApi extends AbstractApi
     {
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
+            return $this->notFound('Restaurant');
         }
 
-        $storage = $this->getStorage($restaurant, $storage_uuid);
+        $storage = $this->findInRestaurant(Storage::class, $restaurant, $storage_uuid);
         if ($storage === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Storage not found');
+            return $this->notFound('Storage');
         }
 
-        $released = $this->inventoryService->getContents($storage);
+        $released = $this->inventoryStateService->getContents($storage);
         $image = $storage->background_image;
 
         $storage->delete();
@@ -244,368 +266,24 @@ class InventoryApi extends AbstractApi
             FileStorage::delete($image);
         }
 
-        return $this->respond(Response::HTTP_OK, 'Storage space deleted', [
-            'released' => $released,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
+        return $this->respondWithInventory(Response::HTTP_OK, 'Storage space deleted', $restaurant, ['released' => $released]);
     }
 
-    /**
-     * Creates a new ingredient type for the restaurant
-     * @param Request $request The request parameters as given by Laravel
-     * @param string $restaurant_uuid The uuid of the restaurant
-     * @return JsonResponse The uuid of the ingredient and the updated inventory state in JSON format
-     */
-    public function createIngredient(Request $request, string $restaurant_uuid): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'name'       => 'required|string|max:64',
-            'category'   => 'nullable|string|max:64',
-            'expires_in' => 'required|integer|min:0',
-            'size'       => 'required|numeric|gt:0|max:999999',
-            'quality'    => 'nullable|integer|min:-9999|max:9999',
-            'parent_uuid' => 'nullable|string|max:255',
-            'icon'       => 'nullable|image|max:2048',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
-        }
-
-        $restaurant = $this->getRestaurant($restaurant_uuid);
-        if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
-        }
-
-        $parentUuid = $request->get('parent_uuid');
-        if ($parentUuid !== null && Ingredient::where('uuid', $parentUuid)->where('restaurant_uuid', $restaurant->uuid)->exists() === false) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Parent ingredient not found');
-        }
-
-        $ingredient = new Ingredient();
-        $ingredient->restaurant_uuid = $restaurant->uuid;
-        $ingredient->parent_uuid     = $parentUuid;
-        $ingredient->name            = $request->get('name');
-        $ingredient->category        = $this->normalizeCategory($request->get('category'));
-        $ingredient->expires_in      = (int) $request->get('expires_in');
-        $ingredient->size            = round((float) $request->get('size'), 2);
-        $ingredient->quality         = (int) $request->get('quality', 0);
-
-        if ($request->hasFile('icon')) {
-            $ingredient->icon = FileStorage::putFile(self::INGREDIENT_ICON_PATH, $request->file('icon'));
-        }
-
-        $ingredient->save();
-
-        return $this->respond(Response::HTTP_CREATED, 'Ingredient created', [
-            'uuid' => $ingredient->uuid,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
-    }
+    //| Helpers
 
     /**
-     * Creates a new equipment type for the restaurant
-     * @param Request $request The request parameters as given by Laravel
-     * @param string $restaurant_uuid The uuid of the restaurant
-     * @return JsonResponse The uuid of the equipment and the updated inventory state in JSON format
-     */
-    public function createEquipment(Request $request, string $restaurant_uuid): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'name'             => 'required|string|max:64',
-            'description'      => 'nullable|string',
-            'category'         => ['required', 'string', Rule::in(EquipmentCategory::values())],
-            'cleaning_time'    => 'required|numeric|min:0|max:999999',
-            'multiplier'       => 'required|numeric|min:0',
-            'size'             => 'required|numeric|gt:0|max:999999',
-            'parent_uuid'      => 'nullable|string|max:255',
-            'requires_storage' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
-        }
-
-        $restaurant = $this->getRestaurant($restaurant_uuid);
-        if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
-        }
-
-        $parentUuid = $request->get('parent_uuid');
-        if ($parentUuid !== null && Equipment::where('uuid', $parentUuid)->where('restaurant_uuid', $restaurant->uuid)->exists() === false) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Parent equipment not found');
-        }
-
-        $equipment = new Equipment();
-        $equipment->restaurant_uuid  = $restaurant->uuid;
-        $equipment->parent_uuid      = $parentUuid;
-        $equipment->name             = $request->get('name');
-        $equipment->description      = $request->get('description');
-        $equipment->category         = EquipmentCategory::from($request->get('category'));
-        $equipment->cleaning_time    = round((float) $request->get('cleaning_time'), 2);
-        $equipment->multiplier       = (float) $request->get('multiplier');
-        $equipment->size             = round((float) $request->get('size'), 2);
-        // Equipment needs storage unless explicitly said otherwise
-        $equipment->requires_storage = $request->has('requires_storage') ? $request->boolean('requires_storage') : true;
-        $equipment->save();
-
-        return $this->respond(Response::HTTP_CREATED, 'Equipment created', [
-            'uuid' => $equipment->uuid,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
-    }
-
-    /**
-     * Updates an existing ingredient type for the restaurant. Any field that is left out keeps its current value
-     * @param Request $request The request parameters as given by Laravel
-     * @param string $restaurant_uuid The uuid of the restaurant
-     * @param string $ingredient_uuid The uuid of the ingredient
-     * @return JsonResponse The updated inventory state in JSON format
-     */
-    public function editIngredient(Request $request, string $restaurant_uuid, string $ingredient_uuid): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'name'       => 'nullable|string|max:64',
-            'category'   => 'nullable|string|max:64',
-            'expires_in' => 'nullable|integer|min:0',
-            'size'       => 'nullable|numeric|gt:0|max:999999',
-            'quality'    => 'nullable|integer|min:-9999|max:9999',
-            'parent_uuid' => 'nullable|string|max:255',
-            'icon'       => 'nullable|image|max:2048',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
-        }
-
-        $restaurant = $this->getRestaurant($restaurant_uuid);
-        if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
-        }
-
-        $ingredient = Ingredient::where('uuid', $ingredient_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
-        if ($ingredient === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Ingredient not found');
-        }
-
-        $ingredient->name       = $request->get('name', $ingredient->name);
-        $ingredient->category   = $request->has('category') ? $this->normalizeCategory($request->get('category')) : $ingredient->category;
-        $ingredient->expires_in = $request->has('expires_in') ? (int) $request->get('expires_in') : $ingredient->expires_in;
-        $ingredient->size       = $request->has('size') ? round((float) $request->get('size'), 2) : $ingredient->size;
-        $ingredient->quality    = $request->filled('quality') ? (int) $request->get('quality') : $ingredient->quality;
-
-        if ($request->has('parent_uuid')) {
-            $parentUuid = $request->get('parent_uuid');
-            if ($parentUuid === $ingredient->uuid) {
-                return $this->respond(Response::HTTP_BAD_REQUEST, 'An ingredient cannot be a variant of itself');
-            }
-            if ($parentUuid !== null && Ingredient::where('uuid', $parentUuid)->where('restaurant_uuid', $restaurant->uuid)->exists() === false) {
-                return $this->respond(Response::HTTP_NOT_FOUND, 'Parent ingredient not found');
-            }
-            $ingredient->parent_uuid = $parentUuid;
-        }
-
-        if ($request->hasFile('icon')) {
-            $oldIcon = $ingredient->icon;
-            $ingredient->icon = FileStorage::putFile(self::INGREDIENT_ICON_PATH, $request->file('icon'));
-            if ($oldIcon !== null) {
-                FileStorage::delete($oldIcon);
-            }
-        }
-
-        $ingredient->save();
-
-        return $this->respond(Response::HTTP_OK, 'Ingredient updated', [
-            'uuid' => $ingredient->uuid,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
-    }
-
-    /**
-     * Updates an existing equipment type for the restaurant. Any field that is left out keeps its current value
-     * @param Request $request The request parameters as given by Laravel
-     * @param string $restaurant_uuid The uuid of the restaurant
-     * @param string $equipment_uuid The uuid of the equipment
-     * @return JsonResponse The updated inventory state in JSON format
-     */
-    public function editEquipment(Request $request, string $restaurant_uuid, string $equipment_uuid): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'name'             => 'nullable|string|max:64',
-            'description'      => 'nullable|string',
-            'category'         => ['nullable', 'string', Rule::in(EquipmentCategory::values())],
-            'cleaning_time'    => 'nullable|numeric|min:0|max:999999',
-            'multiplier'       => 'nullable|numeric|min:0',
-            'size'             => 'nullable|numeric|gt:0|max:999999',
-            'parent_uuid'      => 'nullable|string|max:255',
-            'requires_storage' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
-        }
-
-        $restaurant = $this->getRestaurant($restaurant_uuid);
-        if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
-        }
-
-        $equipment = Equipment::where('uuid', $equipment_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
-        if ($equipment === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Equipment not found');
-        }
-
-        if ($request->has('parent_uuid')) {
-            $parentUuid = $request->get('parent_uuid');
-            if ($parentUuid === $equipment->uuid) {
-                return $this->respond(Response::HTTP_BAD_REQUEST, 'Equipment cannot be its own parent');
-            }
-            if ($parentUuid !== null && Equipment::where('uuid', $parentUuid)->where('restaurant_uuid', $restaurant->uuid)->exists() === false) {
-                return $this->respond(Response::HTTP_NOT_FOUND, 'Parent equipment not found');
-            }
-            $equipment->parent_uuid = $parentUuid;
-        }
-
-        if ($request->has('requires_storage')) {
-            $requiresStorage = $request->boolean('requires_storage');
-            if ($requiresStorage !== $equipment->requires_storage && $this->inventoryService->getTotalStock($equipment) > 0) {
-                return $this->respond(Response::HTTP_BAD_REQUEST, 'Remove all stored and owned ' . $equipment->name . ' before changing its storage requirement');
-            }
-            $equipment->requires_storage = $requiresStorage;
-        }
-
-        $equipment->name          = $request->get('name', $equipment->name);
-        $equipment->description   = $request->has('description') ? $request->get('description') : $equipment->description;
-        $equipment->category      = $request->filled('category') ? EquipmentCategory::from($request->get('category')) : $equipment->category;
-        $equipment->cleaning_time = $request->has('cleaning_time') ? round((float) $request->get('cleaning_time'), 2) : $equipment->cleaning_time;
-        $equipment->multiplier    = $request->has('multiplier') ? (float) $request->get('multiplier') : $equipment->multiplier;
-        $equipment->size          = $request->has('size') ? round((float) $request->get('size'), 2) : $equipment->size;
-        $equipment->save();
-
-        return $this->respond(Response::HTTP_OK, 'Equipment updated', [
-            'uuid' => $equipment->uuid,
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
-    }
-
-    /**
-     * Deletes an ingredient type. It is removed from every storage space and recipe it was part of
-     * @param string $restaurant_uuid The uuid of the restaurant
-     * @param string $ingredient_uuid The uuid of the ingredient
-     * @return JsonResponse The updated inventory state in JSON format
-     */
-    public function deleteIngredient(string $restaurant_uuid, string $ingredient_uuid): JsonResponse
-    {
-        $restaurant = $this->getRestaurant($restaurant_uuid);
-        if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
-        }
-
-        $ingredient = Ingredient::where('uuid', $ingredient_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
-        if ($ingredient === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Ingredient not found');
-        }
-
-        $icon = $ingredient->icon;
-        $ingredient->delete();
-        if ($icon !== null) {
-            FileStorage::delete($icon);
-        }
-
-        return $this->respond(Response::HTTP_OK, 'Ingredient deleted', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
-    }
-
-    /**
-     * Deletes an equipment type. It is removed from every storage space and recipe it was part of, and any
-     * equipment that was part of it no longer has a parent
-     * @param string $restaurant_uuid The uuid of the restaurant
-     * @param string $equipment_uuid The uuid of the equipment
-     * @return JsonResponse The updated inventory state in JSON format
-     */
-    public function deleteEquipment(string $restaurant_uuid, string $equipment_uuid): JsonResponse
-    {
-        $restaurant = $this->getRestaurant($restaurant_uuid);
-        if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
-        }
-
-        $equipment = Equipment::where('uuid', $equipment_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
-        if ($equipment === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Equipment not found');
-        }
-
-        $equipment->delete();
-
-        return $this->respond(Response::HTTP_OK, 'Equipment deleted', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
-    }
-
-    /**
-     * Adjusts how much of an equipment type a restaurant directly owns. Only applies to equipment that does not
-     * require storage, as it is never placed in a storage space
-     * @param Request $request The request parameters as given by Laravel
-     * @param string $restaurant_uuid The uuid of the restaurant
-     * @param string $equipment_uuid The uuid of the equipment
-     * @return JsonResponse The updated inventory state in JSON format
-     */
-    public function adjustOwnedEquipment(Request $request, string $restaurant_uuid, string $equipment_uuid): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'amount' => 'required|integer',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
-        }
-
-        $amount = (int) $request->get('amount');
-        if ($amount === 0) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, 'Amount cannot be zero');
-        }
-
-        $restaurant = $this->getRestaurant($restaurant_uuid);
-        if ($restaurant === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Restaurant not found');
-        }
-
-        $equipment = Equipment::where('uuid', $equipment_uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
-        if ($equipment === null) {
-            return $this->respond(Response::HTTP_NOT_FOUND, 'Equipment not found');
-        }
-
-        try {
-            $this->inventoryService->adjustOwnedEquipment($restaurant, $equipment, $amount);
-        } catch (InvalidArgumentException $exception) {
-            return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
-        }
-
-        return $this->respond(Response::HTTP_OK, 'Equipment updated', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
-        ]);
-    }
-
-    /**
-     * Gets a storage space belonging to a restaurant
+     * Gets where items are moved from or to: a storage space, or the pile of ingredients brought in during service
      * @param Restaurant $restaurant The restaurant
-     * @param string $uuid The uuid of the storage space
-     * @return Storage|null The storage space, or null if it does not belong to the restaurant
+     * @param string|null $uuid The uuid of the storage space, PILE for the pile, or null for general storage
+     * @return Storage|string|null The storage space or PILE, or null for general storage or when the storage space
+     *                             does not belong to the restaurant
      */
-    private function getStorage(Restaurant $restaurant, string $uuid): ?Storage
+    private function getLocation(Restaurant $restaurant, ?string $uuid): Storage|string|null
     {
-        return Storage::where('uuid', $uuid)->where('restaurant_uuid', $restaurant->uuid)->first();
-    }
+        if ($uuid === InventoryService::PILE) {
+            return InventoryService::PILE;
+        }
 
-    /**
-     * Tidies up a category as entered, where an empty one means no category
-     * @param string|null $category The category as entered
-     * @return string|null The category, or null for none
-     */
-    private function normalizeCategory(?string $category): ?string
-    {
-        $category = trim($category ?? '');
-        return $category === '' ? null : $category;
+        return $uuid !== null ? $this->findInRestaurant(Storage::class, $restaurant, $uuid) : null;
     }
 }

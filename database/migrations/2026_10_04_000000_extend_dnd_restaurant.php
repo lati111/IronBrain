@@ -1,9 +1,11 @@
 <?php
 
+use Carbon\Carbon;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * Extends the restaurant structure for service and inventory management. Everything that already exists keeps its
@@ -33,6 +35,13 @@ return new class extends Migration
         $this->upIngredientCategories();
         $this->upRecipeMeals();
         $this->upConversions();
+        $this->upTransactions();
+        $this->upPlayers();
+        $this->upSatisfaction();
+        $this->upStateVersion();
+        $this->upBoosts();
+        $this->upIngredientQuality();
+        $this->upRecipeVariants();
     }
 
     /**
@@ -40,6 +49,13 @@ return new class extends Migration
      */
     public function down(): void
     {
+        $this->downRecipeVariants();
+        $this->downIngredientQuality();
+        $this->downBoosts();
+        $this->downStateVersion();
+        $this->downSatisfaction();
+        $this->downPlayers();
+        $this->downTransactions();
         $this->downConversions();
         $this->downRecipeMeals();
         $this->downIngredientCategories();
@@ -384,5 +400,287 @@ return new class extends Migration
         });
 
         Schema::dropIfExists('dnd__restaurant_conversion');
+    }
+
+    //| Transactions
+
+    /**
+     * Money going in and out of a restaurant is logged as transactions, both the profit of each service and those
+     * added by hand. Services that already ended get the transaction of their profit, so the log covers everything
+     * paid into the restaurant so far
+     */
+    private function upTransactions(): void
+    {
+        Schema::create('dnd__restaurant_transaction', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+            // What the transaction was: the profit of a service, or one added by hand
+            $table->string('type', 32);
+            $table->string('title', 255);
+            $table->text('description')->nullable();
+            // In bits, negative when money went out
+            $table->decimal('amount', 12, 2)->default(0);
+            // The service the transaction is the profit of
+            $table->foreignUuid('service_uuid')->nullable();
+            // In the restaurant's in-game time
+            $table->dateTime('occurred_at');
+            $table->timestamps();
+
+            $table->index(['restaurant_uuid', 'occurred_at']);
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('service_uuid')->references('uuid')->on('dnd__restaurant_service_history')->nullOnDelete()->onUpdate('no action');
+        });
+
+        $services = DB::table('dnd__restaurant_service_history')->whereNotNull('ended_at')->orderBy('ended_at')->get();
+        foreach ($services as $service) {
+            DB::table('dnd__restaurant_transaction')->insert([
+                'uuid' => (string) Str::uuid7(),
+                'restaurant_uuid' => $service->restaurant_uuid,
+                'type' => 'service',
+                'title' => 'Daily finances',
+                'amount' => $service->profit,
+                'service_uuid' => $service->uuid,
+                'occurred_at' => $service->ended_at,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * The services themselves keep their profit
+     */
+    private function downTransactions(): void
+    {
+        Schema::dropIfExists('dnd__restaurant_transaction');
+    }
+
+    //| Players
+
+    /**
+     * Users given access to a restaurant are either managers, with full control as the owner has, or players, who only
+     * control the employees assigned to them and move ingredients around. Access granted so far was full access, so it
+     * stays that way. Employees can be assigned to a player
+     */
+    private function upPlayers(): void
+    {
+        Schema::table('dnd__restaurant_restaurant_user', function (Blueprint $table) {
+            $table->string('role', 16)->default('player')->after('user_uuid');
+        });
+
+        DB::table('dnd__restaurant_restaurant_user')->update(['role' => 'manager']);
+
+        Schema::table('dnd__restaurant_employee', function (Blueprint $table) {
+            // The player controlling the employee during service, if any
+            $table->foreignUuid('player_uuid')->nullable()->after('restaurant_uuid');
+            $table->foreign('player_uuid')->references('uuid')->on('auth__user')->nullOnDelete()->onUpdate('no action');
+        });
+    }
+
+    /**
+     * Players lose their access, as without roles access is always full access
+     */
+    private function downPlayers(): void
+    {
+        Schema::table('dnd__restaurant_employee', function (Blueprint $table) {
+            $table->dropForeign(['player_uuid']);
+            $table->dropColumn('player_uuid');
+        });
+
+        DB::table('dnd__restaurant_restaurant_user')->where('role', 'player')->delete();
+
+        Schema::table('dnd__restaurant_restaurant_user', function (Blueprint $table) {
+            $table->dropColumn('role');
+        });
+    }
+
+    //| Satisfaction
+
+    /**
+     * Each portion is rated by how satisfied its customer was once it is served. Portions served so far weren't rated,
+     * so they stay without
+     */
+    private function upSatisfaction(): void
+    {
+        Schema::table('dnd__restaurant_order_item', function (Blueprint $table) {
+            // From 1 to 5
+            $table->unsignedTinyInteger('satisfaction')->nullable()->after('consumed_at');
+        });
+    }
+
+    private function downSatisfaction(): void
+    {
+        Schema::table('dnd__restaurant_order_item', function (Blueprint $table) {
+            $table->dropColumn('satisfaction');
+        });
+    }
+
+    //| State version
+
+    /**
+     * Restaurants count the changes made to them, so pages that refresh can tell when nothing changed without fetching
+     * everything again
+     */
+    private function upStateVersion(): void
+    {
+        Schema::table('dnd__restaurant_restaurant', function (Blueprint $table) {
+            $table->unsignedBigInteger('state_version')->default(0)->after('shift_total');
+        });
+    }
+
+    private function downStateVersion(): void
+    {
+        Schema::table('dnd__restaurant_restaurant', function (Blueprint $table) {
+            $table->dropColumn('state_version');
+        });
+    }
+
+    //| Boosts
+
+    /**
+     * Boosts are configured per restaurant and activated during service, speeding up equipment, a single cooker, a
+     * meal or a whole area for a while, cutting time off straight away, or improving a meal. Cooking keeps the
+     * progress made rather than only when it ends, so time cooked at a boosted rate stays cooked once a boost runs out.
+     * Meals cooking so far get the progress their end time comes down to, so they still finish when they would have
+     */
+    private function upBoosts(): void
+    {
+        Schema::create('dnd__restaurant_boost', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+            $table->string('name', 64);
+            // What it is activated on: a piece of equipment, a meal, or a whole area
+            $table->string('target', 16);
+            // Added to the speed of what it is on while it lasts, as a multiplier is
+            $table->decimal('speed_bonus', 8, 2)->default(0);
+            // Minutes of prep or cooking done straight away when activated
+            $table->decimal('minutes_off', 8, 2)->default(0);
+            // Added to the quality of a meal it is activated on
+            $table->integer('quality_bonus')->default(0);
+            // How many minutes of the restaurant's time the speed bonus lasts
+            $table->unsignedInteger('duration')->default(0);
+            $table->timestamps();
+
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+        });
+
+        Schema::create('dnd__restaurant_active_boost', function (Blueprint $table) {
+            $table->uuid('uuid')->primary();
+            $table->foreignUuid('restaurant_uuid');
+            // The boost it was activated from, if it still exists. Its name and bonus are kept as they were then
+            $table->foreignUuid('boost_uuid')->nullable();
+            $table->string('name', 64);
+            $table->decimal('speed_bonus', 8, 2)->default(0);
+            // What it is on: a piece of equipment, of which a cooker can have a single piece, a meal, or an area
+            $table->foreignUuid('equipment_uuid')->nullable();
+            $table->unsignedInteger('cooker_slot')->nullable();
+            $table->foreignUuid('meal_uuid')->nullable();
+            $table->string('area', 16)->nullable();
+            // In the restaurant's in-game time
+            $table->dateTime('starts_at');
+            $table->dateTime('expires_at');
+            $table->timestamps();
+
+            $table->index(['restaurant_uuid', 'expires_at']);
+            $table->foreign('restaurant_uuid')->references('uuid')->on('dnd__restaurant_restaurant')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('boost_uuid')->references('uuid')->on('dnd__restaurant_boost')->nullOnDelete()->onUpdate('no action');
+            $table->foreign('equipment_uuid')->references('uuid')->on('dnd__restaurant_equipment')->onDelete('cascade')->onUpdate('no action');
+            $table->foreign('meal_uuid')->references('uuid')->on('dnd__restaurant_meal')->onDelete('cascade')->onUpdate('no action');
+        });
+
+        Schema::table('dnd__restaurant_meal', function (Blueprint $table) {
+            // Minutes of cooking done at normal speed
+            $table->decimal('cooking_progress', 10, 2)->default(0)->after('cooking_ends_at');
+            // Added to the quality the meal turned out at, by boosts
+            $table->integer('quality_bonus')->default(0)->after('quality');
+        });
+
+        // Meals in a cooker have cooked for as long as their end time leaves of their recipe's cooking time
+        $cooking = DB::table('dnd__restaurant_meal')
+            ->join('dnd__restaurant_recipe', 'dnd__restaurant_recipe.uuid', '=', 'dnd__restaurant_meal.recipe_uuid')
+            ->join('dnd__restaurant_restaurant', 'dnd__restaurant_restaurant.uuid', '=', 'dnd__restaurant_meal.restaurant_uuid')
+            ->where('dnd__restaurant_meal.status', 'cooking')
+            ->whereNotNull('dnd__restaurant_meal.cooking_ends_at')
+            ->select('dnd__restaurant_meal.uuid', 'dnd__restaurant_meal.cooking_ends_at', 'dnd__restaurant_recipe.cooking_time',
+                'dnd__restaurant_restaurant.date', 'dnd__restaurant_restaurant.current_time', 'dnd__restaurant_restaurant.opening_time')
+            ->get();
+
+        foreach ($cooking as $meal) {
+            $now = Carbon::parse(substr($meal->date, 0, 10) . ' ' . ($meal->current_time ?? $meal->opening_time));
+            $remaining = max(0, (Carbon::parse($meal->cooking_ends_at)->getTimestamp() - $now->getTimestamp()) / 60);
+            $progress = max(0, min($meal->cooking_time, $meal->cooking_time - $remaining));
+
+            DB::table('dnd__restaurant_meal')->where('uuid', $meal->uuid)->update(['cooking_progress' => round($progress, 2)]);
+        }
+    }
+
+    /**
+     * Cooking goes back to only knowing when it ends, which the meals still have
+     */
+    private function downBoosts(): void
+    {
+        Schema::table('dnd__restaurant_meal', function (Blueprint $table) {
+            $table->dropColumn(['cooking_progress', 'quality_bonus']);
+        });
+
+        Schema::dropIfExists('dnd__restaurant_active_boost');
+        Schema::dropIfExists('dnd__restaurant_boost');
+    }
+
+    //| Ingredient quality
+
+    /**
+     * Ingredients get a quality, which meals made with them add on top of how well they turned out, and can be
+     * variants of another ingredient to use instead of it. Existing ingredients are of quality 0, so meals made so far
+     * keep the quality they are served at
+     */
+    private function upIngredientQuality(): void
+    {
+        Schema::table('dnd__restaurant_ingredient', function (Blueprint $table) {
+            $table->foreignUuid('parent_uuid')->nullable()->after('restaurant_uuid');
+            $table->integer('quality')->default(0)->after('size');
+            $table->foreign('parent_uuid')->references('uuid')->on('dnd__restaurant_ingredient')->nullOnDelete()->onUpdate('no action');
+        });
+
+        Schema::table('dnd__restaurant_meal', function (Blueprint $table) {
+            $table->integer('ingredient_quality')->default(0)->after('quality_bonus');
+        });
+    }
+
+    private function downIngredientQuality(): void
+    {
+        Schema::table('dnd__restaurant_meal', function (Blueprint $table) {
+            $table->dropColumn('ingredient_quality');
+        });
+
+        Schema::table('dnd__restaurant_ingredient', function (Blueprint $table) {
+            $table->dropForeign(['parent_uuid']);
+            $table->dropColumn(['parent_uuid', 'quality']);
+        });
+    }
+
+    //| Recipe variants
+
+    /**
+     * A recipe can be a variant of another, adding to or removing from what the base recipe takes and adding to its
+     * stats. The changes are kept apart, while its own columns and components hold the outcome, so the rest of the
+     * restaurant uses a variant as any other recipe. Existing recipes are no variant, so stay as they are. Should a
+     * base recipe be removed directly, its variants keep what they last were as recipes of their own
+     */
+    private function upRecipeVariants(): void
+    {
+        Schema::table('dnd__restaurant_recipe', function (Blueprint $table) {
+            $table->foreignUuid('parent_uuid')->nullable()->after('restaurant_uuid');
+            $table->json('variant_changes')->nullable()->after('expires_in');
+            $table->foreign('parent_uuid')->references('uuid')->on('dnd__restaurant_recipe')->nullOnDelete()->onUpdate('no action');
+        });
+    }
+
+    private function downRecipeVariants(): void
+    {
+        Schema::table('dnd__restaurant_recipe', function (Blueprint $table) {
+            $table->dropForeign(['parent_uuid']);
+            $table->dropColumn(['parent_uuid', 'variant_changes']);
+        });
     }
 };

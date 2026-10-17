@@ -7,12 +7,6 @@ use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\OwnedEquipment;
 use App\Models\DnD\Restaurant\PileIngredient;
-use App\Models\DnD\Restaurant\Recipe;
-use App\Models\DnD\Restaurant\RecipeByproduct;
-use App\Models\DnD\Restaurant\RecipeCategory;
-use App\Models\DnD\Restaurant\RecipeMeal;
-use App\Models\DnD\Restaurant\RecipeEquipment;
-use App\Models\DnD\Restaurant\RecipeIngredient;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Storage;
 use App\Models\DnD\Restaurant\StorageEquipment;
@@ -20,6 +14,10 @@ use App\Models\DnD\Restaurant\StorageIngredient;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
+/**
+ * The restaurant's stock: moving ingredients and equipment between the storage spaces, the pile and general storage,
+ * converting ingredients, ingredients ageing as days pass, taking them for cooking, and equipment owned outright
+ */
 class InventoryService
 {
     /** @var string The type key for ingredients */
@@ -31,150 +29,7 @@ class InventoryService
     /** @var float How many days ingredients in the pile lose each day, as it has no expiration multiplier */
     private const float PILE_DECAY = 1.0;
 
-    /**
-     * Builds the full inventory state of a restaurant: its date, its storage spaces with their contents, the pile of
-     * ingredients waiting to be sorted, and the ingredient and equipment types with how many of each are stored in
-     * total. Ingredients are listed per stack, with the days the stack has left. Contents are sorted by name, and
-     * then by the days left, soonest to expire first
-     * @param Restaurant $restaurant The restaurant to build the state for
-     * @return array The inventory state
-     */
-    public function getInventory(Restaurant $restaurant): array
-    {
-        $storages = Storage::where('restaurant_uuid', $restaurant->uuid)
-            ->with(['StorageIngredients.Ingredient', 'Equipment'])
-            ->orderBy('order')
-            ->orderBy('created_at')
-            ->get();
-
-        $ingredients = Ingredient::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
-        $equipment = Equipment::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
-        $ownedEquipment = OwnedEquipment::where('restaurant_uuid', $restaurant->uuid)->pluck('amount', 'equipment_uuid');
-        $conversions = Conversion::where('restaurant_uuid', $restaurant->uuid)->with(['Input', 'Output'])->get()
-            ->sortBy(fn (Conversion $conversion) => [$conversion->Input->name, $conversion->Output->name])->values();
-        $recipes = Recipe::where('restaurant_uuid', $restaurant->uuid)
-            ->with(['RecipeIngredients', 'RecipeCategories', 'RecipeMeals', 'RecipeEquipment', 'RecipeByproducts'])
-            ->orderBy('name')
-            ->get();
-
-        $storedIngredients = [];
-        $storedEquipment = [];
-
-        // Ingredients in the pile count as stored, as they can be cooked with until they are sorted
-        $pile = PileIngredient::where('restaurant_uuid', $restaurant->uuid)->with('Ingredient')->get();
-        foreach ($pile as $link) {
-            $storedIngredients[$link->ingredient_uuid] = round(($storedIngredients[$link->ingredient_uuid] ?? 0) + $link->amount, 2);
-        }
-
-        $storageData = $storages->map(function (Storage $storage) use (&$storedIngredients, &$storedEquipment) {
-            $items = [];
-            $used = 0;
-
-            foreach ($storage->StorageIngredients as $stack) {
-                // Ingredients can be stored in fractions, such as half a cabbage
-                $used += $stack->amount * $stack->Ingredient->size;
-                $storedIngredients[$stack->ingredient_uuid] = round(($storedIngredients[$stack->ingredient_uuid] ?? 0) + $stack->amount, 2);
-                $items[] = $this->describeStack($stack, $stack->Ingredient);
-            }
-
-            foreach ($storage->Equipment as $piece) {
-                $amount = (int) $piece->pivot->amount;
-                $used += $amount * $piece->size;
-                $storedEquipment[$piece->uuid] = ($storedEquipment[$piece->uuid] ?? 0) + $amount;
-                $items[] = ['type' => self::TYPE_EQUIPMENT, 'uuid' => $piece->uuid, 'amount' => $amount, 'name' => $piece->name];
-            }
-
-            return [
-                'uuid' => $storage->uuid,
-                'name' => $storage->name,
-                'capacity' => $storage->capacity,
-                'used_capacity' => round($used, 2),
-                'expiration_multiplier' => $storage->expiration_multiplier,
-                'background_image' => $storage->background_image !== null ? asset('img/' . $storage->background_image) : null,
-                'items' => $this->sortItems($items),
-            ];
-        });
-
-        return [
-            'date' => $restaurant->date->format('Y-m-d'),
-            'storages' => $storageData->values()->all(),
-            'pile' => $this->sortItems($pile->map(fn (PileIngredient $stack) => $this->describeStack($stack, $stack->Ingredient))->all()),
-            'ingredients' => $ingredients->map(fn (Ingredient $ingredient) => [
-                'uuid' => $ingredient->uuid,
-                'name' => $ingredient->name,
-                'category' => $ingredient->category,
-                'icon' => $ingredient->icon !== null ? asset('img/' . $ingredient->icon) : null,
-                'size' => $ingredient->size,
-                'expires_in' => $ingredient->expires_in,
-                'quality' => $ingredient->quality,
-                'parent_uuid' => $ingredient->parent_uuid,
-                'stored' => $storedIngredients[$ingredient->uuid] ?? 0,
-            ])->values()->all(),
-            'equipment' => $equipment->map(fn (Equipment $piece) => [
-                'uuid' => $piece->uuid,
-                'name' => $piece->name,
-                'description' => $piece->description,
-                'category' => $piece->category->value,
-                'category_label' => $piece->category->label(),
-                'size' => $piece->size,
-                'cleaning_time' => $piece->cleaning_time,
-                'multiplier' => $piece->multiplier,
-                'parent_uuid' => $piece->parent_uuid,
-                'requires_storage' => $piece->requires_storage,
-                'stored' => $piece->requires_storage
-                    ? ($storedEquipment[$piece->uuid] ?? 0)
-                    : (int) ($ownedEquipment[$piece->uuid] ?? 0),
-            ])->values()->all(),
-            // Each piece of the input becomes an amount of the output, taking minutes per piece during service
-            'conversions' => $conversions->map(fn (Conversion $conversion) => [
-                'uuid' => $conversion->uuid,
-                'input_uuid' => $conversion->input_uuid,
-                'output_uuid' => $conversion->output_uuid,
-                'output_amount' => $conversion->output_amount,
-                'minutes' => $conversion->minutes,
-            ])->values()->all(),
-            'recipes' => $recipes->map(fn (Recipe $recipe) => [
-                'uuid' => $recipe->uuid,
-                // A variant's stats and lists are the outcome of its base recipe with its changes
-                'parent_uuid' => $recipe->parent_uuid,
-                'variant_changes' => $recipe->describeVariantChanges(),
-                'name' => $recipe->name,
-                'type' => $recipe->type,
-                'category' => $recipe->category,
-                'description' => $recipe->description,
-                'price' => $recipe->price,
-                'portions' => $recipe->portions,
-                'difficulty' => $recipe->difficulty,
-                'prep_time' => $recipe->prep_time,
-                'cooking_time' => $recipe->cooking_time,
-                'fresh_for' => $recipe->fresh_for,
-                'good_for' => $recipe->good_for,
-                'expires_in' => $recipe->expires_in,
-                'ingredients' => $recipe->RecipeIngredients
-                    ->map(fn (RecipeIngredient $link) => ['uuid' => $link->ingredient_uuid, 'amount' => $link->amount])
-                    ->values()->all(),
-                'equipment' => $recipe->RecipeEquipment
-                    ->map(fn (RecipeEquipment $link) => [
-                        'uuid' => $link->equipment_uuid,
-                        'amount' => $link->amount,
-                        'stage' => $link->stage->value,
-                        'container' => $link->container,
-                    ])
-                    ->values()->all(),
-                // Ingredients taken by category, any ingredient of which will do
-                'categories' => $recipe->RecipeCategories
-                    ->map(fn (RecipeCategory $link) => ['category' => $link->category, 'amount' => $link->amount])
-                    ->values()->all(),
-                // Other meals taken, of a specific recipe or of any recipe of a category
-                'meals' => $recipe->RecipeMeals
-                    ->map(fn (RecipeMeal $link) => ['recipe_uuid' => $link->required_recipe_uuid, 'category' => $link->category, 'portions' => $link->portions])
-                    ->values()->all(),
-                'byproducts' => $recipe->RecipeByproducts
-                    ->map(fn (RecipeByproduct $link) => ['uuid' => $link->ingredient_uuid, 'amount' => $link->amount])
-                    ->values()->all(),
-            ])->values()->all(),
-        ];
-    }
+    //| Moving stock
 
     /**
      * Moves an amount of an ingredient or equipment between storage spaces. A null storage stands for the
@@ -196,24 +51,33 @@ class InventoryService
             return;
         }
 
-        if ($item instanceof Equipment && ($from === self::PILE || $to === self::PILE)) {
+        $this->transferEquipment($item, $amount, $from, $to);
+    }
+
+    /**
+     * Moves whole pieces of equipment between storage spaces, or in or out of general storage
+     * @see transfer
+     */
+    private function transferEquipment(Equipment $equipment, float $amount, Storage|string|null $from, Storage|string|null $to): void
+    {
+        if ($from === self::PILE || $to === self::PILE) {
             throw new InvalidArgumentException('Only ingredients go in the pile');
         }
 
-        if ($item instanceof Equipment && $item->requires_storage === false) {
+        if ($equipment->requires_storage === false) {
             throw new InvalidArgumentException('This equipment does not require storage');
         }
 
-        if ($item instanceof Equipment && floor($amount) !== $amount) {
+        if (floor($amount) !== $amount) {
             throw new InvalidArgumentException('Equipment can only be moved in whole pieces');
         }
 
         // Amounts are stored with two decimals, so compare and store them at that precision to avoid float drift
         $amount = round($amount, 2);
 
-        DB::transaction(function () use ($item, $amount, $from, $to) {
+        DB::transaction(function () use ($equipment, $amount, $from, $to) {
             if ($from !== null) {
-                $link = StorageEquipment::where('storage_uuid', $from->uuid)->where('equipment_uuid', $item->uuid)->lockForUpdate()->first();
+                $link = StorageEquipment::where('storage_uuid', $from->uuid)->where('equipment_uuid', $equipment->uuid)->lockForUpdate()->first();
                 if ($link === null || round($link->amount - $amount, 2) < 0) {
                     throw new InvalidArgumentException('Not enough stored to move');
                 }
@@ -223,13 +87,13 @@ class InventoryService
             }
 
             if ($to !== null) {
-                $to = $this->lockWithRoomFor($to, $item, $amount);
+                $to = $this->lockWithRoomFor($to, $equipment, $amount);
 
-                $link = StorageEquipment::where('storage_uuid', $to->uuid)->where('equipment_uuid', $item->uuid)->first();
+                $link = StorageEquipment::where('storage_uuid', $to->uuid)->where('equipment_uuid', $equipment->uuid)->first();
                 if ($link === null) {
                     $link = new StorageEquipment();
                     $link->storage_uuid = $to->uuid;
-                    $link->equipment_uuid = $item->uuid;
+                    $link->equipment_uuid = $equipment->uuid;
                     $link->amount = 0;
                 }
 
@@ -437,6 +301,12 @@ class InventoryService
         return false;
     }
 
+    /**
+     * Describes a stack that expired, for the list shown once a day has passed
+     * @param StorageIngredient|PileIngredient $stack The stack
+     * @param string $location Where it was stored
+     * @return array The ingredient's name, the amount, and where it was stored
+     */
     private function describeExpired(StorageIngredient|PileIngredient $stack, string $location): array
     {
         return ['name' => $stack->Ingredient?->name ?? 'Unknown', 'amount' => $stack->amount, 'location' => $location];
@@ -529,6 +399,8 @@ class InventoryService
         }
     }
 
+    //| Equipment
+
     /**
      * Adjusts how much of an equipment type a restaurant directly owns. Only applies to equipment that does not
      * require storage, as it is never placed in a storage space
@@ -580,48 +452,5 @@ class InventoryService
         $stored = (int) StorageEquipment::where('equipment_uuid', $equipment->uuid)->sum('amount');
         $owned = (int) OwnedEquipment::where('equipment_uuid', $equipment->uuid)->sum('amount');
         return $stored + $owned;
-    }
-
-    /**
-     * Gets the contents of a storage space in the same item format as the inventory state
-     * @param Storage $storage The storage space
-     * @return array The items stored in the storage space
-     */
-    public function getContents(Storage $storage): array
-    {
-        $ingredients = StorageIngredient::where('storage_uuid', $storage->uuid)->with('Ingredient')->get()
-            ->map(fn (StorageIngredient $stack) => $this->describeStack($stack, $stack->Ingredient));
-
-        $equipment = StorageEquipment::where('storage_uuid', $storage->uuid)->get()
-            ->map(fn (StorageEquipment $link) => ['type' => self::TYPE_EQUIPMENT, 'uuid' => $link->equipment_uuid, 'amount' => $link->amount]);
-
-        return $ingredients->concat($equipment)->values()->all();
-    }
-
-    /**
-     * Describes a stack of an ingredient in the item format of the inventory state
-     */
-    private function describeStack(StorageIngredient|PileIngredient $stack, ?Ingredient $ingredient): array
-    {
-        return [
-            'type' => self::TYPE_INGREDIENT,
-            'uuid' => $stack->ingredient_uuid,
-            'stack_uuid' => $stack->uuid,
-            'amount' => $stack->amount,
-            // Null for ingredients that never expire
-            'days_left' => $ingredient?->expires() ? $stack->days_left : null,
-            'name' => $ingredient?->name ?? '',
-        ];
-    }
-
-    /**
-     * Sorts items by name, and stacks of the same ingredient by the days they have left, soonest to expire first
-     * @param array $items The items, each with a name, and days left for ingredients
-     * @return array The sorted items
-     */
-    private function sortItems(array $items): array
-    {
-        usort($items, fn (array $a, array $b) => [strtolower($a['name']), $a['days_left'] ?? 0] <=> [strtolower($b['name']), $b['days_left'] ?? 0]);
-        return array_values($items);
     }
 }

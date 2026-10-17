@@ -28,7 +28,7 @@ class OrderService
     public const int DELIVERY_MINUTES = 2;
 
     public function __construct(
-        private readonly KitchenService $kitchenService,
+        private readonly EquipmentService $equipmentService,
         private readonly WorkService $workService,
         private readonly SatisfactionService $satisfactionService,
     )
@@ -417,7 +417,7 @@ class OrderService
     private function clearPlates(Restaurant $restaurant, array $itemUuids): void
     {
         foreach (ServedMeal::whereIn('order_item_uuid', $itemUuids)->get() as $plate) {
-            $this->kitchenService->releaseEquipment($restaurant, $plate->equipment ?? [], dirty: true);
+            $this->equipmentService->releaseEquipment($restaurant, $plate->equipment ?? [], dirty: true);
             $plate->delete();
         }
     }

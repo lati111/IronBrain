@@ -9,6 +9,7 @@ use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Storage;
 use App\Service\DnD\Restaurant\InventoryService;
+use App\Service\DnD\Restaurant\InventoryStateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -19,7 +20,10 @@ class ConversionApi extends AbstractApi
 {
     use ResolvesRestaurant;
 
-    public function __construct(private readonly InventoryService $inventoryService)
+    public function __construct(
+        private readonly InventoryService $inventoryService,
+        private readonly InventoryStateService $inventoryStateService,
+    )
     {
     }
 
@@ -67,7 +71,7 @@ class ConversionApi extends AbstractApi
         $conversion->delete();
 
         return $this->respond(Response::HTTP_OK, 'Conversion deleted', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
+            'inventory' => $this->inventoryStateService->getInventory($restaurant),
         ]);
     }
 
@@ -116,7 +120,7 @@ class ConversionApi extends AbstractApi
         }
 
         return $this->respond(Response::HTTP_OK, 'Converted', [
-            'inventory' => $this->inventoryService->getInventory($restaurant),
+            'inventory' => $this->inventoryStateService->getInventory($restaurant),
         ]);
     }
 
@@ -164,7 +168,7 @@ class ConversionApi extends AbstractApi
         return $this->respond($conversion_uuid === null ? Response::HTTP_CREATED : Response::HTTP_OK,
             $conversion_uuid === null ? 'Conversion created' : 'Conversion updated', [
                 'uuid' => $conversion->uuid,
-                'inventory' => $this->inventoryService->getInventory($restaurant),
+                'inventory' => $this->inventoryStateService->getInventory($restaurant),
             ]);
     }
 

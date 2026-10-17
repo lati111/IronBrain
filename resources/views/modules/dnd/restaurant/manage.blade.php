@@ -260,7 +260,7 @@
             <button type="submit" class="hidden"></button>
         </form>
         <x-slot:buttons>
-            <button id="boost-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteTypeModal('boost')">Delete</button>
+            <button id="boost-modal-delete" class="interactive px-5 py-2.5 hidden" onclick="openDeleteModal('boost')">Delete</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('boost-modal')">Cancel</button>
             <button id="boost-modal-submit" class="interactive px-5 py-2.5" onclick="saveBoost()">Create</button>
         </x-slot:buttons>
