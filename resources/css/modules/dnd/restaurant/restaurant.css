@@ -1375,3 +1375,7 @@
     font-size: 0.875rem;
     cursor: pointer;
 }
+
+#finance-modal {
+    align-items: start;
+}

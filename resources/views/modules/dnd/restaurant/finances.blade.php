@@ -39,6 +39,7 @@
         <div class="finance-details">
             <h3 id="finance-modal-title" class="title py-1 text-center"></h3>
             <p id="finance-modal-meta" class="text-center text-sm text-gray-500"></p>
+
             {{--| More about the transaction, when it has a description |--}}
             <textarea id="finance-modal-description" class="finance-description hidden" rows="4" readonly></textarea>
             <div id="finance-modal-body" class="flex flex-col gap-4 mt-4"></div>
