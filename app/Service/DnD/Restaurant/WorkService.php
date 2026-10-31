@@ -304,7 +304,8 @@ class WorkService
     }
 
     /**
-     * Has the waiter of a table bring a plated portion there. The portion counts as served once they arrive
+     * Has the waiter of a table bring a plated portion there. The portion counts as served once they arrive. A trip
+     * the waiter hasn't set out on yet takes the portion along, up to the waiter's capacity, without taking longer
      * @param Restaurant $restaurant The restaurant
      * @param ServedMeal $plate The plated portion, already set aside for the order entry it is brought for
      * @param Table $table The table
@@ -317,7 +318,32 @@ class WorkService
             return;
         }
 
-        $this->workQueueService->createJob($restaurant, WorkStation::WAITING, $minutes, table: $table, plate: $plate);
+        $trip = $this->findTripWithRoom($table);
+        $this->workQueueService->createJob(
+            $restaurant, WorkStation::WAITING, $trip !== null ? 0 : $minutes, table: $table, plate: $plate, carrier: $trip,
+        );
+    }
+
+    /**
+     * Finds the first trip with plates to the table that the waiter hasn't set out on, with room left to carry another
+     * @param Table $table The table
+     * @return Work|null The job of the trip, or null when every trip is under way or full
+     */
+    private function findTripWithRoom(Table $table): ?Work
+    {
+        $capacity = Employee::where('uuid', $table->employee_uuid)->value('capacity') ?? Employee::DEFAULT_CAPACITY;
+
+        return Work::where('station', WorkStation::WAITING->value)
+            ->where('table_uuid', $table->uuid)
+            ->whereNotNull('served_meal_uuid')
+            ->whereNull('carrier_uuid')
+            ->where('work', '>', 0)
+            ->where('progress', 0)
+            ->withCount('Carried')
+            ->orderBy('order')
+            ->orderBy('created_at')
+            ->get()
+            ->first(fn (Work $trip) => $trip->carried_count + 1 < $capacity);
     }
 
     /**
@@ -328,15 +354,21 @@ class WorkService
     public function prioritize(Work $job): void
     {
         $jobs = collect([$job]);
+        // The plates on a trip stay together, sharing one place in the queue
+        $together = false;
         if ($job->station === WorkStation::CLEANING && $job->equipment_uuid !== null) {
             $jobs = Work::where('station', WorkStation::CLEANING->value)->where('equipment_uuid', $job->equipment_uuid)
                 ->whereColumn('progress', '<', 'work')->orderBy('order')->orderBy('created_at')->get();
+        } elseif ($job->station === WorkStation::WAITING && ($job->carrier_uuid !== null || $job->Carried()->exists())) {
+            $trip = $job->Carrier ?? $job;
+            $jobs = collect([$trip])->merge($trip->Carried);
+            $together = true;
         }
 
-        DB::transaction(function () use ($job, $jobs) {
+        DB::transaction(function () use ($job, $jobs, $together) {
             $first = (int) Work::where('restaurant_uuid', $job->restaurant_uuid)->where('station', $job->station->value)->min('order');
             foreach ($jobs->values() as $index => $moved) {
-                $moved->order = $first - $jobs->count() + $index;
+                $moved->order = $together ? $first - 1 : $first - $jobs->count() + $index;
                 $moved->save();
             }
         });

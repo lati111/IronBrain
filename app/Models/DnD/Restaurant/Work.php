@@ -5,6 +5,7 @@ namespace App\Models\DnD\Restaurant;
 use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\DnD\Restaurant\Interfaces\RestaurantDataModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A job queued in a work area: prepping a meal, converting an ingredient, or cleaning pieces of equipment. Jobs are worked on in order, by all
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null served_meal_uuid The uuid of the plated portion the waiter is bringing
  * @property string|null customer_uuid The uuid of the customer the waiter is seating
  * @property integer|null seat The seat at the table the customer is taken to
+ * @property string|null carrier_uuid The uuid of the waiter's job of the trip this plate is carried along on, which is done for all of them at once
  * @property string|null input_uuid The uuid of the ingredient being converted in the prep area
  * @property float|null input_amount How much of the ingredient is being converted
  * @property string|null output_uuid The uuid of the ingredient it is converted into
@@ -113,6 +115,22 @@ class Work extends RestaurantDataModel
      */
     public function ServedMeal(): BelongsTo {
         return $this->belongsTo(ServedMeal::class, 'served_meal_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the job of the trip this plate is carried along on
+     * @return BelongsTo
+     */
+    public function Carrier(): BelongsTo {
+        return $this->belongsTo(Work::class, 'carrier_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the jobs of the plates carried along on this trip
+     * @return HasMany
+     */
+    public function Carried(): HasMany {
+        return $this->hasMany(Work::class, 'carrier_uuid', 'uuid')->orderBy('created_at');
     }
 
     /**

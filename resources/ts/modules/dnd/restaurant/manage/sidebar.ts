@@ -76,7 +76,7 @@ function renderCustomerRows(list: HTMLElement, search: string): number {
 /** Renders the sidebar rows for employees, returning how many employees exist before filtering */
 function renderEmployeeRows(list: HTMLElement, search: string): number {
     for (const employee of state.floor.employees.filter((employee) => employee.name.toLowerCase().includes(search))) {
-        const meta = `Prep ×${employee.prep_speed} · Cleaning ×${employee.cleaning_speed}`;
+        const meta = `Prep ×${employee.prep_speed} · Cleaning ×${employee.cleaning_speed} · Carries ${employee.capacity}`;
         list.appendChild(createListRow(employee.name, employee.player_name !== null ? `${meta} · ${employee.player_name}` : meta,
             () => openEmployeeModal(employee.uuid)));
     }

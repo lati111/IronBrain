@@ -46,7 +46,7 @@ class WorkQueueService
     public function createJob(
         Restaurant $restaurant, WorkStation $station, float $minutes, ?Meal $meal = null, ?Equipment $equipment = null,
         int $amount = 1, ?Table $table = null, ?Order $order = null, ?ServedMeal $plate = null, ?Customer $customer = null,
-        ?int $seat = null,
+        ?int $seat = null, ?Work $carrier = null,
     ): Work
     {
         $job = new Work();
@@ -62,7 +62,10 @@ class WorkQueueService
         $job->amount = $amount;
         $job->work = $minutes;
         $job->progress = 0;
-        $job->order = (int) Work::where('restaurant_uuid', $restaurant->uuid)->where('station', $station->value)->max('order') + 1;
+        $job->carrier_uuid = $carrier?->uuid;
+        // Plates carried along keep their place right behind the trip they are on
+        $job->order = $carrier?->order
+            ?? (int) Work::where('restaurant_uuid', $restaurant->uuid)->where('station', $station->value)->max('order') + 1;
         $job->save();
 
         return $job;
@@ -101,7 +104,7 @@ class WorkQueueService
     {
         $query = Work::where('station', WorkStation::WAITING->value)
             ->whereIn('table_uuid', $tableUuids)
-            ->with(['Table', 'Order', 'ServedMeal.Recipe', 'ServedMeal.OrderItem'])
+            ->with(['Table', 'Order', 'ServedMeal.Recipe', 'ServedMeal.OrderItem', 'Carrier', 'Carried.ServedMeal.Recipe'])
             ->orderBy('order')
             ->orderBy('created_at');
 

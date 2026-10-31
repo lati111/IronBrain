@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null icon The path of the employee's icon
  * @property float cleaning_speed How much faster than normal the employee cleans, so 2 cleans twice as fast
  * @property float prep_speed How much faster than normal the employee preps, so 2 preps twice as fast
+ * @property integer capacity How many plates the employee carries to a table in one trip, as a waiter
  * @property WorkStation|null station The work area the employee works in, or null while idle
  */
 class Employee extends RestaurantDataModel
@@ -26,10 +27,14 @@ class Employee extends RestaurantDataModel
     /** @inheritdoc */
     protected $table = self::TABLE_NAME;
 
+    /** @var int How many plates a new employee carries in one trip */
+    public const int DEFAULT_CAPACITY = 2;
+
     /** @inheritdoc */
     protected $casts = [
         'cleaning_speed' => 'float',
         'prep_speed'     => 'float',
+        'capacity'       => 'integer',
         'station'        => WorkStation::class,
     ];
 

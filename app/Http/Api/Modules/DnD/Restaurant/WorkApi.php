@@ -248,11 +248,6 @@ class WorkApi extends AbstractServiceApi
             return $this->notFound('Restaurant');
         }
 
-        $denied = $this->denyPlayerUnlessWorking($restaurant, WorkStation::PREP);
-        if ($denied !== null) {
-            return $denied;
-        }
-
         $conversion = $this->findInRestaurant(Conversion::class, $restaurant, $conversion_uuid);
         if ($conversion === null) {
             return $this->notFound('Conversion');

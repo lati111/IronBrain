@@ -212,18 +212,32 @@ class WorkStateService
             WorkStation::WAITING => match (true) {
                 $job->order_uuid !== null => 'Taking an order at ' . ($job->Table?->name ?? 'a table'),
                 $job->customer_uuid !== null => sprintf('Seating %s at %s', $job->Customer?->name ?? 'a customer', $job->Table?->name ?? 'a table'),
-                default => sprintf('Bringing %s to %s', $job->ServedMeal?->Recipe?->name ?? 'a plate', $job->Table?->name ?? 'a table'),
+                default => sprintf('Bringing %s to %s', $this->describePlates($job), $job->Table?->name ?? 'a table'),
             },
         };
     }
 
     /**
-     * Gets how far along a job is, from 0 to 1
+     * Names the plates a waiter's trip brings, such as "Stew" or "Stew, Soup" when more are carried along
+     * @param Work $job The job of the trip
+     * @return string The names of the plates
+     */
+    private function describePlates(Work $job): string
+    {
+        $names = collect([$job])->merge($job->Carried)->map(fn (Work $trip) => $trip->ServedMeal?->Recipe?->name)->filter();
+
+        return $names->isNotEmpty() ? $names->join(', ') : 'a plate';
+    }
+
+    /**
+     * Gets how far along a job is, from 0 to 1. A plate carried along is as far as the trip it is on
      * @param Work $job The job
      * @return int|float The progress
      */
     private function getProgress(Work $job): int|float
     {
+        $job = $job->Carrier ?? $job;
+
         return $job->work > 0 ? round($job->progress / $job->work, 4) : 0;
     }
 }

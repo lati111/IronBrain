@@ -96,6 +96,7 @@ export function openEmployeeModal(uuid: string | null): void {
             name:           employee.name,
             prep_speed:     String(employee.prep_speed),
             cleaning_speed: String(employee.cleaning_speed),
+            capacity:       String(employee.capacity),
         });
     }
 

@@ -32,6 +32,7 @@ class EmployeeApi extends AbstractFloorApi
             'icon'           => 'nullable|image|max:2048',
             'cleaning_speed' => 'nullable|numeric|min:0|max:100',
             'prep_speed'     => 'nullable|numeric|min:0|max:100',
+            'capacity'       => 'nullable|integer|min:1|max:100',
             'player_uuid'    => 'nullable|string|max:255',
         ]);
         if ($invalid !== null) {
@@ -53,6 +54,7 @@ class EmployeeApi extends AbstractFloorApi
         $employee->name            = $request->get('name');
         $employee->cleaning_speed  = round((float) ($request->get('cleaning_speed') ?? 1), 2);
         $employee->prep_speed      = round((float) ($request->get('prep_speed') ?? 1), 2);
+        $employee->capacity        = (int) ($request->get('capacity') ?? Employee::DEFAULT_CAPACITY);
 
         if ($request->hasFile('icon')) {
             $employee->icon = FileStorage::putFile(self::EMPLOYEE_ICON_PATH, $request->file('icon'));
@@ -77,6 +79,7 @@ class EmployeeApi extends AbstractFloorApi
             'icon'           => 'nullable|image|max:2048',
             'cleaning_speed' => 'nullable|numeric|min:0|max:100',
             'prep_speed'     => 'nullable|numeric|min:0|max:100',
+            'capacity'       => 'nullable|integer|min:1|max:100',
             // An empty player leaves the employee to the owner and managers, while leaving it out keeps the current one
             'player_uuid'    => 'nullable|string|max:255',
         ]);
@@ -108,6 +111,9 @@ class EmployeeApi extends AbstractFloorApi
         }
         if ($request->filled('prep_speed')) {
             $employee->prep_speed = round((float) $request->get('prep_speed'), 2);
+        }
+        if ($request->filled('capacity')) {
+            $employee->capacity = (int) $request->get('capacity');
         }
 
         if ($request->hasFile('icon')) {

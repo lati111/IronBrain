@@ -66,6 +66,7 @@ class FloorService
                 'icon' => $employee->icon !== null ? asset('img/' . $employee->icon) : null,
                 'cleaning_speed' => $employee->cleaning_speed,
                 'prep_speed' => $employee->prep_speed,
+                'capacity' => $employee->capacity,
                 'player_uuid' => $employee->player_uuid,
                 'player_name' => $employee->Player?->username,
             ])->values()->all(),

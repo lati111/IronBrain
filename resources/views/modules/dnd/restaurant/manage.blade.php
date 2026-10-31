@@ -210,6 +210,9 @@
                 <x-form.input-wrapper label_text="Cleaning speed" cls="flex-1">
                     <input type="number" name="cleaning_speed" class="underlined" min="0" max="100" step="0.01" value="1" required/>
                 </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Capacity" cls="flex-1">
+                    <input type="number" name="capacity" class="underlined" min="1" max="100" step="1" value="2" title="How many plates they carry to a table at once" required/>
+                </x-form.input-wrapper>
             </div>
             <x-form.input-wrapper label_text="Controlled by">
                 <select name="player_uuid" class="underlined"></select>

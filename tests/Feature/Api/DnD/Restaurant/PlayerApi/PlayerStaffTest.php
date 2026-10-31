@@ -176,7 +176,7 @@ class PlayerStaffTest extends AbstractFeatureTester
 
     //| conversions
 
-    public function test_players_queue_conversions_from_the_prep_area(): void
+    public function test_players_queue_conversions_during_service(): void
     {
         $storage = $this->createTestStorage($this->restaurant);
         $flour = $this->createTestIngredient($this->restaurant, 1, 'Wheat');
@@ -190,8 +190,6 @@ class PlayerStaffTest extends AbstractFeatureTester
         $conversion->minutes = 1;
         $conversion->save();
 
-        $this->callApi('api.dnd.restaurant.service.conversion.queue', ['amount' => 1], ['conversion_uuid' => $conversion->uuid])->assertForbidden();
-        $this->assign(WorkStation::PREP);
         $this->callApi('api.dnd.restaurant.service.conversion.queue', ['amount' => 1], ['conversion_uuid' => $conversion->uuid])->assertOk();
     }
 }

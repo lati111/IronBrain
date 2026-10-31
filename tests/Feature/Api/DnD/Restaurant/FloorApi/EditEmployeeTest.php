@@ -69,6 +69,16 @@ class EditEmployeeTest extends AbstractApiFeatureTester implements PostOperation
         $this->assertEquals(1.0, $employee->cleaning_speed);
     }
 
+    public function test_the_capacity_can_be_changed_but_not_below_one(): void
+    {
+        $this->assertEquals(2, $this->item->fresh()->capacity);
+
+        $this->getHttpClient($this->getOperationUser())->post($this->getRoute(), ['capacity' => 0])->assertBadRequest();
+        $this->getHttpClient($this->getOperationUser())->post($this->getRoute(), ['capacity' => 3])->assertOk();
+
+        $this->assertEquals(3, $this->item->fresh()->capacity);
+    }
+
     public function test_employee_of_another_restaurant_is_not_found(): void
     {
         $other = $this->createTestEmployee($this->createTestRestaurant($this->getAdminUser(), 'Other'));
