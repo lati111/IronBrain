@@ -81,8 +81,8 @@ class ImportService
         }
 
         // Link exalted weapons to this warframe
-        if (isset($data['exaltedWeapons'])) {
-            foreach ($data['exaltedWeapons'] as $exaltedWeaponId) {
+        if (isset($data['exalted'])) {
+            foreach ($data['exalted'] as $exaltedWeaponId) {
                 $exaltedWeapon = Weapon::where('id', $exaltedWeaponId)->first();
                 if ($exaltedWeapon !== null && $exaltedWeapon->exalted_id !== $warframe->id) {
                     $exaltedWeapon->exalted_id = $warframe->id;
@@ -128,6 +128,8 @@ class ImportService
         // Mutate data
         if ($data['type'] === 'Companion Weapon') {
             $data['category'] = 'Companion Weapon';
+        } elseif ($data['type'] === 'Exalted Weapon') {
+            $data['category'] = 'Exalted';
         }
 
         // Update contents
@@ -318,16 +320,24 @@ class ImportService
      * Import an asset if it does not exist yet
      * @param string $assetName The name of the asset
      * @param string $category The asset category
-     * @return string
+     * @return string|null The path to the asset, or null if it could not be downloaded
      */
-    protected function importAsset(string $assetName, string $category): string {
-        $imgUrl = sprintf('%s/%s', self::imageUrl, $assetName);
+    protected function importAsset(string $assetName, string $category): ?string {
+        $imgUrl = sprintf('%s/%s', self::imageUrl, rawurlencode($assetName));
         $imgPath = sprintf('modules/arsenal/%s/%s', $category, $assetName);
         if (Storage::missing($imgPath)) {
-            $contents = file_get_contents($imgUrl);
-            if (getimagesizefromstring($contents) !== false) {
-                Storage::put($imgPath, $contents);
+            // A failed download should not block the item itself from being imported
+            try {
+                $contents = file_get_contents($imgUrl);
+            } catch (\ErrorException) {
+                return null;
             }
+
+            if ($contents === false || getimagesizefromstring($contents) === false) {
+                return null;
+            }
+
+            Storage::put($imgPath, $contents);
         }
 
         return $imgPath;

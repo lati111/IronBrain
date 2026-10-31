@@ -161,6 +161,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
             ->join(Weapon::TABLE_NAME . ' as wp', 'uw.id', '=', 'wp.id')
             ->where('uw.owner_uuid', $user->uuid)
             ->whereNull('wp.exalted_id')
+            ->where('wp.type', '!=', 'exalted')
             ->select([
                 DB::raw('LOWER(wp.type) as category'),
                 DB::raw('wp.id as item_id'),
@@ -183,6 +184,7 @@ class ArsenalArmoryCardlist extends AbstractCardlist
         $unownedWeapons = DB::table(Weapon::TABLE_NAME . ' as wp')
             ->whereNotIn('wp.id', fn($q) => $q->from(UserWeapon::TABLE_NAME)->select('id')->where('owner_uuid', $user->uuid))
             ->whereNull('wp.exalted_id')
+            ->where('wp.type', '!=', 'exalted')
             ->select(array_merge([
                 DB::raw('LOWER(wp.type) as category'),
                 DB::raw('wp.id as item_id'),
