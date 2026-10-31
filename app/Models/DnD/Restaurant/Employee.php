@@ -51,6 +51,8 @@ class Employee extends RestaurantDataModel
         return match ($station) {
             WorkStation::PREP     => $this->prep_speed,
             WorkStation::CLEANING => $this->cleaning_speed,
+            // Cooking goes at the cookers' speed, as long as someone looks after them
+            WorkStation::COOKING  => 1.0,
             // Waiters walk at the same pace
             WorkStation::WAITING  => 1.0,
         };

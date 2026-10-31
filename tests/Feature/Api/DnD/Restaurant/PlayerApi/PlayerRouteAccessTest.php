@@ -27,15 +27,35 @@ class PlayerRouteAccessTest extends AbstractFeatureTester
         // Pages
         'dnd.restaurant.management',
         'dnd.restaurant.service',
+        'dnd.restaurant.finances',
         // Looking at the service and the floor
         'api.dnd.restaurant.service.get',
         'api.dnd.restaurant.floor.get',
         // Moving their own employees
         'api.dnd.restaurant.service.employee.assign',
         'api.dnd.restaurant.service.table.waiter',
-        // Moving ingredients between storage spaces
+        // Moving ingredients and equipment between storage spaces, and converting ingredients
         'api.dnd.restaurant.inventory.get',
         'api.dnd.restaurant.inventory.transfer',
+        'api.dnd.restaurant.inventory.conversion.convert',
+        // The finances, and adding transactions to them
+        'api.dnd.restaurant.finances.get',
+        'api.dnd.restaurant.finances.create',
+        'api.dnd.restaurant.finances.transaction',
+        // What their waiters do at the tables they wait
+        'api.dnd.restaurant.floor.customer.seat',
+        'api.dnd.restaurant.service.order.place',
+        'api.dnd.restaurant.service.plate.deliver',
+        // What their employees do in the kitchen, in the area they work in
+        'api.dnd.restaurant.service.meal.plan',
+        'api.dnd.restaurant.service.meal.prepare',
+        'api.dnd.restaurant.service.meal.supply',
+        'api.dnd.restaurant.service.conversion.queue',
+        'api.dnd.restaurant.service.meal.cook',
+        'api.dnd.restaurant.service.meal.serve',
+        'api.dnd.restaurant.service.meal.plate',
+        'api.dnd.restaurant.service.equipment.clean',
+        'api.dnd.restaurant.service.equipment.clean-all',
     ];
 
     /**

@@ -6,7 +6,9 @@ import {cloneTemplate, pluralize} from "./kitchen/elements";
 import {toggleMenu} from "./kitchen/menu";
 import {describeOrder, openOrderDetails} from "./kitchen/order-details";
 import {getAddButton, initSidebar, KitchenTab, renderKitchenTab, renderSidebarList} from "./kitchen/sidebar";
-import {getServiceState, isIdle, isPlayer, onServiceState, post as postService} from "./kitchen/state";
+import {
+    canControl, getServiceState, isIdle, isPlayer, mayWait, mayWaitAny, onServiceState, post as postService, refreshServiceState,
+} from "./kitchen/state";
 import {assignWaiter, getTableOrders, getWaiter, renderTableService} from "./kitchen/tables";
 import {Order} from "./kitchen/types";
 import {isOrderModalOpen, openOrderModal, SeatedCustomer} from "./orders";
@@ -31,6 +33,11 @@ interface Customer {
     /** Both null while the customer is not seated */
     table_uuid: string | null;
     seat: number | null;
+    /** Waiting at the entrance to be seated, since when in the restaurant's time */
+    at_entrance: boolean;
+    entered_at: string | null;
+    /** Where a waiter is taking them from the entrance, while they are on their way there */
+    seating: {table_uuid: string, seat: number} | null;
 }
 
 interface Floor {
@@ -56,8 +63,11 @@ let activeTab: SidebarTab = 'customer';
 let apiUrl = '';
 let floor: Floor = {rooms: [], tables: [], customers: []};
 
-/** The customers waiting at the entrance, in order of arrival. Only exists client side, like general storage */
-const entrance: string[] = [];
+/** The customers waiting at the entrance, in order of arrival */
+function getEntrance(): Customer[] {
+    return floor.customers.filter((customer) => customer.at_entrance)
+        .sort((a, b) => (a.entered_at ?? '').localeCompare(b.entered_at ?? ''));
+}
 
 //| Initialisation
 
@@ -76,9 +86,10 @@ async function init(): Promise<void> {
         offerTakenOrder();
     });
 
-    // During service the floor and kitchen need the room, so the customer list starts closed. Players have none
-    if (document.getElementById('inventory-sidebar') !== null) {
-        restoreSidebar('dnd-restaurant-service-sidebar-collapsed', true);
+    // During service the floor and kitchen need the room, so the sidebar starts closed. Players only see conversions
+    restoreSidebar('dnd-restaurant-service-sidebar-collapsed', true);
+    if (root.dataset.player === '1') {
+        activeTab = 'conversion';
     }
 
     setupDropTarget(document.querySelector('#service-entrance') as HTMLElement, CUSTOMER_MIME, (data) => {
@@ -86,7 +97,7 @@ async function init(): Promise<void> {
         if (customer.seated) {
             seatCustomer(customer.uuid, null, null, true);
         }
-    });
+    }, () => !isPlayer());
 
     const edge = document.getElementById('discard-edge') as HTMLElement;
     setupDropTarget(edge, CUSTOMER_MIME, (data) => {
@@ -94,9 +105,9 @@ async function init(): Promise<void> {
         if (customer.seated) {
             seatCustomer(customer.uuid, null, null, false);
         } else {
-            leaveEntrance(customer.uuid);
+            moveToEntrance(customer.uuid, false);
         }
-    });
+    }, () => !isPlayer());
     showWhileDragging(edge, CUSTOMER_MIME);
     showWhileDragging(document.getElementById('service-entrance') as HTMLElement, CUSTOMER_MIME);
 
@@ -128,15 +139,6 @@ async function refreshFloor(): Promise<void> {
 
 function setFloor(data: Floor): void {
     floor = data;
-
-    // Customers that are seated or no longer exist can't be waiting at the entrance
-    for (let index = entrance.length - 1; index >= 0; index--) {
-        const customer = getCustomer(entrance[index]);
-        if (customer === null || customer.table_uuid !== null) {
-            entrance.splice(index, 1);
-        }
-    }
-
     render();
 }
 
@@ -149,9 +151,6 @@ function render(): void {
 }
 
 function renderSidebar(): void {
-    // Players have no sidebar
-    if (document.getElementById('inventory-list') === null) return;
-
     if (activeTab !== 'customer') {
         renderKitchenTab(activeTab);
         return;
@@ -163,9 +162,8 @@ function renderSidebar(): void {
 
         // Only customers that aren't on the floor yet can be brought to the entrance
         const addButton = getAddButton(row);
-        const onFloor = customer.table_uuid !== null || entrance.includes(customer.uuid);
-        addButton.classList.toggle('hidden', onFloor);
-        addButton.addEventListener('click', () => enterEntrance(customer.uuid));
+        addButton.classList.toggle('hidden', customer.table_uuid !== null || customer.at_entrance);
+        addButton.addEventListener('click', () => moveToEntrance(customer.uuid, true));
     });
 }
 
@@ -176,7 +174,7 @@ function switchTab(tab: SidebarTab): void {
     });
 
     // New ingredients are made on the management page, so only customers can be created here
-    document.getElementById('customer-create-button')!.classList.toggle('hidden', tab !== 'customer');
+    document.getElementById('customer-create-button')?.classList.toggle('hidden', tab !== 'customer');
     renderSidebar();
 }
 
@@ -184,15 +182,11 @@ function renderEntrance(): void {
     const container = document.querySelector('#service-entrance [data-items]') as HTMLElement;
     container.replaceChildren();
 
-    for (const uuid of entrance) {
-        const customer = getCustomer(uuid);
-        if (customer !== null) {
-            container.appendChild(createCustomerChip(customer));
-        }
-    }
+    const waiting = getEntrance();
+    container.append(...waiting.map(createCustomerChip));
 
     // An empty entrance is hidden, though it still shows while a customer is dragged so they can be put back there
-    document.getElementById('service-entrance')!.classList.toggle('empty', entrance.length === 0);
+    document.getElementById('service-entrance')!.classList.toggle('empty', waiting.length === 0);
 }
 
 function renderFloor(): void {
@@ -246,9 +240,10 @@ function createTableElement(table: Table): HTMLElement {
         seats.appendChild(createSeatElement(table, number, occupant));
     }
 
-    // Clicking the table, rather than one of its seats, opens its menu. Players only move their employees around
+    // Clicking the table, rather than one of its seats, opens its menu. Players open the menus of the tables their
+    // employees wait
     element.addEventListener('click', (event) => {
-        if (isPlayer() || (event.target as Element).closest('.service-seat') !== null) return;
+        if (!mayWait(table.uuid) || (event.target as Element).closest('.service-seat') !== null) return;
         openTableMenu(table, element);
     });
 
@@ -264,16 +259,19 @@ function openTableMenu(table: Table, anchor: HTMLElement): void {
     const waiter = getWaiter(table);
 
     toggleMenu(anchor, waiter !== null ? `${status} · ${waiter.name}` : `${status} · no waiter`, (option) => {
-        // Orders are taken by the table's waiter, one at a time, and noted down once they have taken it
+        // Orders are taken by the table's waiter, one at a time, and noted down by whoever runs the service once they
+        // have taken it. Players send their waiter to take one, and move their own employees around
         const taken = orders.find((order) => order.status === 'taken');
-        if (taken !== undefined) {
+        if (taken !== undefined && !isPlayer()) {
             option('Note down order', () => openOrderModal(orderTable, getSeatedCustomers(table), taken));
         }
         if (waiter !== null) {
             if (!orders.some((order) => order.status === 'taking' || order.status === 'taken')) {
                 option('Take order', () => startOrder(table));
             }
-            option(`Remove ${waiter.name}`, () => assignWaiter(table, null));
+            if (canControl(waiter)) {
+                option(`Remove ${waiter.name}`, () => assignWaiter(table, null));
+            }
         }
 
         for (const order of orders) {
@@ -339,11 +337,18 @@ function createSeatElement(table: Table, number: number, occupant: Customer | nu
         seat.appendChild(createCustomerChip(occupant));
     }
 
-    // Only empty seats take customers
+    // A seat is kept for a customer a waiter is bringing over
+    const coming = floor.customers.find((customer) => customer.seating?.table_uuid === table.uuid && customer.seating.seat === number) ?? null;
+    if (occupant === null && coming !== null) {
+        seat.classList.add('reserved');
+        seat.title = `${table.name}, seat ${number}: kept for ${coming.name}`;
+    }
+
+    // Only free seats take customers, who players seat at the tables their employees wait
     setupDropTarget(seat, CUSTOMER_MIME, (data) => {
         const customer = JSON.parse(data) as DraggedCustomer;
         seatCustomer(customer.uuid, table.uuid, number, false);
-    }, () => !seat.classList.contains('occupied'));
+    }, () => !seat.classList.contains('occupied') && !seat.classList.contains('reserved') && mayWait(table.uuid));
 
     return seat;
 }
@@ -354,8 +359,16 @@ function createCustomerChip(customer: Customer): HTMLElement {
     setField(chip, 'name', customer.name);
     chip.title = customer.description ?? customer.name;
 
-    // Customers are seated by whoever runs the floor
-    if (isPlayer()) {
+    // A customer a waiter is bringing over shows where they are going
+    const seating = customer.seating;
+    if (seating !== null) {
+        const table = floor.tables.find((candidate) => candidate.uuid === seating.table_uuid);
+        setField(chip, 'name', `${customer.name} → ${table?.name ?? 'a table'}`);
+        chip.classList.add('on-the-way');
+    }
+
+    // Customers are seated by whoever runs the floor, and by players from the entrance at the tables they wait
+    if (isPlayer() && !(customer.at_entrance && mayWaitAny())) {
         chip.draggable = false;
         return chip;
     }
@@ -371,21 +384,17 @@ function createCustomerChip(customer: Customer): HTMLElement {
 
 //| Entrance
 
-function enterEntrance(uuid: string): void {
-    if (!entrance.includes(uuid)) {
-        entrance.push(uuid);
+/** Brings a customer to the entrance to wait there, or sends them off the floor */
+async function moveToEntrance(uuid: string, atEntrance: boolean): Promise<void> {
+    const formData = new FormData();
+    formData.append('at_entrance', atEntrance ? '1' : '0');
+
+    try {
+        const response = await postOnce(`${apiUrl}/customer/${uuid}/entrance`, formData);
+        if (response?.ok) setFloor(response.data.floor);
+    } catch {
+        // The error has already been shown to the user
     }
-
-    render();
-}
-
-function leaveEntrance(uuid: string): void {
-    const index = entrance.indexOf(uuid);
-    if (index !== -1) {
-        entrance.splice(index, 1);
-    }
-
-    render();
 }
 
 //| Seating
@@ -399,17 +408,18 @@ async function seatCustomer(uuid: string, tableUuid: string | null, seat: number
     if (tableUuid !== null && seat !== null) {
         formData.append('table_uuid', tableUuid);
         formData.append('seat', String(seat));
+    } else if (toEntrance) {
+        formData.append('to_entrance', '1');
     }
 
     try {
         const response = await postOnce(`${apiUrl}/customer/${uuid}/seat`, formData);
         if (!response?.ok) return;
 
-        if (toEntrance && !entrance.includes(uuid)) {
-            entrance.push(uuid);
-        }
-
+        response.announce();
         setFloor(response.data.floor);
+        // A waiter seating them shows in the kitchen's state, so it is fetched along with the floor
+        await refreshServiceState();
     } catch {
         // The error has already been shown to the user
     }
@@ -430,9 +440,6 @@ async function createCustomer(): Promise<void> {
     if (response === null) return;
 
     closeModal('customer-create-modal');
-
-    // A new customer has just walked in, so they start at the entrance
-    entrance.push(response.uuid);
     setFloor(response.floor);
 }
 
@@ -448,7 +455,12 @@ function describeLocation(customer: Customer): string {
         return `Seated at ${table?.name ?? 'a table'}, seat ${customer.seat}`;
     }
 
-    return entrance.includes(customer.uuid) ? 'At the entrance' : 'Not here';
+    if (customer.seating !== null) {
+        const table = floor.tables.find((table) => table.uuid === customer.seating!.table_uuid);
+        return `On the way to ${table?.name ?? 'a table'}`;
+    }
+
+    return customer.at_entrance ? 'At the entrance' : 'Not here';
 }
 
 (<any>window).init                    = init;

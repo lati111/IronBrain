@@ -2,7 +2,7 @@ import {setupBoostTarget} from "./drag";
 import {createNote, createProgressBar, createSpan, formatMinutes} from "./elements";
 import {closeMealMenu, onRightClick, toggleMenu} from "./menu";
 import {openPrioritizeMenu} from "./prioritize";
-import {getServiceState, isPlayer, post, postParameters} from "./state";
+import {getServiceState, isPlayer, mayWorkAt, post, postParameters} from "./state";
 import {KitchenEquipment, WorkJob} from "./types";
 
 /** The equipment other than cookers, with how many pieces are clean, and cleaning the dirty ones */
@@ -62,8 +62,12 @@ function createEquipmentRow(piece: KitchenEquipment): HTMLElement {
         row.appendChild(createProgressBar(work > 0 ? done / work : 0));
     }
 
-    if (!isPlayer()) {
+    // Players mark equipment to clean while one of their employees cleans, while the order stays up to whoever runs the
+    // service
+    if (mayWorkAt('cleaning')) {
         row.addEventListener('click', () => toggleEquipmentMenu(piece, row));
+    }
+    if (!isPlayer()) {
         if (queue.length > 0) {
             // Prioritising one piece moves every piece of the equipment, so the first stands for all
             onRightClick(row, () => openPrioritizeMenu(row, `${piece.name}: cleaning`, [queue[0].uuid]));

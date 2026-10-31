@@ -265,13 +265,18 @@ class KitchenService
      * @param Restaurant $restaurant The restaurant
      * @param Meal $meal The meal
      * @return int The minutes left, rounded up
-     * @throws InvalidArgumentException Thrown when the meal isn't cooking
+     * @throws InvalidArgumentException Thrown when the meal isn't cooking, or nobody is cooking it
      */
     public function getMinutesUntilDone(Restaurant $restaurant, Meal $meal): int
     {
         $now = $restaurant->getNow();
         if ($meal->getStatusAt($now) !== Meal::STATUS_COOKING) {
             throw new InvalidArgumentException('Only meals that are still cooking can be skipped');
+        }
+
+        // Without anyone in the cooking area it won't get done, however long is skipped
+        if ($meal->cooking_ends_at === null) {
+            throw new InvalidArgumentException('Nobody is cooking ' . $meal->getRecipe()->name);
         }
 
         return max(0, (int) ceil(($meal->cooking_ends_at->getTimestamp() - $now->getTimestamp()) / 60));

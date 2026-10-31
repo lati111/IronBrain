@@ -24,10 +24,12 @@ async function init(): Promise<void> {
     initModals();
     document.querySelectorAll<HTMLInputElement>('input[data-money]').forEach(setupMoneyInput);
 
-    // Players neither add items, take them out, nor arrange the storage spaces
-    if (!state.isPlayer) {
+    // Players neither add items, take them out, nor arrange the storage spaces, and see the recipes first
+    restoreSidebar();
+    if (state.isPlayer) {
+        state.activeTab = 'recipe';
+    } else {
         setupStorageArea();
-        restoreSidebar();
     }
 
     window.addEventListener('beforeunload', (event) => {

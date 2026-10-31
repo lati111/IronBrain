@@ -2,6 +2,7 @@
 
 namespace App\Service\DnD\Restaurant;
 
+use Carbon\Carbon;
 use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Boost;
 use App\Models\DnD\Restaurant\Customer;
@@ -10,6 +11,7 @@ use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\RestaurantUser;
 use App\Models\DnD\Restaurant\Room;
 use App\Models\DnD\Restaurant\Table;
+use App\Models\DnD\Restaurant\Work;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -26,6 +28,7 @@ class FloorService
         $rooms = Room::where('restaurant_uuid', $restaurant->uuid)->orderBy('order')->orderBy('created_at')->get();
         $tables = Table::where('restaurant_uuid', $restaurant->uuid)->withCount('Customers')->orderBy('name')->get();
         $customers = Customer::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
+        $seating = Work::where('restaurant_uuid', $restaurant->uuid)->whereNotNull('customer_uuid')->get()->keyBy('customer_uuid');
         $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->with('Player')->orderBy('name')->get();
         $players = RestaurantUser::where('restaurant_uuid', $restaurant->uuid)->where('role', RestaurantUser::ROLE_PLAYER)
             ->with('User')->get()->sortBy(fn (RestaurantUser $access) => strtolower($access->User->username));
@@ -49,6 +52,13 @@ class FloorService
                 'description' => $customer->description,
                 'table_uuid' => $customer->table_uuid,
                 'seat' => $customer->seat,
+                // Waiting at the entrance to be seated, since when in the restaurant's time, which orders the entrance
+                'at_entrance' => $customer->table_uuid === null && $customer->entered_at !== null,
+                'entered_at' => $customer->table_uuid === null ? $customer->entered_at?->format('Y-m-d H:i:s') : null,
+                // Where a waiter is taking them, while they are on their way there from the entrance
+                'seating' => isset($seating[$customer->uuid])
+                    ? ['table_uuid' => $seating[$customer->uuid]->table_uuid, 'seat' => $seating[$customer->uuid]->seat]
+                    : null,
             ])->values()->all(),
             'employees' => $employees->map(fn (Employee $employee) => [
                 'uuid' => $employee->uuid,
@@ -131,32 +141,88 @@ class FloorService
      * @param int|null $seat The seat at the table, from 1 up to its capacity
      * @throws InvalidArgumentException Thrown when the seat does not exist at the table or is already taken
      */
-    public function seatCustomer(Customer $customer, ?Table $table, ?int $seat): void
+    public function seatCustomer(Customer $customer, ?Table $table, ?int $seat, ?Carbon $toEntrance = null): void
     {
         if ($table === null) {
-            $customer->table_uuid = null;
-            $customer->seat = null;
-            $customer->save();
+            $this->unseatCustomer($customer, $toEntrance);
             return;
         }
 
+        DB::transaction(function () use ($customer, $table, $seat) {
+            $this->assertSeatFree($customer, $table, $seat);
+
+            // A customer seated straight away isn't on their way anymore, nor waiting at the entrance
+            Work::where('customer_uuid', $customer->uuid)->delete();
+
+            $customer->table_uuid = $table->uuid;
+            $customer->seat = $seat;
+            $customer->entered_at = null;
+            $customer->save();
+        });
+    }
+
+    /**
+     * Checks that a seat at a table exists and is free for a customer: nobody else sits there, nor is on their way
+     * there with a waiter
+     * @param Customer $customer The customer to seat
+     * @param Table $table The table
+     * @param int|null $seat The seat, from 1 up to the table's capacity
+     * @throws InvalidArgumentException Thrown when the seat does not exist at the table or is already taken
+     */
+    public function assertSeatFree(Customer $customer, Table $table, ?int $seat): void
+    {
         if ($seat === null || $seat < 1 || $seat > $table->capacity) {
             throw new InvalidArgumentException($table->name . ' has no seat ' . $seat);
         }
 
-        DB::transaction(function () use ($customer, $table, $seat) {
-            $taken = Customer::where('table_uuid', $table->uuid)
-                ->where('seat', $seat)
-                ->where('uuid', '!=', $customer->uuid)
-                ->lockForUpdate()
-                ->exists();
+        $taken = Customer::where('table_uuid', $table->uuid)->where('seat', $seat)->where('uuid', '!=', $customer->uuid)
+            ->lockForUpdate()->exists()
+            || Work::where('table_uuid', $table->uuid)->where('seat', $seat)->whereNotNull('customer_uuid')
+                ->where('customer_uuid', '!=', $customer->uuid)->exists();
 
-            if ($taken) {
-                throw new InvalidArgumentException('That seat is already taken');
+        if ($taken) {
+            throw new InvalidArgumentException('That seat is already taken');
+        }
+    }
+
+    /**
+     * Unseats a customer, or calls off them being seated, either sending them back to the entrance or off the floor
+     * @param Customer $customer The customer
+     * @param Carbon|null $toEntrance When they arrive back at the entrance, in the restaurant's time, or null when
+     *                                they leave the floor
+     */
+    public function unseatCustomer(Customer $customer, ?Carbon $toEntrance = null): void
+    {
+        DB::transaction(function () use ($customer, $toEntrance) {
+            Work::where('customer_uuid', $customer->uuid)->delete();
+
+            $customer->table_uuid = null;
+            $customer->seat = null;
+            $customer->entered_at = $toEntrance;
+            $customer->save();
+        });
+    }
+
+    /**
+     * Brings a customer who isn't seated to the entrance to wait there, or sends them off the floor, calling off them
+     * being seated
+     * @param Customer $customer The customer
+     * @param Carbon|null $at When they arrive at the entrance, in the restaurant's time, or null to send them off
+     * @throws InvalidArgumentException Thrown when the customer is seated
+     */
+    public function setAtEntrance(Customer $customer, ?Carbon $at): void
+    {
+        if ($customer->table_uuid !== null) {
+            throw new InvalidArgumentException($customer->name . ' is seated');
+        }
+
+        DB::transaction(function () use ($customer, $at) {
+            if ($at === null) {
+                Work::where('customer_uuid', $customer->uuid)->delete();
             }
 
-            $customer->table_uuid = $table->uuid;
-            $customer->seat = $seat;
+            // Already waiting there, they keep their place in line
+            $customer->entered_at = $at !== null ? ($customer->entered_at ?? $at) : null;
             $customer->save();
         });
     }

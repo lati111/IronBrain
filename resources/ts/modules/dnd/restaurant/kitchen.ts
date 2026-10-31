@@ -11,7 +11,7 @@ import {openPrioritizeMenu} from "./kitchen/prioritize";
 import {askForQuality} from "./kitchen/quality";
 import {renderStaff, setupStaffDropTargets} from "./kitchen/staff";
 import {
-    getServiceState, isPlayer, loadServiceState, onServiceState, post, postParameters, startRefreshing,
+    getServiceState, isPlayer, loadServiceState, mayWaitAny, mayWorkAt, onServiceState, post, postParameters, startRefreshing,
 } from "./kitchen/state";
 import {Meal, Plate, ServiceState, WorkJob, WorkStationCode} from "./kitchen/types";
 
@@ -24,10 +24,10 @@ export async function initKitchen(url: string): Promise<void> {
     onServiceState(renderKitchen);
     setupMealMenuClosing();
 
-    // Done meals can be taken out of their cooker by dropping them in the serving area
+    // Done meals can be taken out of their cooker by dropping them in the serving area, by the cooks
     setupDropTarget(document.getElementById('kitchen-serving') as HTMLElement, MEAL_MIME, (uuid) => {
         post(`/meal/${uuid}/serve`);
-    }, () => getDraggedMeal()?.status === 'done');
+    }, () => mayWorkAt('cooking') && getDraggedMeal()?.status === 'done');
 
     // A boost on an area is dropped on the area itself
     setupBoostTarget(document.getElementById('kitchen-prep-area') as HTMLElement, 'prep_area', {area: 'prep'});
@@ -44,6 +44,7 @@ function renderKitchen(): void {
     // The meal cards are rebuilt, so a menu open for one would point at a card that no longer exists
     closeMealMenu();
     renderClock();
+    renderAreaButtons();
     renderActiveBoosts();
     renderCookers();
     renderPreparation();
@@ -86,6 +87,14 @@ function renderActiveBoosts(): void {
     }
 
     container.classList.toggle('hidden', getState().active_boosts.length === 0);
+}
+
+//| Areas
+
+/** Players plan meals while one of their employees works in prep, and clean everything while one cleans */
+function renderAreaButtons(): void {
+    document.getElementById('kitchen-plan-meal')!.classList.toggle('hidden', !mayWorkAt('prep'));
+    document.getElementById('kitchen-clean-all')!.classList.toggle('hidden', !mayWorkAt('cleaning'));
 }
 
 //| Clock
@@ -150,9 +159,9 @@ function createCookerSlot(name: string, cookerUuid: string, slot: number, meal: 
         element.querySelector('[data-meal]')!.appendChild(createMealCard(meal));
     }
 
-    // Only empty cookers take a prepped meal
+    // Only empty cookers take a prepped meal, put in by the cooks
     setupDropTarget(element, MEAL_MIME, (uuid) => chooseCookingEquipment(uuid, cookerUuid, slot),
-        () => meal === null && getDraggedMeal()?.status === 'prepped');
+        () => meal === null && mayWorkAt('cooking') && getDraggedMeal()?.status === 'prepped');
     // A boost on equipment dropped here is on this one cooker only
     setupBoostTarget(element, 'cooker', {equipment_uuid: cookerUuid, cooker_slot: String(slot)});
 
@@ -218,13 +227,17 @@ function createPlateChip(plate: Plate): HTMLElement {
     chip.classList.toggle('spoiled', plate.spoiled);
     chip.textContent = describePlate(plate);
 
-    // Plates are brought to tables by whoever runs the floor
-    if (isPlayer()) return chip;
+    // Plates are brought to tables by their waiters, so players bring them to the tables their employees wait
+    if (mayWaitAny()) {
+        setupPlateDrag(chip, plate);
+    }
 
-    setupPlateDrag(chip, plate);
-    chip.addEventListener('click', () => toggleMenu(chip, `${plate.name}, plated`, (option) => {
-        option('Scrap plate', () => post(`/plate/${plate.uuid}/scrap`));
-    }));
+    // Scrapping a plate is up to whoever runs the service
+    if (!isPlayer()) {
+        chip.addEventListener('click', () => toggleMenu(chip, `${plate.name}, plated`, (option) => {
+            option('Scrap plate', () => post(`/plate/${plate.uuid}/scrap`));
+        }));
+    }
 
     return chip;
 }

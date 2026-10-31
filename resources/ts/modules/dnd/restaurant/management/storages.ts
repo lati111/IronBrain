@@ -114,8 +114,8 @@ function createItemElement(item: Item, from: string | null): HTMLElement {
     setField(element, 'expiry', describeDaysLeft(item));
     element.classList.toggle('expiring', item.days_left !== undefined && item.days_left !== null && item.days_left <= 1);
 
-    // Players only move stored ingredients
-    if (state.isPlayer && (item.type !== 'ingredient' || from === null)) {
+    // Players only move what is stored, between the storage spaces
+    if (state.isPlayer && from === null) {
         element.draggable = false;
         return element;
     }

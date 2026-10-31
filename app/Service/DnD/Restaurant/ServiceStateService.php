@@ -290,7 +290,8 @@ class ServiceStateService
             'prep_time' => $meal->Recipe->prep_time,
             'cooker_uuid' => $meal->cooker_uuid,
             'cooker_slot' => $meal->cooker_slot,
-            'cooking_minutes_left' => $status === Meal::STATUS_COOKING ? $this->minutesUntil($now, $meal->cooking_ends_at) : null,
+            // Null while nobody is in the cooking area to cook it
+            'cooking_minutes_left' => $status === Meal::STATUS_COOKING && $meal->cooking_ends_at !== null ? $this->minutesUntil($now, $meal->cooking_ends_at) : null,
             'cooking_progress' => $status === Meal::STATUS_COOKING ? $this->getCookingProgress($meal) : null,
             // How fast it is being worked on, where 1 is normal, while it is prepped or cooking
             'speed' => $this->getMealSpeed($meal, $status, $now),

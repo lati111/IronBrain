@@ -51,7 +51,8 @@ export function switchTab(tab: SidebarTab): void {
         button.classList.toggle('active', (button as HTMLElement).dataset.tab === tab);
     });
 
-    document.getElementById('inventory-create-type')!.textContent = `+ New ${TYPE_LABELS[tab]}`;
+    const create = document.getElementById('inventory-create-type');
+    if (create !== null) create.textContent = `+ New ${TYPE_LABELS[tab]}`;
     renderSidebar();
 }
 

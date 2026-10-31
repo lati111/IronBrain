@@ -123,7 +123,8 @@ Route::prefix('/dnd/restaurant')
             ->name('dnd.restaurant.manage');
 
         Route::get('/{restaurant_uuid}/finances', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showFinances'])
-            ->name('dnd.restaurant.finances');
+            ->name('dnd.restaurant.finances')
+            ->withoutMiddleware('dnd.restaurant.manager');
 
         Route::get('/{restaurant_uuid}/service', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showService'])
             ->name('dnd.restaurant.service')

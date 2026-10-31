@@ -113,7 +113,25 @@ export function openRecipeModal(uuid: string | null): void {
 
     switchRecipeTab('details');
     setModalMode('recipe', TYPE_LABELS.recipe, recipe !== null);
+    if (state.isPlayer) {
+        showRecipeReadOnly();
+    }
     openModal('recipe-modal');
+}
+
+/**
+ * Lets players look at a recipe without changing it: its fields can't be edited, and nothing can be added, taken
+ * away, saved or deleted, while its tabs still switch
+ */
+function showRecipeReadOnly(): void {
+    const form = document.getElementById('recipe-form') as HTMLFormElement;
+    form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea')
+        .forEach((field) => field.disabled = true);
+    form.querySelectorAll<HTMLElement>('button:not(.recipe-tab), .recipe-components > div').forEach((element) => element.classList.add('hidden'));
+
+    document.getElementById('recipe-modal-title')!.textContent = 'Recipe';
+    document.getElementById('recipe-modal-submit')!.classList.add('hidden');
+    document.getElementById('recipe-modal-delete')!.classList.add('hidden');
 }
 
 /** Fills the recipe modal's lists from a recipe, or from what a variant adds, as they share the same shape */

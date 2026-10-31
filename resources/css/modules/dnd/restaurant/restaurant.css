@@ -373,6 +373,18 @@
     border-style: solid;
 }
 
+/* Kept for a customer a waiter is bringing over */
+.service-seat.reserved {
+    border-color: rgb(245 158 11);
+    background-color: rgb(255 251 235);
+}
+
+/* A customer at the entrance a waiter is bringing to a table */
+.service-customer.on-the-way {
+    border-style: dashed;
+    border-color: rgb(245 158 11);
+}
+
 .service-seat-number {
     position: absolute;
     left: 0.375rem;
@@ -996,6 +1008,10 @@
 
 .kitchen-employee-icon[data-station="cleaning"] {
     border-color: rgb(20 184 166);
+}
+
+.kitchen-employee-icon[data-station="cooking"] {
+    border-color: rgb(239 68 68);
 }
 
 .kitchen-employee-icon[data-station="tables"] {

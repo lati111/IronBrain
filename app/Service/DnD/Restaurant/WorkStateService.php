@@ -4,6 +4,7 @@ namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\DnD\Restaurant\Employee;
+use App\Models\DnD\Restaurant\Meal;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Work;
 use Illuminate\Database\Eloquent\Collection;
@@ -178,6 +179,12 @@ class WorkStateService
             return $employeeTasks[$employee->uuid];
         }
 
+        // The cooking area has no queue, as the cookers do the cooking while the cooks look after them
+        if ($employee->station === WorkStation::COOKING) {
+            $cooking = Meal::where('restaurant_uuid', $employee->restaurant_uuid)->where('status', Meal::STATUS_COOKING)->exists();
+            return $cooking ? 'Cooking' : 'Cooking (idle)';
+        }
+
         if ($employee->station !== null) {
             return $tasks[$employee->station->value];
         }
@@ -190,7 +197,8 @@ class WorkStateService
     }
 
     /**
-     * Describes a job, such as "Prepping Stew", "Cleaning 3 Plate", "Taking an order at Booth" or "Bringing Stew to Booth"
+     * Describes a job, such as "Prepping Stew", "Cleaning 3 Plate", "Taking an order at Booth", "Seating Bilbo at Booth"
+     * or "Bringing Stew to Booth"
      * @param Work $job The job
      * @return string The description
      */
@@ -201,9 +209,11 @@ class WorkStateService
                 ? sprintf('Converting %s %s', $job->input_amount + 0, $job->Input?->name ?? 'ingredients')
                 : 'Prepping ' . ($job->Meal?->Recipe?->name ?? 'a meal'),
             WorkStation::CLEANING => sprintf('Cleaning %d %s', $job->amount, $job->Equipment?->name ?? 'equipment'),
-            WorkStation::WAITING => $job->order_uuid !== null
-                ? 'Taking an order at ' . ($job->Table?->name ?? 'a table')
-                : sprintf('Bringing %s to %s', $job->ServedMeal?->Recipe?->name ?? 'a plate', $job->Table?->name ?? 'a table'),
+            WorkStation::WAITING => match (true) {
+                $job->order_uuid !== null => 'Taking an order at ' . ($job->Table?->name ?? 'a table'),
+                $job->customer_uuid !== null => sprintf('Seating %s at %s', $job->Customer?->name ?? 'a customer', $job->Table?->name ?? 'a table'),
+                default => sprintf('Bringing %s to %s', $job->ServedMeal?->Recipe?->name ?? 'a plate', $job->Table?->name ?? 'a table'),
+            },
         };
     }
 

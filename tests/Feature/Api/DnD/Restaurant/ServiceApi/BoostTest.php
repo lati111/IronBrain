@@ -39,6 +39,8 @@ class BoostTest extends AbstractFeatureTester
 
         $this->stew = $this->createTestRecipe($this->restaurant, 'Stew');
         $this->stove = $this->createTestCooker($this->restaurant);
+        // The cookers only cook while someone looks after them
+        $this->createTestEmployee($this->restaurant, WorkStation::COOKING, 'Chef');
     }
 
     private function callService(string $route, array $parameters = [], array $routeParameters = []): TestResponse

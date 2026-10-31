@@ -37,6 +37,8 @@ class KitchenEquipmentTest extends AbstractFeatureTester
 
         $this->createTestEmployee($this->restaurant, WorkStation::PREP, 'Cook');
         $this->createTestEmployee($this->restaurant, WorkStation::CLEANING, 'Dishwasher');
+        // The cookers only cook while someone looks after them
+        $this->createTestEmployee($this->restaurant, WorkStation::COOKING, 'Chef');
     }
 
     /** Creates equipment that doesn't need storage, with a number of pieces owned */

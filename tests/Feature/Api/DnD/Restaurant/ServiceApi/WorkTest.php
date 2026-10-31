@@ -326,6 +326,7 @@ class WorkTest extends AbstractFeatureTester
     public function test_cooking_meals_give_their_progress(): void
     {
         $stove = $this->createTestCooker($this->restaurant);
+        $this->createTestEmployee($this->restaurant, WorkStation::COOKING, 'Chef');
         $meal = $this->createTestMeal($this->restaurant, $this->recipe, Meal::STATUS_PREPPED);
         $this->callService('meal.cook', ['cooker_uuid' => $stove->uuid, 'slot' => 1], ['meal_uuid' => $meal->uuid])->assertOk();
 

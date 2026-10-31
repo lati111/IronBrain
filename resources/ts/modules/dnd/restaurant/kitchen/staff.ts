@@ -2,15 +2,16 @@ import {setField, setupDropTarget} from "../shared";
 import {EMPLOYEE_MIME, getDraggedEmployee, setupEmployeeDrag} from "./drag";
 import {cloneTemplate, createNote} from "./elements";
 import {canControl, getServiceState, isPlayer, postParameters} from "./state";
-import {Employee, WorkStationCode} from "./types";
+import {Employee, StaffArea} from "./types";
 
 /** The staff, who are dragged into the work areas to work there and back with the rest of the staff to stop */
 
 /** Employees work in the area they are dropped on, and stop when dropped back with the rest of the staff */
 export function setupStaffDropTargets(): void {
-    const areas: [string, WorkStationCode | null][] = [
+    const areas: [string, StaffArea | null][] = [
         ['kitchen-staff-area', null],
         ['kitchen-prep-area', 'prep'],
+        ['kitchen-cooking-area', 'cooking'],
         ['kitchen-cleaning-area', 'cleaning'],
     ];
     for (const [id, station] of areas) {
@@ -95,6 +96,6 @@ export function createDraggableEmployeeIcon(employee: Employee): HTMLElement {
     return icon;
 }
 
-async function assignEmployee(uuid: string, station: WorkStationCode | null): Promise<void> {
+async function assignEmployee(uuid: string, station: StaffArea | null): Promise<void> {
     await postParameters(`/employee/${uuid}/assign`, station !== null ? {station} : {}, false);
 }

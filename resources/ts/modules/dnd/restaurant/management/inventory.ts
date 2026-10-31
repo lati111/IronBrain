@@ -39,9 +39,9 @@ export function render(): void {
     renderPile();
     renderStorages();
 
-    // Players have neither the sidebar nor general storage
+    // Players have no general storage
+    renderSidebar();
     if (!state.isPlayer) {
-        renderSidebar();
         renderGeneralStorage();
     }
 }

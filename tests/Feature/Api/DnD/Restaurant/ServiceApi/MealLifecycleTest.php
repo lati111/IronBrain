@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\DnD\Restaurant\ServiceApi;
 
+use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Meal;
@@ -33,6 +34,8 @@ class MealLifecycleTest extends AbstractFeatureTester
 
         $this->recipe = $this->createTestRecipe($this->restaurant, 'Stew');
         $this->stove = $this->createTestCooker($this->restaurant, 2);
+        // The cookers only cook while someone looks after them
+        $this->createTestEmployee($this->restaurant, WorkStation::COOKING, 'Chef');
     }
 
     private function act(string $action, Meal $meal, array $parameters = []): TestResponse

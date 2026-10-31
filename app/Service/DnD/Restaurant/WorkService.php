@@ -3,6 +3,7 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Conversion;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
@@ -27,11 +28,15 @@ use InvalidArgumentException;
  */
 class WorkService
 {
+    /** @var int How long seating a customer takes their waiter, in minutes */
+    public const int SEATING_MINUTES = 3;
+
     public function __construct(
         private readonly WorkQueueService $workQueueService,
         private readonly KitchenService $kitchenService,
         private readonly InventoryService $inventoryService,
         private readonly BoostService $boostService,
+        private readonly FloorService $floorService,
     ) {
     }
 
@@ -48,8 +53,15 @@ class WorkService
         DB::transaction(function () use ($employee, $station) {
             Table::where('employee_uuid', $employee->uuid)->update(['employee_uuid' => null]);
 
+            $wasCooking = $employee->station === WorkStation::COOKING;
             $employee->station = $station;
             $employee->save();
+
+            // The cookers only cook while someone looks after them, so the meals in them are done sooner or later
+            if ($wasCooking || $station === WorkStation::COOKING) {
+                $restaurant = $employee->Restaurant;
+                $this->boostService->rescheduleAll($restaurant, $restaurant->getNow());
+            }
         });
     }
 
@@ -63,8 +75,15 @@ class WorkService
     {
         DB::transaction(function () use ($table, $employee) {
             if ($employee !== null) {
+                $wasCooking = $employee->station === WorkStation::COOKING;
                 $employee->station = null;
                 $employee->save();
+
+                // Leaving the cooking area may leave the cookers without anyone to cook
+                if ($wasCooking) {
+                    $restaurant = $employee->Restaurant;
+                    $this->boostService->rescheduleAll($restaurant, $restaurant->getNow());
+                }
             }
 
             $table->employee_uuid = $employee?->uuid;
@@ -263,6 +282,25 @@ class WorkService
         }
 
         $this->workQueueService->createJob($restaurant, WorkStation::WAITING, $minutes, table: $table, order: $order);
+    }
+
+    /**
+     * Has the waiter of a table seat a customer there, walking them over from the entrance. The customer stays at the
+     * entrance until the waiter is done, while their seat is kept for them. Seating them again calls this off first
+     * @param Restaurant $restaurant The restaurant
+     * @param Customer $customer The customer
+     * @param Table $table The table, which has a waiter
+     * @param int $seat The seat at the table
+     * @throws InvalidArgumentException Thrown when the seat does not exist or is already taken
+     */
+    public function queueSeating(Restaurant $restaurant, Customer $customer, Table $table, int $seat): void
+    {
+        DB::transaction(function () use ($restaurant, $customer, $table, $seat) {
+            $this->floorService->assertSeatFree($customer, $table, $seat);
+            Work::where('customer_uuid', $customer->uuid)->delete();
+
+            $this->workQueueService->createJob($restaurant, WorkStation::WAITING, self::SEATING_MINUTES, table: $table, customer: $customer, seat: $seat);
+        });
     }
 
     /**

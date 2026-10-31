@@ -1,11 +1,11 @@
 import {openModal, closeModal} from "../../../../components/modal";
 import {BoostTarget, setField, setupDropTarget} from "../shared";
 import {getDraggedMeal, MEAL_MIME, setupBoostTarget, setupMealDrag} from "./drag";
-import {addAction, cloneTemplate, createProgressBar, describeJobTimer, formatMinutes, makeReadOnly} from "./elements";
+import {addAction, cloneTemplate, createProgressBar, describeJobTimer, formatMinutes} from "./elements";
 import {onRightClick, toggleMenu} from "./menu";
 import {openPrioritizeMenu} from "./prioritize";
 import {openQualityModal} from "./quality";
-import {getServiceState, isPlayer, post} from "./state";
+import {getServiceState, isPlayer, mayWaitAny, mayWorkAt, post} from "./state";
 import {Meal, MissingMeal} from "./types";
 
 /** The cards of the meals in the kitchen, and what can be done with a meal from its card and its menu */
@@ -40,14 +40,15 @@ export function createMealCard(meal: Meal): HTMLElement {
     // Meals take the boosts for how far along they are: planned, prepped, cooking, or cooked once done
     setupBoostTarget(card, MEAL_BOOST_TARGET[meal.status], {meal_uuid: meal.uuid});
 
-    // Meals still waiting on other meals take a finished one dropped on them
+    // Meals still waiting on other meals take a finished one dropped on them, by whoever works at prep
     if (meal.missing_meals.length > 0) {
         setupDropTarget(card, MEAL_MIME, (uuid) => supplyMeal(meal, uuid), () => {
             const dragged = getDraggedMeal();
-            return dragged !== null && findMissingMeal(meal, dragged) !== null;
+            return mayWorkAt('prep') && dragged !== null && findMissingMeal(meal, dragged) !== null;
         });
     }
 
+    // Players do what the areas their employees work in let them, while cancelling stays with whoever runs the service
     switch (meal.status) {
         case 'planned': {
             // Queued meals show how long until they are prepped, which depends on who works at prep
@@ -56,30 +57,43 @@ export function createMealCard(meal: Meal): HTMLElement {
                 card.dataset.queued = '';
                 setField(card, 'timer', describeJobTimer(job.minutes_left));
                 card.appendChild(createProgressBar(job.progress));
-                onRightClick(card, () => openPrioritizeMenu(card, meal.name, [job.uuid]));
-            } else {
+                if (!isPlayer()) {
+                    onRightClick(card, () => openPrioritizeMenu(card, meal.name, [job.uuid]));
+                }
+            } else if (mayWorkAt('prep')) {
                 addAction(actions, `Prep (${formatMinutes(meal.prep_time)})`, () => post(`/meal/${meal.uuid}/prepare`));
             }
-            addAction(actions, 'Cancel', () => post(`/meal/${meal.uuid}/cancel`));
+            if (!isPlayer()) {
+                addAction(actions, 'Cancel', () => post(`/meal/${meal.uuid}/cancel`));
+            }
             break;
         }
         case 'prepped':
-            addAction(actions, 'Cancel', () => openScrapModal(meal));
+            if (!isPlayer()) {
+                addAction(actions, 'Cancel', () => openScrapModal(meal));
+            }
             break;
         default:
-            // Meals in a cooker or being served open a menu of what can be done with them
+            // Meals in a cooker or being served open a menu of what can be done with them, when anything can
             if (meal.status === 'cooking') {
                 card.appendChild(createProgressBar(meal.cooking_progress ?? 0));
             }
-            card.classList.add('clickable');
-            card.addEventListener('click', () => toggleMealMenu(meal, card));
+            if (getMealMenuOptions(meal).length > 0) {
+                card.classList.add('clickable');
+                card.addEventListener('click', () => toggleMealMenu(meal, card));
+            }
     }
 
-    if (meal.status === 'prepped' || meal.status === 'done' || meal.status === 'serving') {
+    // Prepped meals go into a cooker and done ones to serving by the cooks, while finished meals go into other meals
+    // by whoever works at prep
+    const draggable = (meal.status === 'prepped' && mayWorkAt('cooking'))
+        || (meal.status === 'done' && (mayWorkAt('cooking') || mayWorkAt('prep')))
+        || (meal.status === 'serving' && mayWorkAt('prep'));
+    if (draggable) {
         setupMealDrag(card, meal);
     }
 
-    return isPlayer() ? makeReadOnly(card) : card;
+    return card;
 }
 
 function describeTimer(meal: Meal): string {
@@ -92,7 +106,8 @@ function describeTimer(meal: Meal): string {
 
 function describeBaseTimer(meal: Meal): string {
     if (meal.status === 'cooking') {
-        return `${formatMinutes(meal.cooking_minutes_left ?? 0)} left`;
+        // Nothing cooks while nobody works in the cooking area
+        return meal.cooking_minutes_left !== null ? `${formatMinutes(meal.cooking_minutes_left)} left` : 'waiting for a cook';
     }
 
     if (meal.expires_in_minutes !== null && !meal.spoiled) {
@@ -108,21 +123,39 @@ function describeBaseTimer(meal: Meal): string {
 
 function toggleMealMenu(meal: Meal, anchor: HTMLElement): void {
     toggleMenu(anchor, describeTimer(meal), (option) => {
-        if (meal.status === 'cooking') {
-            option(`Skip until done (${formatMinutes(meal.cooking_minutes_left ?? 0)})`, () => post(`/meal/${meal.uuid}/skip`));
+        for (const [label, action] of getMealMenuOptions(meal)) {
+            option(label, action);
         }
-        if (meal.status === 'done') {
-            option('Move to serving', () => post(`/meal/${meal.uuid}/serve`));
-        }
-        if (meal.status === 'done' || meal.status === 'serving') {
-            const left = meal.portions_left === 1 ? 'last portion' : `${meal.portions_left} portions left`;
-            option(`Plate a portion (${left})`, () => post(`/meal/${meal.uuid}/plate`));
-        }
-        if (meal.finished) {
-            option(meal.quality === null ? 'Set quality' : `Change quality (Q${meal.quality})`, () => openQualityModal(meal));
-        }
-        option('Scrap meal', () => openScrapModal(meal));
     });
+}
+
+/**
+ * Gets what can be done with a meal in a cooker or being served, by the one looking. Cooks move meals to serving,
+ * cooks and waiters plate them, and the rest is up to whoever runs the service
+ * @returns Each option's label and action
+ */
+function getMealMenuOptions(meal: Meal): [string, () => void][] {
+    const options: [string, () => void][] = [];
+    const runsService = !isPlayer();
+
+    if (meal.status === 'cooking' && runsService && meal.cooking_minutes_left !== null) {
+        options.push([`Skip until done (${formatMinutes(meal.cooking_minutes_left)})`, () => post(`/meal/${meal.uuid}/skip`)]);
+    }
+    if (meal.status === 'done' && mayWorkAt('cooking')) {
+        options.push(['Move to serving', () => post(`/meal/${meal.uuid}/serve`)]);
+    }
+    if ((meal.status === 'done' || meal.status === 'serving') && (mayWorkAt('cooking') || mayWaitAny())) {
+        const left = meal.portions_left === 1 ? 'last portion' : `${meal.portions_left} portions left`;
+        options.push([`Plate a portion (${left})`, () => post(`/meal/${meal.uuid}/plate`)]);
+    }
+    if (meal.finished && runsService) {
+        options.push([meal.quality === null ? 'Set quality' : `Change quality (Q${meal.quality})`, () => openQualityModal(meal)]);
+    }
+    if (runsService) {
+        options.push(['Scrap meal', () => openScrapModal(meal)]);
+    }
+
+    return options;
 }
 
 //| Meals in meals

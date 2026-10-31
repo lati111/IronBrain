@@ -183,12 +183,16 @@ export interface Order {
 /** The work areas employees can work in */
 export type WorkStationCode = 'prep' | 'cleaning';
 
+/** The areas of the kitchen employees work in: those with a queue of work, and the cooking area looking after the
+ * cookers, which only cook while someone works there */
+export type StaffArea = WorkStationCode | 'cooking';
+
 export interface Employee {
     uuid: string;
     name: string;
     icon: string | null;
-    /** The work area the employee works in, or null while idle or waiting tables */
-    station: WorkStationCode | null;
+    /** The area of the kitchen the employee works in, or null while idle or waiting tables */
+    station: StaffArea | null;
     /** The uuids of the tables the employee waits, when waiting tables rather than working in a work area */
     tables: string[];
     /** The task the employee is on, such as "Prepping Stew" */

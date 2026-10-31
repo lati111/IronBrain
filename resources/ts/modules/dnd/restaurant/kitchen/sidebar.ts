@@ -2,7 +2,7 @@ import {openModal, closeModal} from "../../../../components/modal";
 import {describeMealBoostEffects, describeSpeedBonus, formatMoney, refreshMoneyInputs, setField, setupMoneyInput} from "../shared";
 import {setupBoostDrag} from "./drag";
 import {cloneTemplate, createEmptyRow, formatMinutes} from "./elements";
-import {getServiceState, post} from "./state";
+import {getServiceState, mayWorkAt, post} from "./state";
 import {KitchenRecipe, ServiceBoost, ServiceConversion, ServiceIngredient} from "./types";
 
 /**
@@ -114,12 +114,13 @@ function describeConversion(conversion: ServiceConversion): string {
     return `${conversion.input_name} → ${conversion.output_amount} ${conversion.output_name}`;
 }
 
-/** Each conversion can be queued in the prep area */
+/** Each conversion can be queued in the prep area, by players while one of their employees works there */
 function fillConversionRow(row: HTMLElement, conversion: ServiceConversion): void {
     setField(row, 'meta', `${conversion.available} stored · ${formatMinutes(conversion.minutes)} each`);
 
     const addButton = getAddButton(row);
     addButton.title = 'Convert';
+    addButton.classList.toggle('hidden', !mayWorkAt('prep'));
     addButton.addEventListener('click', () => openConversionModal(conversion));
 }
 

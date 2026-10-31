@@ -111,27 +111,27 @@ class PlayersTest extends AbstractFeatureTester
     {
         $this->callApi('api.dnd.restaurant.service.time', ['advance' => 5])->assertForbidden();
         $this->callApi('api.dnd.restaurant.service.end')->assertForbidden();
+        // Without employees in the kitchen or waiting the table, there is nothing a player's staff could do
         $this->callApi('api.dnd.restaurant.service.meal.plan', ['recipe_uuid' => 'x'])->assertForbidden();
         $this->callApi('api.dnd.restaurant.service.order.place', ['table_uuid' => $this->table->uuid])->assertForbidden();
         $this->callApi('api.dnd.restaurant.service.ingredient.add', ['amount' => 1], 'postJson', ['ingredient_uuid' => 'x'])->assertForbidden();
         $this->callApi('api.dnd.restaurant.inventory.ingredient.create', ['name' => 'Salt', 'expires_in' => 0, 'size' => 1])->assertForbidden();
         $this->callApi('api.dnd.restaurant.floor.table.create', ['name' => 'Bar', 'capacity' => 2])->assertForbidden();
         $this->callApi('api.dnd.restaurant.floor.player.invite', ['username' => 'someone'])->assertForbidden();
-        $this->callApi('api.dnd.restaurant.finances.get', [], 'getJson')->assertForbidden();
         $this->callApi('api.dnd.restaurant.edit', ['name' => 'Mine now'])->assertForbidden();
 
         $this->assertEquals('09:00', $this->restaurant->fresh()->getNow()->format('H:i'));
     }
 
-    public function test_players_only_see_the_inventory_and_service_pages(): void
+    public function test_players_only_see_the_inventory_service_and_finance_pages(): void
     {
         $this->actingAs($this->player)->get(route('dnd.restaurant.management', ['restaurant_uuid' => $this->restaurant->uuid]))
             ->assertOk()->assertDontSee('Manage restaurant');
         $this->actingAs($this->player)->get(route('dnd.restaurant.service', ['restaurant_uuid' => $this->restaurant->uuid]))
             ->assertOk()->assertDontSee('End service');
+        $this->actingAs($this->player)->get(route('dnd.restaurant.finances', ['restaurant_uuid' => $this->restaurant->uuid]))->assertOk();
 
         $this->actingAs($this->player)->get(route('dnd.restaurant.manage', ['restaurant_uuid' => $this->restaurant->uuid]))->assertForbidden();
-        $this->actingAs($this->player)->get(route('dnd.restaurant.finances', ['restaurant_uuid' => $this->restaurant->uuid]))->assertForbidden();
         $this->actingAs($this->player)->post(route('dnd.restaurant.service.start', ['restaurant_uuid' => $this->restaurant->uuid]))->assertForbidden();
     }
 
@@ -234,8 +234,25 @@ class PlayersTest extends AbstractFeatureTester
 
         $this->transfer($potato, null, $cellar)->assertForbidden();
         $this->transfer($potato, $cellar, null)->assertForbidden();
-        $this->transfer($potato, $cellar, $pantry, 'equipment', $pot->uuid)->assertForbidden();
+        $this->transfer($potato, $cellar, null, 'equipment', $pot->uuid)->assertForbidden();
 
         $this->assertEquals(5, $this->getStoredIngredientAmount($cellar, $potato));
+    }
+
+    public function test_players_move_equipment_between_storage_spaces(): void
+    {
+        [$cellar, $pantry, $potato] = $this->setUpStorage();
+        $pot = $this->createTestEquipment($this->restaurant, 1, 'Pot');
+        $this->storeEquipment($cellar, $pot, 2);
+
+        $this->transfer($potato, $cellar, $pantry, 'equipment', $pot->uuid)->assertOk();
+
+        $this->assertEquals(2, \App\Models\DnD\Restaurant\StorageEquipment::where('storage_uuid', $pantry->uuid)->where('equipment_uuid', $pot->uuid)->value('amount'));
+    }
+
+    public function test_players_see_the_finances_and_add_transactions(): void
+    {
+        $this->callApi('api.dnd.restaurant.finances.get', [], 'getJson')->assertOk();
+        $this->callApi('api.dnd.restaurant.finances.create', ['title' => 'Tips jar', 'amount' => 12])->assertCreated();
     }
 }

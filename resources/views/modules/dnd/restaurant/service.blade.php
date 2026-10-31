@@ -49,29 +49,34 @@
         <div class="flex gap-3 items-start">
 
             {{--| Sidebar |--}}
-            {{--| Collapsed until opened, as the floor and kitchen need the room during service. Players have none |--}}
-            @unless($isPlayer)
+            {{--| Collapsed until opened, as the floor and kitchen need the room during service. Players only see the |--}}
+            {{--| conversions, which they queue while one of their employees works in prep |--}}
             <aside id="inventory-sidebar" class="inventory-sidebar collapsed rounded shadow border gray-border">
                 <div class="flex items-center border-b">
                     <button class="inventory-sidebar-toggle interactive px-2" onclick="toggleSidebar()" title="Collapse / expand">
                         <span class="inventory-sidebar-toggle-icon">&laquo;</span>
                     </button>
                     <div class="inventory-sidebar-body flex flex-1">
-                        <button class="inventory-tab active flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
-                        <button class="inventory-tab flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
-                        <button class="inventory-tab flex-1 py-2" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
-                        <button class="inventory-tab flex-1 py-2" data-tab="boost" onclick="switchTab('boost')">Boosts</button>
-                        <button class="inventory-tab flex-1 py-2" data-tab="sale" onclick="switchTab('sale')">Sales</button>
+                        @unless($isPlayer)
+                            <button class="inventory-tab active flex-1 py-2" data-tab="customer" onclick="switchTab('customer')">Customers</button>
+                            <button class="inventory-tab flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
+                        @endunless
+                        <button class="inventory-tab flex-1 py-2 {{$isPlayer ? 'active' : ''}}" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
+                        @unless($isPlayer)
+                            <button class="inventory-tab flex-1 py-2" data-tab="boost" onclick="switchTab('boost')">Boosts</button>
+                            <button class="inventory-tab flex-1 py-2" data-tab="sale" onclick="switchTab('sale')">Sales</button>
+                        @endunless
                     </div>
                 </div>
 
                 <div class="inventory-sidebar-body flex flex-col gap-2 p-2">
                     <input id="inventory-search" type="search" class="underlined w-full" placeholder="Search..." oninput="renderSidebar()">
                     <ul id="inventory-list" class="inventory-list"></ul>
-                    <button id="customer-create-button" class="interactive text-sm" onclick="openCreateCustomerModal()" dusk="customer-create">+ New Customer</button>
+                    @unless($isPlayer)
+                        <button id="customer-create-button" class="interactive text-sm" onclick="openCreateCustomerModal()" dusk="customer-create">+ New Customer</button>
+                    @endunless
                 </div>
             </aside>
-            @endunless
 
             {{--| Floor |--}}
             <div class="service-floor flex-1 flex flex-col gap-2">
@@ -109,8 +114,12 @@
                         <div id="kitchen-serving" class="kitchen-meal-list kitchen-drop-zone"></div>
                     </section>
 
+                    {{--| The cookers only cook while someone works in the cooking area |--}}
                     <section id="kitchen-cooking-area" class="kitchen-area">
-                        <h4 class="kitchen-area-title">Cooking</h4>
+                        <div class="flex justify-between items-center gap-2">
+                            <h4 class="kitchen-area-title">Cooking</h4>
+                            <div class="kitchen-area-staff" data-station-staff="cooking"></div>
+                        </div>
                         <div id="kitchen-cookers" class="kitchen-cookers"></div>
                     </section>
 
@@ -118,9 +127,8 @@
                         <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Preparation</h4>
                             <div class="kitchen-area-staff" data-station-staff="prep"></div>
-                            @unless($isPlayer)
-                                <button class="interactive text-xs" onclick="openPlanMealModal()" dusk="meal-plan">+ Plan meal</button>
-                            @endunless
+                            {{--| Shown to players while one of their employees works in prep |--}}
+                            <button id="kitchen-plan-meal" class="interactive text-xs" onclick="openPlanMealModal()" dusk="meal-plan">+ Plan meal</button>
                         </div>
                         <div class="kitchen-total-progress hidden" data-station-progress="prep"><div></div></div>
                         <div id="kitchen-preparation" class="kitchen-meal-list"></div>
@@ -130,9 +138,8 @@
                         <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Equipment</h4>
                             <div class="kitchen-area-staff" data-station-staff="cleaning"></div>
-                            @unless($isPlayer)
-                                <button id="kitchen-clean-all" class="interactive text-xs disabled:opacity-40" onclick="cleanAllEquipment()" dusk="clean-all">Clean all</button>
-                            @endunless
+                            {{--| Shown to players while one of their employees cleans |--}}
+                            <button id="kitchen-clean-all" class="interactive text-xs disabled:opacity-40" onclick="cleanAllEquipment()" dusk="clean-all">Clean all</button>
                         </div>
                         <div class="kitchen-total-progress hidden" data-station-progress="cleaning"><div></div></div>
 
@@ -352,7 +359,8 @@
         <h3 id="order-details-title" class="title py-1"></h3>
         <p id="order-details-status" class="text-center text-sm text-gray-500"></p>
         <ul id="order-details-items" class="w-full"></ul>
-        <div class="flex gap-3 w-full">
+        {{--| Players see the orders of their tables, while looking after them is up to whoever runs the service |--}}
+        <div class="flex gap-3 w-full {{$isPlayer ? 'hidden' : ''}}">
             <x-form.input-wrapper label_text="Discount" cls="flex-1">
                 <input id="order-discount" type="number" class="underlined" min="0" step="0.01" data-money/>
             </x-form.input-wrapper>
@@ -365,11 +373,11 @@
             <span class="font-semibold">Total</span><span id="order-details-total" class="font-semibold"></span>
         </div>
         <x-slot:buttons>
-            <button class="interactive px-5 py-2.5" dusk="order-cancel" onclick="openCancelOrderModal()">Cancel order</button>
+            <button class="interactive px-5 py-2.5 {{$isPlayer ? 'hidden' : ''}}" dusk="order-cancel" onclick="openCancelOrderModal()">Cancel order</button>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('order-details-modal')">Close</button>
-            <button class="interactive px-5 py-2.5" dusk="order-edit" onclick="editOrder()">Edit</button>
+            <button class="interactive px-5 py-2.5 {{$isPlayer ? 'hidden' : ''}}" dusk="order-edit" onclick="editOrder()">Edit</button>
             <button id="order-consume" class="interactive px-5 py-2.5 hidden" dusk="order-consume" onclick="consumeOrder()">All consumed</button>
-            <button class="interactive px-5 py-2.5" dusk="order-finish" onclick="finishOrder()">Finish order</button>
+            <button class="interactive px-5 py-2.5 {{$isPlayer ? 'hidden' : ''}}" dusk="order-finish" onclick="finishOrder()">Finish order</button>
         </x-slot:buttons>
     </x-modal>
 
@@ -457,6 +465,8 @@
                 <textarea name="description" class="underlined" rows="3"></textarea>
             </x-form.input-wrapper>
             <button type="submit" class="hidden"></button>
+            {{-- A customer made during service has just walked in, so waits at the entrance --}}
+            <input type="hidden" name="at_entrance" value="1"/>
         </form>
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('customer-create-modal')">Cancel</button>

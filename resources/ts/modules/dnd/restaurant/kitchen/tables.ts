@@ -6,7 +6,7 @@ import {onRightClick} from "./menu";
 import {describeOrder} from "./order-details";
 import {openPrioritizeMenu} from "./prioritize";
 import {createDraggableEmployeeIcon} from "./staff";
-import {canControl, getServiceState, isPlayer, postParameters} from "./state";
+import {canControl, getServiceState, isPlayer, mayWait, postParameters} from "./state";
 import {Employee, Order} from "./types";
 
 /** What a table on the floor shows of the service: its waiter, the waiter's jobs, and how its orders are coming along */
@@ -26,9 +26,10 @@ export function renderTableService(element: HTMLElement, table: OrderTable): voi
     setupDropTarget(element, PLATE_MIME, (uuid) => {
         postParameters(`/plate/${uuid}/deliver`, {table_uuid: table.uuid});
     }, () => {
-        // Only items without a plate on its way yet, and only when someone waits the table to bring it
+        // Only items without a plate on its way yet, and only when someone waits the table to bring it. Players bring
+        // plates to the tables their employees wait
         const plate = getDraggedPlate();
-        return !isPlayer() && plate !== null && getWaiter(table) !== null && orders.some((order) => order.status === 'open'
+        return mayWait(table.uuid) && plate !== null && getWaiter(table) !== null && orders.some((order) => order.status === 'open'
             && order.items.some((item) => !item.served && !item.on_the_way && item.recipe_uuid === plate.recipe_uuid));
     });
 

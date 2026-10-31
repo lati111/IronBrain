@@ -3,8 +3,10 @@
 namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\EquipmentStage;
+use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\DnD\Restaurant\ActiveBoost;
 use App\Models\DnD\Restaurant\Boost;
+use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Meal;
 use App\Models\DnD\Restaurant\Restaurant;
@@ -167,7 +169,18 @@ class BoostService
     //| Cooking
 
     /**
-     * Cooks the meals that are still cooking over a stretch of time, finishing those that get done along the way
+     * Checks whether anyone works in the cooking area, as the cookers only cook while someone looks after them
+     * @param Restaurant $restaurant The restaurant
+     * @return bool Whether anyone cooks
+     */
+    public function hasCooks(Restaurant $restaurant): bool
+    {
+        return Employee::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::COOKING->value)->exists();
+    }
+
+    /**
+     * Cooks the meals that are still cooking over a stretch of time, finishing those that get done along the way.
+     * Without anyone in the cooking area nothing cooks, so the meals aren't done until someone is
      * @param Restaurant $restaurant The restaurant
      * @param Carbon $from When the stretch starts, in the restaurant's time
      * @param Carbon $to When it ends
@@ -175,29 +188,32 @@ class BoostService
     public function advanceCooking(Restaurant $restaurant, Carbon $from, Carbon $to): void
     {
         $boosts = $this->getBoosts($restaurant, $from);
+        $cooking = $this->hasCooks($restaurant);
         foreach ($this->getCookingMeals($restaurant) as $meal) {
-            $finishedAt = $this->cook($meal, $from, $to, $boosts);
-            $this->schedule($meal, $finishedAt ?? $this->project($meal, $to, $boosts));
+            $finishedAt = $cooking ? $this->cook($meal, $from, $to, $boosts) : null;
+            $this->schedule($meal, $finishedAt ?? ($cooking ? $this->project($meal, $to, $boosts) : null));
             $meal->save();
         }
     }
 
     /**
-     * Works out again when a cooking meal is done, after its progress or speed changed. A meal with nothing left to
-     * cook is done there and then
+     * Works out again when a cooking meal is done, after its progress or speed changed, or someone started or stopped
+     * cooking. A meal with nothing left to cook is done there and then, while one nobody cooks isn't done at all
      * @param Meal $meal The meal, cooking
      * @param Carbon $now The restaurant's current time
      * @param Collection<ActiveBoost>|null $boosts The boosts that may be active, or null to look them up
      */
     public function reschedule(Meal $meal, Carbon $now, ?Collection $boosts = null): void
     {
-        $boosts ??= $this->getBoosts($meal->getRestaurant(), $now);
-        $this->schedule($meal, $this->project($meal, $now, $boosts));
+        $restaurant = $meal->getRestaurant();
+        $boosts ??= $this->getBoosts($restaurant, $now);
+        $this->schedule($meal, $this->hasCooks($restaurant) ? $this->project($meal, $now, $boosts) : null);
         $meal->save();
     }
 
     /**
-     * Reschedules every meal still cooking, as when a boost changed how fast they go
+     * Reschedules every meal still cooking, as when a boost changed how fast they go, or someone started or stopped
+     * cooking
      */
     public function rescheduleAll(Restaurant $restaurant, Carbon $now): void
     {
@@ -275,11 +291,13 @@ class BoostService
     }
 
     /**
-     * Sets when a cooking meal is done, after which it stays good for its recipe's good for time. Does not save
+     * Sets when a cooking meal is done, after which it stays good for its recipe's good for time. A meal nobody cooks
+     * has no time it is done, so it neither gets done nor goes off until someone cooks it. Does not save
+     * @param Carbon|null $doneAt When it is done, or null when nobody cooks it
      */
-    private function schedule(Meal $meal, Carbon $doneAt): void
+    private function schedule(Meal $meal, ?Carbon $doneAt): void
     {
         $meal->cooking_ends_at = $doneAt;
-        $meal->expires_at = $doneAt->copy()->addHours($meal->Recipe->good_for);
+        $meal->expires_at = $doneAt?->copy()->addHours($meal->Recipe->good_for);
     }
 }

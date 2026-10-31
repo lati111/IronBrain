@@ -2,7 +2,7 @@ import {openModal, closeModal} from "../../../../components/modal";
 import {formatMoney, formatSatisfaction, refreshMoneyInputs, setupMoneyInput} from "../shared";
 import {openOrderModal, OrderTable, SeatedCustomer} from "../orders";
 import {createSpan, createTextElement, formatMinutes} from "./elements";
-import {getServiceState, post} from "./state";
+import {getServiceState, isPlayer, post} from "./state";
 import {Order} from "./types";
 
 /**
@@ -56,7 +56,7 @@ function renderOrderDetails(): void {
 
         const actions = document.createElement('span');
         actions.className = 'w-20 text-right';
-        if (item.served && !item.consumed) {
+        if (item.served && !item.consumed && !isPlayer()) {
             const consume = createTextElement('button', 'interactive text-xs', 'Consumed');
             consume.addEventListener('click', () => orderAction(`/item/${item.uuid}/consume`));
             actions.appendChild(consume);
@@ -79,7 +79,7 @@ function renderOrderDetails(): void {
     document.getElementById('order-details-total')!.textContent = formatMoney(order.payable);
 
     const uneaten = order.items.some((item) => item.served && !item.consumed);
-    document.getElementById('order-consume')!.classList.toggle('hidden', !uneaten);
+    document.getElementById('order-consume')!.classList.toggle('hidden', !uneaten || isPlayer());
 }
 
 /** Describes how far along an order is, with how long ago it was placed or fully served */

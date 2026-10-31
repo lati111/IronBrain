@@ -13,7 +13,7 @@
 @section('onload_functions', 'init()')
 
 @section('content')
-    {{--| Players only move ingredients between the storage spaces, so everything else is left out for them |--}}
+    {{--| Players move items between the storage spaces, see the recipes and use the conversions, so the rest is left out for them |--}}
     <div id="inventory" data-api-url="{{route('api.dnd.restaurant.inventory.get', ['restaurant_uuid' => $restaurant->uuid])}}"
          data-player="{{$isPlayer ? 1 : 0}}">
 
@@ -24,8 +24,8 @@
                 <a href="{{route('dnd.restaurant.overview')}}" class="interactive">&larr; Restaurants</a>
                 @unless($isPlayer)
                     <a href="{{route('dnd.restaurant.manage', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-manage">Manage restaurant</a>
-                    <a href="{{route('dnd.restaurant.finances', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-finances">Finances</a>
                 @endunless
+                <a href="{{route('dnd.restaurant.finances', ['restaurant_uuid' => $restaurant->uuid])}}" class="interactive" dusk="restaurant-finances">Finances</a>
             </div>
             <div class="flex flex-col items-center">
                 <h1 class="title">Inventory</h1>
@@ -57,16 +57,18 @@
         <div class="flex gap-4 items-start">
 
             {{--| Sidebar |--}}
-            @unless($isPlayer)
+            {{--| Players see the recipes, and use the conversions by dropping stored stacks on them |--}}
             <aside id="inventory-sidebar" class="inventory-sidebar rounded shadow border gray-border">
                 <div class="flex items-center border-b">
                     <button class="inventory-sidebar-toggle interactive px-2" onclick="toggleSidebar()" title="Collapse / expand">
                         <span class="inventory-sidebar-toggle-icon">&laquo;</span>
                     </button>
                     <div class="inventory-sidebar-body flex flex-1">
-                        <button class="inventory-tab active flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
-                        <button class="inventory-tab flex-1 py-2" data-tab="equipment" onclick="switchTab('equipment')">Equipment</button>
-                        <button class="inventory-tab flex-1 py-2" data-tab="recipe" onclick="switchTab('recipe')">Recipes</button>
+                        @unless($isPlayer)
+                            <button class="inventory-tab active flex-1 py-2" data-tab="ingredient" onclick="switchTab('ingredient')">Ingredients</button>
+                            <button class="inventory-tab flex-1 py-2" data-tab="equipment" onclick="switchTab('equipment')">Equipment</button>
+                        @endunless
+                        <button class="inventory-tab flex-1 py-2 {{$isPlayer ? 'active' : ''}}" data-tab="recipe" onclick="switchTab('recipe')">Recipes</button>
                         <button class="inventory-tab flex-1 py-2" data-tab="conversion" onclick="switchTab('conversion')">Conversions</button>
                     </div>
                 </div>
@@ -74,10 +76,11 @@
                 <div class="inventory-sidebar-body flex flex-col gap-2 p-2">
                     <input id="inventory-search" type="search" class="underlined w-full" placeholder="Search..." oninput="renderSidebar()">
                     <ul id="inventory-list" class="inventory-list"></ul>
-                    <button id="inventory-create-type" class="interactive text-sm" onclick="openCreateTypeModal()">+ New Ingredient</button>
+                    @unless($isPlayer)
+                        <button id="inventory-create-type" class="interactive text-sm" onclick="openCreateTypeModal()">+ New Ingredient</button>
+                    @endunless
                 </div>
             </aside>
-            @endunless
 
             {{--| Storage area |--}}
             <div class="flex-1 flex flex-col gap-4 min-w-0">

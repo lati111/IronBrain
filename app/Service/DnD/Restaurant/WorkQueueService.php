@@ -4,6 +4,7 @@ namespace App\Service\DnD\Restaurant;
 
 use App\Enum\DnD\Restaurant\EquipmentStage;
 use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\DnD\Restaurant\Customer;
 use App\Models\DnD\Restaurant\Boost;
 use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
@@ -29,6 +30,7 @@ class WorkQueueService
         private readonly InventoryService $inventoryService,
         private readonly SatisfactionService $satisfactionService,
         private readonly BoostService $boostService,
+        private readonly FloorService $floorService,
     ) {
     }
 
@@ -43,7 +45,8 @@ class WorkQueueService
      */
     public function createJob(
         Restaurant $restaurant, WorkStation $station, float $minutes, ?Meal $meal = null, ?Equipment $equipment = null,
-        int $amount = 1, ?Table $table = null, ?Order $order = null, ?ServedMeal $plate = null,
+        int $amount = 1, ?Table $table = null, ?Order $order = null, ?ServedMeal $plate = null, ?Customer $customer = null,
+        ?int $seat = null,
     ): Work
     {
         $job = new Work();
@@ -54,6 +57,8 @@ class WorkQueueService
         $job->table_uuid = $table?->uuid;
         $job->order_uuid = $order?->uuid;
         $job->served_meal_uuid = $plate?->uuid;
+        $job->customer_uuid = $customer?->uuid;
+        $job->seat = $seat;
         $job->amount = $amount;
         $job->work = $minutes;
         $job->progress = 0;
@@ -288,8 +293,8 @@ class WorkQueueService
     }
 
     /**
-     * Finishes a waiter's job: the order is taken, or the portion is served. Unlike the work areas, waiters have no
-     * total to keep, so the job is cleared straight away
+     * Finishes a waiter's job: the order is taken, the portion is served, or the customer is seated. Unlike the work
+     * areas, waiters have no total to keep, so the job is cleared straight away
      * @param Work $job The job
      * @param Carbon $at When it finished, in the restaurant's time
      */
@@ -303,7 +308,18 @@ class WorkQueueService
             $this->finishDelivery($job->ServedMeal, $at);
         }
 
+        $customer = $job->Customer;
+        $table = $job->Table;
         $job->delete();
+
+        // The customer takes their seat, unless someone was seated there in the meantime, in which case they stay at
+        // the entrance to be seated elsewhere
+        if ($customer !== null && $table !== null) {
+            try {
+                $this->floorService->seatCustomer($customer, $table, $job->seat);
+            } catch (InvalidArgumentException) {
+            }
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ namespace App\Http\Api\Modules\DnD\Restaurant;
 
 use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\RespondsWithErrors;
+use App\Http\Api\Modules\DnD\Restaurant\Traits\GuardsPlayers;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Service\DnD\Restaurant\ServiceStateService;
 use Closure;
@@ -16,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 abstract class AbstractServiceApi extends AbstractApi
 {
-    use RespondsWithErrors;
+    use RespondsWithErrors, GuardsPlayers;
 
     public function __construct(protected readonly ServiceStateService $serviceStateService)
     {

@@ -1,7 +1,9 @@
 <?php
 namespace App\Http\Api\Modules\DnD\Restaurant;
 
+use App\Enum\DnD\Restaurant\WorkStation;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\ResolvesRestaurant;
+use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Ingredient;
 use App\Models\DnD\Restaurant\Meal;
@@ -9,6 +11,7 @@ use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\ServedMeal;
 use App\Service\DnD\Restaurant\KitchenService;
+use App\Service\DnD\Restaurant\PlayerAccessService;
 use App\Service\DnD\Restaurant\ServiceStateService;
 use App\Service\DnD\Restaurant\WorkService;
 use Closure;
@@ -63,6 +66,12 @@ class MealApi extends AbstractServiceApi
             return $this->notFound('Restaurant');
         }
 
+        // Players plan meals while one of their employees works in prep
+        $denied = $this->denyPlayerUnlessWorking($restaurant, WorkStation::PREP);
+        if ($denied !== null) {
+            return $denied;
+        }
+
         $recipe = $this->findInRestaurant(Recipe::class, $restaurant, $request->get('recipe_uuid'));
         if ($recipe === null) {
             return $this->notFound('Recipe');
@@ -95,7 +104,8 @@ class MealApi extends AbstractServiceApi
     public function prepareMeal(string $restaurant_uuid, string $meal_uuid): JsonResponse
     {
         return $this->withMeal($restaurant_uuid, $meal_uuid, 'Queued for prep',
-            fn (Restaurant $restaurant, Meal $meal) => $this->workService->queuePrep($restaurant, $meal));
+            fn (Restaurant $restaurant, Meal $meal) => $this->workService->queuePrep($restaurant, $meal),
+            fn (Restaurant $restaurant) => $this->denyPlayerUnlessWorking($restaurant, WorkStation::PREP));
     }
 
     /**
@@ -118,7 +128,7 @@ class MealApi extends AbstractServiceApi
             return $invalid;
         }
 
-        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Meal is cooking', function (Restaurant $restaurant, Meal $meal) use ($request) {
+        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Meal is cooking', guard: fn (Restaurant $restaurant) => $this->denyPlayerUnlessWorking($restaurant, WorkStation::COOKING), action: function (Restaurant $restaurant, Meal $meal) use ($request) {
             $cooker = $this->findInRestaurant(Equipment::class, $restaurant, $request->get('cooker_uuid'));
             if ($cooker === null) {
                 return $this->notFound('Cooker');
@@ -150,7 +160,8 @@ class MealApi extends AbstractServiceApi
     public function serveMeal(string $restaurant_uuid, string $meal_uuid): JsonResponse
     {
         return $this->withMeal($restaurant_uuid, $meal_uuid, 'Meal moved to serving',
-            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->serveMeal($restaurant, $meal));
+            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->serveMeal($restaurant, $meal),
+            fn (Restaurant $restaurant) => $this->denyPlayerUnlessWorking($restaurant, WorkStation::COOKING));
     }
 
     /**
@@ -214,7 +225,7 @@ class MealApi extends AbstractServiceApi
             return $invalid;
         }
 
-        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Meal put in', function (Restaurant $restaurant, Meal $meal) use ($request) {
+        return $this->withMeal($restaurant_uuid, $meal_uuid, 'Meal put in', guard: fn (Restaurant $restaurant) => $this->denyPlayerUnlessWorking($restaurant, WorkStation::PREP), action: function (Restaurant $restaurant, Meal $meal) use ($request) {
             $source = $this->findInRestaurant(Meal::class, $restaurant, $request->get('source_uuid'));
             if ($source === null) {
                 return $this->notFound('Meal');
@@ -236,7 +247,12 @@ class MealApi extends AbstractServiceApi
     public function plateMeal(string $restaurant_uuid, string $meal_uuid): JsonResponse
     {
         return $this->withMeal($restaurant_uuid, $meal_uuid, 'Portion plated',
-            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->plateMeal($restaurant, $meal));
+            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->plateMeal($restaurant, $meal),
+            // Cooks plate what they cooked, and waiters what they bring to their tables
+            fn (Restaurant $restaurant) => $this->denyPlayerUnless($restaurant,
+                fn (User $player, PlayerAccessService $access) => $access->worksAt($restaurant, $player, WorkStation::COOKING)
+                    || $access->waitsAnyTable($restaurant, $player),
+                'One of your employees has to work in cooking or wait a table for that'));
     }
 
     /**
@@ -268,13 +284,20 @@ class MealApi extends AbstractServiceApi
      * @param string $meal_uuid The uuid of the meal
      * @param string $message The message on success
      * @param Closure $action The action, given the restaurant and meal. May return a response to respond with instead
+     * @param Closure|null $guard Turns away players who may not do this, given the restaurant, for actions players
+     *                            may do at all
      * @return JsonResponse The updated service state, or an error, in JSON format
      */
-    private function withMeal(string $restaurant_uuid, string $meal_uuid, string $message, Closure $action): JsonResponse
+    private function withMeal(string $restaurant_uuid, string $meal_uuid, string $message, Closure $action, ?Closure $guard = null): JsonResponse
     {
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
             return $this->notFound('Restaurant');
+        }
+
+        $denied = $guard !== null ? $guard($restaurant) : null;
+        if ($denied !== null) {
+            return $denied;
         }
 
         $meal = $this->findInRestaurant(Meal::class, $restaurant, $meal_uuid);

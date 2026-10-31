@@ -77,10 +77,9 @@ class InventoryApi extends AbstractInventoryApi
             return $this->respond(Response::HTTP_BAD_REQUEST, 'A storage to move from or to is required');
         }
 
-        // Players move ingredients around, but neither add them to the inventory nor take them out of it
-        if ($restaurant->isPlayer(Auth::user())
-            && ($request->get('type') !== InventoryService::TYPE_INGREDIENT || $fromUuid === null || $toUuid === null)) {
-            return $this->respond(Response::HTTP_FORBIDDEN, 'Players can only move ingredients between storage spaces');
+        // Players move ingredients and equipment around, but neither add them to the inventory nor take them out of it
+        if ($restaurant->isPlayer(Auth::user()) && ($fromUuid === null || $toUuid === null)) {
+            return $this->respond(Response::HTTP_FORBIDDEN, 'Players can only move items between storage spaces');
         }
 
         $model = $request->get('type') === InventoryService::TYPE_INGREDIENT ? Ingredient::class : Equipment::class;

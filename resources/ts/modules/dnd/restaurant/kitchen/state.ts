@@ -1,7 +1,7 @@
 import {getData} from "../../../../main";
 import {postOnce} from "../shared";
 import {isMenuOpen} from "./menu";
-import {Employee, ServiceState} from "./types";
+import {Employee, ServiceState, StaffArea} from "./types";
 
 /** The service state, which the kitchen, the floor and the sidebar are all shown from, and the requests changing it */
 
@@ -43,6 +43,28 @@ export function canControl(employee: Employee): boolean {
     return !isPlayer() || employee.player_uuid === state!.viewer.user_uuid;
 }
 
+/** The employees assigned to the player looking, or none for anyone else */
+function getOwnEmployees(): Employee[] {
+    return isPlayer() ? (state?.employees ?? []).filter((employee) => employee.player_uuid === state!.viewer.user_uuid) : [];
+}
+
+/** Whether the one looking may do the work of an area of the kitchen: anyone but a player, and a player while one of
+ * their employees works there */
+export function mayWorkAt(area: StaffArea): boolean {
+    return !isPlayer() || getOwnEmployees().some((employee) => employee.station === area);
+}
+
+/** Whether the one looking may do the work of a table: anyone but a player, and a player while one of their employees
+ * waits it */
+export function mayWait(tableUuid: string): boolean {
+    return !isPlayer() || getOwnEmployees().some((employee) => employee.tables.includes(tableUuid));
+}
+
+/** Whether the one looking may do the work of any table: anyone but a player, and a player waiting a table */
+export function mayWaitAny(): boolean {
+    return !isPlayer() || getOwnEmployees().some((employee) => employee.tables.length > 0);
+}
+
 //| Loading & refreshing
 
 /** Fetches the service for the first time, from the url all its requests are made to */
@@ -82,6 +104,16 @@ async function refreshState(): Promise<void> {
         if (count === changeCount && isIdle() && !response.data.unchanged) {
             setState(response.data);
         }
+    } catch {
+        // Tried again on the next refresh
+    }
+}
+
+/** Fetches the service again straight away, as after a change made elsewhere, such as on the floor */
+export async function refreshServiceState(): Promise<void> {
+    try {
+        const response = await getData(serviceUrl);
+        setState(response.data);
     } catch {
         // Tried again on the next refresh
     }

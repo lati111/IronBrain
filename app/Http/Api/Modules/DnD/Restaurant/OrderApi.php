@@ -60,6 +60,13 @@ class OrderApi extends AbstractServiceApi
             return $this->notFound('Table');
         }
 
+        // Players send the waiter of their table to take an order, though only the owner and managers note it down
+        $denied = $this->denyPlayerUnlessWaiting($restaurant, $table)
+            ?? ($request->filled('items') ? $this->denyPlayerUnless($restaurant, fn () => false, 'Players can\'t note down orders') : null);
+        if ($denied !== null) {
+            return $denied;
+        }
+
         $items = $this->resolveOrderItems($restaurant, null, $request->get('items') ?? []);
         if ($items instanceof JsonResponse) {
             return $items;
@@ -153,6 +160,12 @@ class OrderApi extends AbstractServiceApi
         $table = $this->findInRestaurant(Table::class, $restaurant, $request->get('table_uuid'));
         if ($table === null) {
             return $this->notFound('Table');
+        }
+
+        // Players bring plates to the tables their employees wait
+        $denied = $this->denyPlayerUnlessWaiting($restaurant, $table);
+        if ($denied !== null) {
+            return $denied;
         }
 
         return $this->attempt($restaurant, 'On its way to ' . $table->name, fn () => $this->orderService->deliverPlate($restaurant, $plate, $table));

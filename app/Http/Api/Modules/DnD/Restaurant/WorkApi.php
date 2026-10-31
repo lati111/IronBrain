@@ -190,6 +190,11 @@ class WorkApi extends AbstractServiceApi
             return $this->notFound('Restaurant');
         }
 
+        $denied = $this->denyPlayerUnlessWorking($restaurant, WorkStation::CLEANING);
+        if ($denied !== null) {
+            return $denied;
+        }
+
         $equipment = $this->findInRestaurant(Equipment::class, $restaurant, $equipment_uuid);
         if ($equipment === null) {
             return $this->notFound('Equipment');
@@ -210,6 +215,11 @@ class WorkApi extends AbstractServiceApi
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
             return $this->notFound('Restaurant');
+        }
+
+        $denied = $this->denyPlayerUnlessWorking($restaurant, WorkStation::CLEANING);
+        if ($denied !== null) {
+            return $denied;
         }
 
         return $this->attempt($restaurant, 'Queued all dirty equipment for cleaning', fn () => $this->workService->queueAllCleaning($restaurant));
@@ -236,6 +246,11 @@ class WorkApi extends AbstractServiceApi
         $restaurant = $this->getRestaurant($restaurant_uuid);
         if ($restaurant === null) {
             return $this->notFound('Restaurant');
+        }
+
+        $denied = $this->denyPlayerUnlessWorking($restaurant, WorkStation::PREP);
+        if ($denied !== null) {
+            return $denied;
         }
 
         $conversion = $this->findInRestaurant(Conversion::class, $restaurant, $conversion_uuid);

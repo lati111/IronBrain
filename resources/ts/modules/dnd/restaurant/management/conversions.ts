@@ -23,9 +23,13 @@ export function renderConversionRows(list: HTMLElement, search: string): number 
         row.querySelector('[data-field="stored"]')!.setAttribute('title', 'Minutes per piece during service');
         row.title = describeConversion(conversion);
 
-        // Conversions are never stored, so only opening them is possible
+        // Conversions are never stored, so only opening them is possible, by whoever manages the restaurant
         hideRowActions(row, 'add', 'remove', 'edit');
-        row.addEventListener('click', () => openConversionModal(conversion.uuid));
+        if (!state.isPlayer) {
+            row.addEventListener('click', () => openConversionModal(conversion.uuid));
+        } else {
+            row.classList.remove('clickable');
+        }
 
         setupDropTarget(row, ITEM_MIME, (data) => openConvertModal(conversion, JSON.parse(data) as DraggedItem), () => {
             const dragged = getDraggedItem();

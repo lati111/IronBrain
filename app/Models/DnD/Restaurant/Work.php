@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null table_uuid The uuid of the table a waiter's job is for, done by whoever waits it
  * @property string|null order_uuid The uuid of the order the waiter is taking
  * @property string|null served_meal_uuid The uuid of the plated portion the waiter is bringing
+ * @property string|null customer_uuid The uuid of the customer the waiter is seating
+ * @property integer|null seat The seat at the table the customer is taken to
  * @property string|null input_uuid The uuid of the ingredient being converted in the prep area
  * @property float|null input_amount How much of the ingredient is being converted
  * @property string|null output_uuid The uuid of the ingredient it is converted into
@@ -111,6 +113,14 @@ class Work extends RestaurantDataModel
      */
     public function ServedMeal(): BelongsTo {
         return $this->belongsTo(ServedMeal::class, 'served_meal_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the customer the waiter is seating
+     * @return BelongsTo
+     */
+    public function Customer(): BelongsTo {
+        return $this->belongsTo(Customer::class, 'customer_uuid', 'uuid');
     }
 
     /**
