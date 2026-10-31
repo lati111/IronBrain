@@ -20,6 +20,41 @@ class DepositServiceTest extends ServiceAbstractServiceTester
     {
         parent::setUp();
         $this->createTestGame('X');
+        $this->createCsvReferenceData();
+    }
+
+    /**
+     * Creates the reference data used by the test csv files
+     * @return void
+     */
+    private function createCsvReferenceData(): void
+    {
+        foreach (['vl', 'x'] as $game) {
+            $this->createTestGame($game);
+        }
+
+        foreach (['flying', 'grass', 'water'] as $type) {
+            $this->createTestType($type);
+        }
+
+        foreach (['modest', 'careful'] as $nature) {
+            $this->createTestNature($nature);
+        }
+
+        foreach (['windrider', 'clearbody'] as $ability) {
+            $this->createTestAbility($ability);
+        }
+
+        foreach (['heavy-ball', 'cherish-ball'] as $pokeball) {
+            $this->createTestPokeball($pokeball);
+        }
+
+        foreach (['shadowsneak', 'trailblaze', 'pounce', 'pound', 'tenmvoltthunderbolt', 'aeroblast', 'crosschop'] as $move) {
+            $this->createTestMove($move);
+        }
+
+        $this->createTestPokemon('bramblin', 'grass');
+        $this->createTestPokemon('volcanion', 'water');
     }
     /**
      * Tests the importing of a v1 csv
