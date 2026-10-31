@@ -49,14 +49,17 @@ Route::prefix('/config')
             ->group(function() {
                 Route::get('/', [RoleController::class, 'overview'])
                     ->name("config.role.overview");
-                Route::get('/new', [RoleController::class, 'new'])
-                    ->name("config.role.new");
-                Route::get('/{id}/modify', [RoleController::class, 'modify'])
-                    ->name("config.role.modify");
-                Route::post('/save', [RoleController::class, 'save'])
-                    ->name("config.role.save");
-                Route::post('/{id}/delete', [RoleController::class, 'delete'])
-                    ->name("config.role.delete");
+                Route::middleware('auth.permission:config.role.edit')
+                    ->group(function() {
+                        Route::get('/new', [RoleController::class, 'new'])
+                            ->name("config.role.new");
+                        Route::get('/{id}/modify', [RoleController::class, 'modify'])
+                            ->name("config.role.modify");
+                        Route::post('/save', [RoleController::class, 'save'])
+                            ->name("config.role.save");
+                        Route::post('/{id}/delete', [RoleController::class, 'delete'])
+                            ->name("config.role.delete");
+                    });
                 Route::post('/{role_id}/permission/{permission_id}/toggle', [RoleController::class, 'togglePermission'])
                     ->name("config.role.permission.toggle");
             });
