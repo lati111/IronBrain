@@ -29,7 +29,7 @@
         "code": "dnd_restaurant",
         "name": "DnD Restaurant Simulator",
         "description": "A simulator for running a restaurant within your Dungeons & Dragons campaign.",
-        "thumbnail": null,
+        "thumbnail": "dnd_restaurant",
         "route": "dnd.restaurant.overview",
         "permission": "dnd_restaurant.access",
         "order": 3,
