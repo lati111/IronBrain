@@ -3,9 +3,8 @@
 namespace App\Http\Dataproviders\Config\Role;
 
 use App\Enum\Auth\RoleEnum;
-use App\Enum\GenericStringEnum;
 use App\Exceptions\IronBrainDataException;
-use App\Http\Api\AbstractApi;
+use App\Http\Dataproviders\AbstractDatalist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Auth\Permission;
 use App\Models\Auth\Role;
@@ -18,7 +17,7 @@ use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
 use Symfony\Component\HttpFoundation\Response;
 
-class RolePermissionDatatable extends AbstractApi
+class RolePermissionDatatable extends AbstractDatalist
 {
     use Dataprovider, Paginatable, HasPages, Searchable;
 
@@ -37,7 +36,7 @@ class RolePermissionDatatable extends AbstractApi
             return $this->respond($e->getCode(), $e->getMessage(), $e->getData());
         }
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /**

@@ -20,6 +20,16 @@ class DepositServiceTest extends ServiceAbstractServiceTester
     {
         parent::setUp();
         $this->createTestGame('X');
+
+        // reference data used by the pokemon in main_v1.2.csv
+        $this->createTestReferenceData([['bramblin', 0], ['volcanion', 0]], [
+            'abilities' => ['windrider', 'clearbody'],
+            'natures' => ['modest', 'careful'],
+            'pokeballs' => ['heavy-ball', 'cherish-ball'],
+            'types' => ['flying', 'grass', 'water'],
+            'moves' => ['shadowsneak', 'trailblaze', 'pounce', 'pound', 'tenmvoltthunderbolt', 'aeroblast', 'crosschop'],
+            'games' => ['vl', 'x'],
+        ]);
     }
     /**
      * Tests the importing of a v1 csv

@@ -8,25 +8,38 @@
 
 {{--| table |--}}
 @section('table')
-    <x-datalist.datatable.table id="overview-table" url="{{route('data.config.roles.overview.datatable')}}">
+    <div class="flex flex-col">
+        <x-datalist.datatable.table id="overview-table" url="{{route('data.config.roles.overview.datatable')}}">
 
-        <x-datalist.datatable.header column="id" visible="false">
-            <input type="hidden" name="id" value="[value]">
-        </x-datalist.datatable.header>
-
-        <x-datalist.datatable.header column="name" display="Name"/>
-
-        <x-datalist.datatable.header column="description" display="Description"/>
-
-        @if($user->hasPermission('config.role.permissions'))
-            <x-datalist.datatable.header column="buttons">
-                <div class="flex flex-col justify-center">
-                    <x-elements.buttons.button onclick="openPermissionModal(this.closest('tr'))">edit permissions</x-elements.buttons.button>
-                </div>
+            <x-datalist.datatable.header column="id" visible="false">
+                <input type="hidden" name="id" value="[value]">
             </x-datalist.datatable.header>
-        @endif
 
-    </x-datalist.datatable.table>
+            <x-datalist.datatable.header column="name" display="Name"/>
+
+            <x-datalist.datatable.header column="description" display="Description"/>
+
+            @if($user->hasPermission('config.role.edit') || $user->hasPermission('config.role.permissions'))
+                <x-datalist.datatable.header column="buttons">
+                    <div class="flex flex-col justify-center">
+                        @if($user->hasPermission('config.role.edit'))
+                            <x-elements.buttons.button onclick="openModifyPage(this.closest('tr'))">edit</x-elements.buttons.button>
+                        @endif
+                        @if($user->hasPermission('config.role.permissions'))
+                            <x-elements.buttons.button onclick="openPermissionModal(this.closest('tr'))">edit permissions</x-elements.buttons.button>
+                        @endif
+                    </div>
+                </x-datalist.datatable.header>
+            @endif
+
+        </x-datalist.datatable.table>
+
+        @if($user->hasPermission('config.role.edit'))
+            <div class="flex justify-center mt-3">
+                <a href="{{route('config.role.new')}}" class="interactive" dusk="new_role">New role</a>
+            </div>
+        @endif
+    </div>
 @endsection
 
 {{--| modals |--}}

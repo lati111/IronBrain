@@ -83,6 +83,17 @@ class AddItemTest extends AbstractApiFeatureTester implements PostOperationInter
         $this->assertApiMessage('Exalted weapons cannot be added manually', $response);
     }
 
+    public function test_add_unlinked_exalted_weapon_forbidden(): void
+    {
+        $exaltedWeapon = $this->createTestWeapon(type: 'exalted');
+
+        $response = $this->getHttpClient($this->getOperationUser())
+            ->post($this->getRoute(), ['id' => $exaltedWeapon->id, 'type' => 'weapon']);
+
+        $response->assertForbidden();
+        $this->assertApiMessage('Exalted weapons cannot be added manually', $response);
+    }
+
     //| already in collection test
 
     public function test_add_item_already_in_collection(): void

@@ -60,63 +60,18 @@ export class DataCardlist extends LaravelDataCardList {
     protected filterSetup(): void {
         super.filterSetup();
 
-        //setup filter form dataselect
-        if (this.filterForm !== null) {
-            const valueSelect = this.filterForm.querySelector('.dataselect-container [name="dataselect"]');
-            if (valueSelect !== null) {
-                if (valueSelect.id === null) {
-                    valueSelect.id = this.dataproviderID + '-value-dataselect';
-                }
-
-                this.valueDataSelect = new DataSelect(valueSelect.id)
-                this.valueDataSelectContainer = this.filterForm.querySelector('.dataselect-container');
-            }
+        // swap the dataselects created by the base class for our own, which unwrap the api response
+        if (this.valueDataSelect !== null) {
+            this.valueDataSelect = new DataSelect(this.valueDataSelect.dataproviderID);
         }
 
-        //setup datafilterselects
-        const datafilterselects = document.querySelectorAll(`.${this.dataproviderID}-data-filter-select[data-filter-operator]`);
-        for (const datafilterselect of datafilterselects) {
-            this.filterDataSelects[datafilterselect.id] = new DataSelect(datafilterselect.id);
+        for (const id of Object.keys(this.filterDataSelects)) {
+            this.filterDataSelects[id] = new DataSelect(id);
         }
     }
 
 
     public setSearch(term: string): void {
         this.searchterm = term;
-    }
-
-    protected initSearchbar() {
-        let searchbarID = this.dataprovider.getAttribute('data-searchbar-ID');
-        if (searchbarID === null) {
-            searchbarID = this.dataproviderID + '-searchbar';
-        }
-
-        const searchbarElement = document.querySelector('#' + searchbarID + '.searchbar')
-        if (searchbarElement === null) {
-            return;
-        }
-
-        this.searchbar = searchbarElement;
-        const loadFunc = this.searchbarEvent.bind(this);
-
-        //confirm button init
-        const searchBtnID = searchbarElement.getAttribute('data-confirm-button-ID') ?? this.dataproviderID + '-search-confirm-button'
-        const searchBtnElement = document.querySelector('#'+searchBtnID) as HTMLButtonElement|null;
-        if (searchBtnElement !== null) {
-            searchBtnElement.addEventListener('click', loadFunc)
-            this.searchbarConfirmButton = searchBtnElement
-        }
-
-        //input init
-        const searchInputID = searchbarElement.getAttribute('data-input-ID')
-        if (searchBtnID !== undefined) {
-            let searchInputElement = document.querySelector('#'+searchInputID) as HTMLInputElement|null;
-            if (searchInputElement === null) {
-                searchInputElement = this.searchbar as HTMLInputElement;
-            }
-
-            searchInputElement.addEventListener('keypress', loadFunc)
-            this.searchbarInput = searchInputElement
-        }
     }
 }

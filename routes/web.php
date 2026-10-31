@@ -49,14 +49,17 @@ Route::prefix('/config')
             ->group(function() {
                 Route::get('/', [RoleController::class, 'overview'])
                     ->name("config.role.overview");
-                Route::get('/new', [RoleController::class, 'new'])
-                    ->name("config.role.new");
-                Route::get('/{id}/modify', [RoleController::class, 'modify'])
-                    ->name("config.role.modify");
-                Route::post('/save', [RoleController::class, 'save'])
-                    ->name("config.role.save");
-                Route::post('/{id}/delete', [RoleController::class, 'delete'])
-                    ->name("config.role.delete");
+                Route::middleware('auth.permission:config.role.edit')
+                    ->group(function() {
+                        Route::get('/new', [RoleController::class, 'new'])
+                            ->name("config.role.new");
+                        Route::get('/{id}/modify', [RoleController::class, 'modify'])
+                            ->name("config.role.modify");
+                        Route::post('/save', [RoleController::class, 'save'])
+                            ->name("config.role.save");
+                        Route::post('/{id}/delete', [RoleController::class, 'delete'])
+                            ->name("config.role.delete");
+                    });
                 Route::post('/{role_id}/permission/{permission_id}/toggle', [RoleController::class, 'togglePermission'])
                     ->name("config.role.permission.toggle");
             });
@@ -102,5 +105,31 @@ Route::prefix('/arsenal')
 
         Route::get('/foundry', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showFoundry'])
             ->name('arsenal.foundry.show');
+    });
+
+//| dnd restaurant
+// Players of a restaurant may only see the pages that opt out of the manager guard
+Route::prefix('/dnd/restaurant')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access', 'dnd.restaurant.manager'])
+    ->group(function() {
+        Route::get('/', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showOverview'])
+            ->name('dnd.restaurant.overview');
+
+        Route::get('/{restaurant_uuid}/management', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManagement'])
+            ->name('dnd.restaurant.management')
+            ->withoutMiddleware('dnd.restaurant.manager');
+
+        Route::get('/{restaurant_uuid}/manage', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManage'])
+            ->name('dnd.restaurant.manage');
+
+        Route::get('/{restaurant_uuid}/finances', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showFinances'])
+            ->name('dnd.restaurant.finances')
+            ->withoutMiddleware('dnd.restaurant.manager');
+
+        Route::get('/{restaurant_uuid}/service', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showService'])
+            ->name('dnd.restaurant.service')
+            ->withoutMiddleware('dnd.restaurant.manager');
+        Route::post('/{restaurant_uuid}/service/start', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'startService'])
+            ->name('dnd.restaurant.service.start');
     });
 

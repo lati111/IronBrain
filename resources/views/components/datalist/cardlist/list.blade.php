@@ -26,7 +26,7 @@
     </div>
 
     {{--| Searchbar |--}}
-    @if($includeSearchbar ?? true))
+    @if($includeSearchbar ?? true)
     <div class="flex justify-center">
         <x-datalist.parts.searchbar id="{{$id}}"></x-datalist.parts.searchbar>
     </div>
@@ -45,7 +45,7 @@
         id="{{$id}}"
         class="dataprovider cardlist text-center w-full mt-6"
         data-content-url="{{$url}}"
-        data-empty-body="<p><class='text-center w-full'>No results</p>"
+        data-empty-body="<p class='text-center w-full'>No results</p>"
         @if(filter_var($history ?? true, FILTER_VALIDATE_BOOLEAN) === false)data-history="false" @endif
         @if(filter_var($dynamic ?? false, FILTER_VALIDATE_BOOLEAN))data-dynamic-url="true" @endif
         @if(filter_var($filtering ?? false, FILTER_VALIDATE_BOOLEAN))
@@ -58,7 +58,7 @@
         <x-datalist.parts.load-spinner dataprovider_id="{{$id}}"/>
 
         {{--| Datalist body |--}}
-        <div id="{{$id}}-content" class="hidden flex justify-center flex-wrap gap-6">aaa</div>
+        <div id="{{$id}}-content" class="hidden flex justify-center flex-wrap gap-6"></div>
     </div>
 
     {{--| Pagination |--}}

@@ -1,0 +1,252 @@
+{
+    "dnd__restaurant_restaurant": [
+        {
+            "uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "owner_uuid": "01a1010a-cb2b-7267-a1e5-0b3017a13f6a",
+            "name": "Pitter Patter Cafe",
+            "date": "2026-10-03",
+            "opening_time": "08:00:00",
+            "closing_time": "16:00:00",
+            "current_time": "08:00:00",
+            "bits": 0,
+            "copper": 0,
+            "silver": 0,
+            "gold": 0,
+            "created_at": "2026-10-03 12:14:34",
+            "updated_at": "2026-10-03 14:39:41"
+        }
+    ],
+    "dnd__restaurant_restaurant_user": [],
+    "dnd__restaurant_recipe": [
+        {
+            "uuid": "01a10232-06ca-70c4-927b-b85f06bfdde3",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Goodberry tea",
+            "description": null,
+            "price": "10.00",
+            "portions": 2,
+            "difficulty": 10,
+            "prep_time": 5,
+            "cooking_time": 30,
+            "fresh_for": 30,
+            "good_for": 4,
+            "expires_in": 1,
+            "created_at": "2026-10-03 14:36:35",
+            "updated_at": "2026-10-03 14:39:38"
+        }
+    ],
+    "dnd__restaurant_ingredient": [
+        {
+            "uuid": "01a10230-c368-71b0-9389-867c7412a17e",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Goodberry",
+            "icon": null,
+            "expires_in": 7,
+            "size": "0.10",
+            "created_at": "2026-10-03 14:35:12",
+            "updated_at": "2026-10-03 14:35:12"
+        },
+        {
+            "uuid": "01a10231-3992-732e-897e-aa6fdc7e92de",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Water",
+            "icon": null,
+            "expires_in": 0,
+            "size": "1.00",
+            "created_at": "2026-10-03 14:35:42",
+            "updated_at": "2026-10-03 14:35:42"
+        }
+    ],
+    "dnd__restaurant_recipe_ingredient": [
+        {
+            "uuid": "01a10234-d18b-7090-97cd-64e78c3315b3",
+            "recipe_uuid": "01a10232-06ca-70c4-927b-b85f06bfdde3",
+            "ingredient_uuid": "01a10230-c368-71b0-9389-867c7412a17e",
+            "amount": 1,
+            "created_at": "2026-10-03 14:39:38",
+            "updated_at": "2026-10-03 14:39:38"
+        },
+        {
+            "uuid": "01a10234-d18b-7090-97cd-64e78ce37829",
+            "recipe_uuid": "01a10232-06ca-70c4-927b-b85f06bfdde3",
+            "ingredient_uuid": "01a10231-3992-732e-897e-aa6fdc7e92de",
+            "amount": 1,
+            "created_at": "2026-10-03 14:39:38",
+            "updated_at": "2026-10-03 14:39:38"
+        }
+    ],
+    "dnd__restaurant_recipe_byproduct": [],
+    "dnd__restaurant_equipment": [
+        {
+            "uuid": "01a1022e-650a-72e6-8ffe-912716c2a988",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "parent_uuid": null,
+            "name": "Stove",
+            "description": null,
+            "category": "cooker",
+            "cleaning_time": 0,
+            "multiplier": "1.00",
+            "size": 1,
+            "requires_storage": 0,
+            "created_at": "2026-10-03 14:32:37",
+            "updated_at": "2026-10-03 14:32:37"
+        },
+        {
+            "uuid": "01a1022f-6e48-7032-b3e1-df2138b82984",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "parent_uuid": null,
+            "name": "Cup",
+            "description": null,
+            "category": "tableware",
+            "cleaning_time": 1,
+            "multiplier": "1.00",
+            "size": 1,
+            "requires_storage": 1,
+            "created_at": "2026-10-03 14:33:45",
+            "updated_at": "2026-10-03 14:33:45"
+        }
+    ],
+    "dnd__restaurant_recipe_equipment": [
+        {
+            "uuid": "01a10234-d192-720c-95d5-48809ccb29cb",
+            "recipe_uuid": "01a10232-06ca-70c4-927b-b85f06bfdde3",
+            "equipment_uuid": "01a1022f-6e48-7032-b3e1-df2138b82984",
+            "amount": 1,
+            "created_at": "2026-10-03 14:39:38",
+            "updated_at": "2026-10-03 14:39:38"
+        }
+    ],
+    "dnd__restaurant_owned_equipment": [
+        {
+            "uuid": "01a1022e-6b2b-72a6-ad1d-b844c801d02d",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "equipment_uuid": "01a1022e-650a-72e6-8ffe-912716c2a988",
+            "amount": 3,
+            "created_at": "2026-10-03 14:32:38",
+            "updated_at": "2026-10-03 14:32:38"
+        }
+    ],
+    "dnd__restaurant_storage": [
+        {
+            "uuid": "01a1022f-c507-71d6-be0e-8fcaa2178ed4",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Foyer cupboard",
+            "capacity": 40,
+            "expiration_multiplier": "1.00",
+            "background_image": null,
+            "order": 1,
+            "created_at": "2026-10-03 14:34:07",
+            "updated_at": "2026-10-03 14:34:07"
+        },
+        {
+            "uuid": "01a10230-f31f-7100-894b-a62361e03bd0",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Kitchen storage",
+            "capacity": 100,
+            "expiration_multiplier": "1.00",
+            "background_image": null,
+            "order": 2,
+            "created_at": "2026-10-03 14:35:24",
+            "updated_at": "2026-10-03 14:35:24"
+        },
+        {
+            "uuid": "01a10231-7585-731e-ac4f-bde47e4ebfdf",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Water barrel",
+            "capacity": 60,
+            "expiration_multiplier": "1.00",
+            "background_image": null,
+            "order": 3,
+            "created_at": "2026-10-03 14:35:58",
+            "updated_at": "2026-10-03 14:35:58"
+        }
+    ],
+    "dnd__restaurant_storage_ingredient": [
+        {
+            "uuid": "01a10231-0433-7003-a700-749ccd312a21",
+            "storage_uuid": "01a10230-f31f-7100-894b-a62361e03bd0",
+            "ingredient_uuid": "01a10230-c368-71b0-9389-867c7412a17e",
+            "amount": 10,
+            "created_at": "2026-10-03 14:35:29",
+            "updated_at": "2026-10-03 14:35:29"
+        },
+        {
+            "uuid": "01a10231-9566-7184-a536-69c682c4c51c",
+            "storage_uuid": "01a10231-7585-731e-ac4f-bde47e4ebfdf",
+            "ingredient_uuid": "01a10231-3992-732e-897e-aa6fdc7e92de",
+            "amount": 60,
+            "created_at": "2026-10-03 14:36:06",
+            "updated_at": "2026-10-03 14:36:06"
+        }
+    ],
+    "dnd__restaurant_storage_equipment": [
+        {
+            "uuid": "01a10230-695b-735b-9d78-8cc0db550578",
+            "storage_uuid": "01a1022f-c507-71d6-be0e-8fcaa2178ed4",
+            "equipment_uuid": "01a1022f-6e48-7032-b3e1-df2138b82984",
+            "amount": 24,
+            "created_at": "2026-10-03 14:34:49",
+            "updated_at": "2026-10-03 14:34:49"
+        }
+    ],
+    "dnd__restaurant_room": [
+        {
+            "uuid": "01a1021e-c860-737e-ae54-a9e00c1d723e",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Foyer",
+            "background_image": null,
+            "order": 1,
+            "created_at": "2026-10-03 14:15:34",
+            "updated_at": "2026-10-03 14:15:34"
+        },
+        {
+            "uuid": "01a1021e-e39a-7394-b6a5-e3a38e9a7059",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "name": "Side wing",
+            "background_image": null,
+            "order": 2,
+            "created_at": "2026-10-03 14:15:41",
+            "updated_at": "2026-10-03 14:15:41"
+        }
+    ],
+    "dnd__restaurant_table": [
+        {
+            "uuid": "01a1021f-07aa-7390-93ad-14fa950e6e73",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "room_uuid": "01a1021e-c860-737e-ae54-a9e00c1d723e",
+            "name": "Corner table",
+            "capacity": 2,
+            "created_at": "2026-10-03 14:15:50",
+            "updated_at": "2026-10-03 14:15:53"
+        },
+        {
+            "uuid": "01a1021f-5861-73c7-8802-133204d9fb2d",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "room_uuid": "01a1021e-c860-737e-ae54-a9e00c1d723e",
+            "name": "Table 1",
+            "capacity": 6,
+            "created_at": "2026-10-03 14:16:11",
+            "updated_at": "2026-10-03 14:16:13"
+        }
+    ],
+    "dnd__restaurant_customer": [
+        {
+            "uuid": "01a1021f-90fe-7332-b26f-a5bb89dbf0d6",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "table_uuid": null,
+            "name": "Thalia",
+            "description": null,
+            "created_at": "2026-10-03 14:16:25",
+            "updated_at": "2026-10-03 14:16:32"
+        },
+        {
+            "uuid": "01a10235-74e7-7236-90a6-e979d6019a44",
+            "restaurant_uuid": "01a101b0-026f-7148-b8a6-24ee0ee715be",
+            "table_uuid": null,
+            "name": "Marrow",
+            "description": null,
+            "created_at": "2026-10-03 14:40:20",
+            "updated_at": "2026-10-03 14:40:20"
+        }
+    ]
+}

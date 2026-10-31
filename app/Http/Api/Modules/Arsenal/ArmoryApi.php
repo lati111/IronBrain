@@ -125,7 +125,7 @@ class ArmoryApi extends AbstractApi
             return $this->respond(Response::HTTP_NOT_FOUND, ucfirst($type) . ' not found');
         }
 
-        if ($type === 'weapon' && Weapon::where('id', $id)->whereNotNull('exalted_id')->exists()) {
+        if ($type === 'weapon' && Weapon::where('id', $id)->where(fn ($q) => $q->whereNotNull('exalted_id')->orWhere('type', 'exalted'))->exists()) {
             return $this->respond(Response::HTTP_FORBIDDEN, 'Exalted weapons cannot be added manually');
         }
 

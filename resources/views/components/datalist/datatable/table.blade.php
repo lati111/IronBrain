@@ -46,7 +46,7 @@
             data-sort-img-desc="{{asset('img/icons/arrow-down.svg')}}"
             data-sort-img-asc="{{asset('img/icons/arrow-up.svg')}}"
             data-empty-body="<tr><td colspan='99' class='text-center'>No Results</td></tr>"
-            @if(filter_var($history ?? true, FILTER_VALIDATE_BOOLEAN))data-history="false" @endif
+            @if(filter_var($history ?? true, FILTER_VALIDATE_BOOLEAN) === false)data-history="false" @endif
             @if(filter_var($dynamic ?? false, FILTER_VALIDATE_BOOLEAN))data-dynamic-url="true" @endif
             @if(filter_var($selectable ?? false, FILTER_VALIDATE_BOOLEAN))
                 data-selection-mode='true'

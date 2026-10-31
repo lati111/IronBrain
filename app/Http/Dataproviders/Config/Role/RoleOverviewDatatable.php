@@ -2,8 +2,7 @@
 
 namespace App\Http\Dataproviders\Config\Role;
 
-use App\Enum\GenericStringEnum;
-use App\Http\Api\AbstractApi;
+use App\Http\Dataproviders\AbstractDatalist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Auth\Role;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,9 +11,8 @@ use Illuminate\Http\Request;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
 use Lati111\LaravelDataproviders\Traits\Searchable;
-use Symfony\Component\HttpFoundation\Response;
 
-class RoleOverviewDatatable extends AbstractApi
+class RoleOverviewDatatable extends AbstractDatalist
 {
     use Dataprovider, Paginatable, HasPages, Searchable;
 
@@ -28,7 +26,7 @@ class RoleOverviewDatatable extends AbstractApi
         $data = $this->getData($request)
             ->get();
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */

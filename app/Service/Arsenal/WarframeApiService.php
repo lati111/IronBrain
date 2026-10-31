@@ -2,7 +2,6 @@
 
 namespace App\Service\Arsenal;
 
-use App\Enum\PKSanc\ImportQueries;
 use ErrorException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -10,6 +9,19 @@ use GuzzleHttp\Exception\GuzzleException;
 class WarframeApiService {
     protected Client $client;
     protected const array headers = ['Content-Type: application/json', 'User-Agent: IronBrain'];
+    protected const array weaponFields = [
+        'name',
+        'uniqueName',
+        'description',
+        'imageName',
+        'wikiaUrl',
+        'isPrime',
+        'vaulted',
+        'components',
+        'type',
+        'category',
+        'productCategory',
+    ];
 
     public function __construct() {
         $this->client = new Client([
@@ -37,30 +49,27 @@ class WarframeApiService {
             'vaulted',
             'components',
             'productCategory',
-            'exaltedWeapons',
+            'exalted',
         ]);
     }
 
     /**
-     * Gets a list of weapons
+     * Gets a list of weapons, including exalted weapons
+     * Companion weapons are included in the primary category
      * @return array Returns an array of types
      * @throws ErrorException|GuzzleException
      */
     public function getWeapons(): array
     {
-        return $this->queryItems('primary,secondary,melee,arch-gun,arch-melee,companion-weapon', [
-            'name',
-            'uniqueName',
-            'description',
-            'imageName',
-            'wikiaUrl',
-            'isPrime',
-            'vaulted',
-            'components',
-            'type',
-            'category',
-            'productCategory'
-        ]);
+        $weapons = $this->queryItems('primary,secondary,melee,arch-gun,arch-melee', self::weaponFields);
+
+        // Exalted weapons are only available within the misc category
+        $exaltedWeapons = array_filter(
+            $this->queryItems('misc', self::weaponFields),
+            fn (array $item) => ($item['type'] ?? null) === 'Exalted Weapon',
+        );
+
+        return array_merge($weapons, array_values($exaltedWeapons));
     }
 
     /**

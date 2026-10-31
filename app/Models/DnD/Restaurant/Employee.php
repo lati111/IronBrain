@@ -1,0 +1,75 @@
+<?php
+
+namespace App\Models\DnD\Restaurant;
+
+use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\Auth\User;
+use App\Models\DnD\Restaurant\Interfaces\RestaurantDataModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
+ * An employee of the restaurant, who during service can be put to work in a work area of the kitchen, or wait tables.
+ * They do one or the other
+ * @inheritdoc
+ * @property string|null player_uuid The uuid of the player controlling the employee during service, if any
+ * @property string name The name of the employee
+ * @property string|null icon The path of the employee's icon
+ * @property float cleaning_speed How much faster than normal the employee cleans, so 2 cleans twice as fast
+ * @property float prep_speed How much faster than normal the employee preps, so 2 preps twice as fast
+ * @property integer capacity How many plates the employee carries to a table in one trip, as a waiter
+ * @property WorkStation|null station The work area the employee works in, or null while idle
+ */
+class Employee extends RestaurantDataModel
+{
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__restaurant_employee';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
+
+    /** @var int How many plates a new employee carries in one trip */
+    public const int DEFAULT_CAPACITY = 2;
+
+    /** @inheritdoc */
+    protected $casts = [
+        'cleaning_speed' => 'float',
+        'prep_speed'     => 'float',
+        'capacity'       => 'integer',
+        'station'        => WorkStation::class,
+    ];
+
+    /**
+     * The relationship for the player controlling the employee during service
+     * @return BelongsTo
+     */
+    public function Player(): BelongsTo {
+        return $this->belongsTo(User::class, 'player_uuid', 'uuid');
+    }
+
+    /**
+     * Gets how fast the employee works in a work area
+     * @param WorkStation $station The work area
+     * @return float The speed, where 1 is normal
+     */
+    public function getSpeed(WorkStation $station): float
+    {
+        return match ($station) {
+            WorkStation::PREP     => $this->prep_speed,
+            WorkStation::CLEANING => $this->cleaning_speed,
+            // Cooking goes at the cookers' speed, as long as someone looks after them
+            WorkStation::COOKING  => 1.0,
+            // Waiters walk at the same pace
+            WorkStation::WAITING  => 1.0,
+        };
+    }
+
+    //| Relationships
+
+    /**
+     * The relationship for the tables the employee waits
+     * @return HasMany
+     */
+    public function Tables(): HasMany {
+        return $this->hasMany(Table::class, 'employee_uuid', 'uuid');
+    }
+}

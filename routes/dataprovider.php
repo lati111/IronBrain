@@ -85,3 +85,13 @@ Route::prefix('/arsenal/data')
         Route::dataprovider('/foundry', 'data.arsenal.foundry',
             \App\Http\Dataproviders\Modules\Arsenal\ArsenalFoundryCardlist::class);
     });
+
+
+//| DnD Restaurant
+
+Route::prefix('/dnd/restaurant/data')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access'])
+    ->group(function() {
+        Route::dataprovider('/overview', 'data.dnd.restaurant.overview',
+            \App\Http\Dataproviders\Modules\DnD\Restaurant\RestaurantOverviewCardlist::class);
+    });

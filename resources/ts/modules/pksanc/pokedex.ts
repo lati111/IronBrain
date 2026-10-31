@@ -1,6 +1,7 @@
 import {DataCardlist} from "../../components/datalists/DataCardlist";
 import {closeModal, init as initModals} from "../../components/modal";
 import {postData, toast} from "../../main";
+import {Filter} from "@lati111/laravel_datatables/src/Data/Filter";
 
 /**
  * Initializes the pksanc box page
@@ -15,7 +16,7 @@ async function init() {
     (<any>window).openFilterModal = overview.openFilterModal.bind(overview);
 }
 
-function filterAddedEvent(dataprovider, filter) {
+function filterAddedEvent(dataprovider: DataCardlist, filter: Filter) {
     if (filter.type === "manual") {
         return;
     }
@@ -56,13 +57,13 @@ async function markAsHidden(card: HTMLElement, addMarking: boolean = true) {
     let response;
     if (addMarking) {
         response = await postData('/api/pksanc/pokedex/mark', formdata);
-        if (response.ok) {
+        if (response?.ok) {
             visibleButton.classList.add('hidden')
             hiddenButton.classList.remove('hidden')
         }
     } else {
         response = await postData('/api/pksanc/pokedex/unmark', formdata);
-        if (response.ok) {
+        if (response?.ok) {
             visibleButton.classList.remove('hidden')
             hiddenButton.classList.add('hidden')
         }

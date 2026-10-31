@@ -4,8 +4,11 @@ namespace App\Service\PKSanc;
 
 use App\Enum\PKSanc\ImportQueries;
 use ErrorException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 
 class PokeApiService {
+    private const string url = 'https://beta.pokeapi.co/graphql/v1beta';
 
     /**
      * Executes a graphQL query in PokeAPI and returns the results
@@ -14,21 +17,30 @@ class PokeApiService {
      * @throws ErrorException
      */
     private function query(string $query): array {
-        $url = 'https://beta.pokeapi.co/graphql/v1beta';
-        $headers = ['Content-Type: application/json', 'User-Agent: IronBrain'];
-
-        if (false === $data = @file_get_contents($url, false, stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => $headers,
-                'content' => json_encode(['query' => $query]),
-            ]
-        ]))) {
-            $error = error_get_last();
-            throw new ErrorException($error['message'], $error['type']);
+        try {
+            $response = Http::withUserAgent('IronBrain')
+                ->connectTimeout(10)
+                ->timeout(300)
+                ->post(self::url, ['query' => $query]);
+        } catch (ConnectionException $e) {
+            throw new ErrorException('Could not connect to PokeAPI: ' . $e->getMessage());
         }
 
-        return json_decode($data, true)["data"];
+        if ($response->failed()) {
+            throw new ErrorException(sprintf('PokeAPI responded with status %d', $response->status()));
+        }
+
+        $json = $response->json();
+        if (!empty($json['errors'])) {
+            $messages = array_map(fn (array $error) => $error['message'] ?? 'Unknown error', $json['errors']);
+            throw new ErrorException('PokeAPI returned errors: ' . implode('; ', $messages));
+        }
+
+        if (!is_array($json['data'] ?? null)) {
+            throw new ErrorException('PokeAPI returned an unexpected response');
+        }
+
+        return $json['data'];
     }
 
     /**

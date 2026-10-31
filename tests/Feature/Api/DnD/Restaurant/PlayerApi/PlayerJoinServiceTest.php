@@ -1,0 +1,59 @@
+<?php
+
+namespace Tests\Feature\Api\DnD\Restaurant\PlayerApi;
+
+use App\Enum\DnD\Restaurant\WorkStation;
+use App\Models\Auth\User;
+use App\Models\DnD\Restaurant\Restaurant;
+use App\Models\DnD\Restaurant\RestaurantUser;
+use App\Service\DnD\Restaurant\ShiftService;
+use Tests\Feature\AbstractFeatureTester;
+use Tests\Traits\DnD\RestaurantTestHelper;
+
+/**
+ * Covers an invited player opening a running service: the page and the state it loads
+ */
+class PlayerJoinServiceTest extends AbstractFeatureTester
+{
+    use RestaurantTestHelper;
+
+    private Restaurant $restaurant;
+    private User $player;
+
+    public function setUp(): void
+    {
+        parent::setUp();
+        $this->restaurant = $this->createTestRestaurant($this->getAdminUser());
+        $this->player = $this->getRandomUser(['dnd_restaurant.access']);
+        $this->grantRestaurantAccess($this->restaurant, $this->player, RestaurantUser::ROLE_PLAYER);
+
+        $mine = $this->createTestEmployee($this->restaurant, null, 'Mine');
+        $mine->player_uuid = $this->player->uuid;
+        $mine->station = WorkStation::COOKING;
+        $mine->save();
+        $table = $this->createTestTable($this->restaurant, null, 4, 'Booth');
+        $this->assignTestWaiter($table, 'Sam');
+        $this->createTestCustomer($this->restaurant, $table, 'Bilbo');
+        $this->createTestCustomer($this->restaurant, null, 'Frodo');
+        $this->createTestCooker($this->restaurant);
+
+        app(ShiftService::class)->startService($this->restaurant, '09:00');
+        $this->restaurant->refresh();
+    }
+
+    public function test_players_open_the_service_page(): void
+    {
+        $this->actingAs($this->player)
+            ->get(route('dnd.restaurant.service', ['restaurant_uuid' => $this->restaurant->uuid]))
+            ->assertOk();
+    }
+
+    public function test_players_load_the_service_and_floor(): void
+    {
+        foreach (['api.dnd.restaurant.service.get', 'api.dnd.restaurant.floor.get'] as $route) {
+            $this->withHeaders(['Accept' => 'application/json'])->actingAs($this->player)
+                ->getJson(route($route, ['restaurant_uuid' => $this->restaurant->uuid]))
+                ->assertOk();
+        }
+    }
+}
