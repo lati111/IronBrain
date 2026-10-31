@@ -48,7 +48,7 @@ class UserOverviewDatatable extends AbstractDatalist
             sprintf('%s.email', User::getTableName()),
             sprintf('%s.name as role', Role::getTableName()),
 
-        ])->jointable(Role::getTableName(), User::getTableName(), 'role_id', '=', 'id');
+        ])->leftjointable(Role::getTableName(), User::getTableName(), 'role_id', '=', 'id');
 
         return $query;
     }
