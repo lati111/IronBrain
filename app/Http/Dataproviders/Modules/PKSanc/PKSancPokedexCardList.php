@@ -57,7 +57,7 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
             return $this->respond($e->getCode(), $e->publicMessage);
         }
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */

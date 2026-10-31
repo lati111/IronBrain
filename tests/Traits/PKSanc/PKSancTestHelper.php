@@ -2,16 +2,9 @@
 
 namespace Tests\Traits\PKSanc;
 
-use App\Enum\PKSanc\PokemonTypes;
-use App\Models\PKSanc\Ability;
 use App\Models\PKSanc\Game;
 use App\Models\PKSanc\ImportCsv;
-use App\Models\PKSanc\Move;
-use App\Models\PKSanc\Nature;
-use App\Models\PKSanc\Pokeball;
-use App\Models\PKSanc\Pokemon;
-use App\Models\PKSanc\Type;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 trait PKSancTestHelper
@@ -33,56 +26,47 @@ trait PKSancTestHelper
         return $game;
     }
 
-    protected function createTestType(string $code): Type
+    /**
+     * Ensures the reference data used by the pokemon in the given list exists, so imports validate on a freshly migrated database.
+     * Existing rows are left untouched.
+     * @param array $pokemon Species and form index pairs, e.g. [['bramblin', 0]]
+     * @param array $references Reference values per type, using the keys abilities, natures, pokeballs, types, moves and games
+     */
+    protected function createTestReferenceData(array $pokemon, array $references): void
     {
-        return $this->createReference(Type::class, ['type' => $code], ['name' => ucfirst($code)]);
-    }
+        $now = now();
 
-    protected function createTestNature(string $code): Nature
-    {
-        return $this->createReference(Nature::class, ['nature' => $code], ['name' => ucfirst($code)]);
-    }
+        // the filler type is used for the types of the pokemon and moves, which reference the type table
+        $references['types'] = array_merge(['normal'], $references['types'] ?? []);
 
-    protected function createTestAbility(string $code): Ability
-    {
-        return $this->createReference(Ability::class, ['ability' => $code], ['name' => ucfirst($code), 'description' => '']);
-    }
+        $rows = [
+            'pksanc__type' => fn ($value) => ['type' => $value, 'name' => Str::headline($value)],
+            'pksanc__ability' => fn ($value) => ['ability' => $value, 'name' => Str::headline($value), 'description' => ''],
+            'pksanc__nature' => fn ($value) => ['nature' => $value, 'name' => Str::headline($value)],
+            'pksanc__pokeball' => fn ($value) => ['pokeball' => $value, 'name' => Str::headline($value), 'sprite' => $value.'.png'],
+            'pksanc__move' => fn ($value) => ['move' => $value, 'name' => Str::headline($value), 'description' => '', 'type' => 'normal', 'move_type' => 'physical'],
+            'pksanc__game' => fn ($value) => ['game' => $value, 'name' => Str::headline($value), 'is_romhack' => false],
+        ];
 
-    protected function createTestPokeball(string $code): Pokeball
-    {
-        return $this->createReference(Pokeball::class, ['pokeball' => $code], ['name' => ucfirst($code), 'sprite' => $code . '.png']);
-    }
+        // types go first, as the moves reference them
+        $keys = ['types' => 'pksanc__type', 'abilities' => 'pksanc__ability', 'natures' => 'pksanc__nature',
+            'pokeballs' => 'pksanc__pokeball', 'moves' => 'pksanc__move', 'games' => 'pksanc__game'];
 
-    protected function createTestMove(string $code, string $type = 'normal'): Move
-    {
-        $this->createTestType($type);
-        return $this->createReference(Move::class, ['move' => $code], [
-            'name'        => ucfirst($code),
-            'description' => '',
-            'type'        => $type,
-            'move_type'   => 'physical',
-        ]);
-    }
+        foreach ($keys as $key => $table) {
+            foreach ($references[$key] ?? [] as $value) {
+                DB::table($table)->insertOrIgnore($rows[$table]($value) + ['created_at' => $now, 'updated_at' => $now]);
+            }
+        }
 
-    protected function createTestPokemon(string $code, string $type = 'normal', int $formIndex = 0): Pokemon
-    {
-        $this->createTestType($type);
-        return $this->createReference(Pokemon::class, ['pokemon' => $code], [
-            'species'        => $code,
-            'species_name'   => ucfirst($code),
-            'form_index'     => $formIndex,
-            'pokedex_id'     => 1,
-            'primary_type'   => $type,
-            'secondary_type' => $type,
-            'base_hp'        => 50,
-            'base_atk'       => 50,
-            'base_def'       => 50,
-            'base_spa'       => 50,
-            'base_spd'       => 50,
-            'base_spe'       => 50,
-            'generation'     => 1,
-            'pokemon_type'   => PokemonTypes::FORM,
-        ]);
+        foreach ($pokemon as $i => [$species, $formIndex]) {
+            DB::table('pksanc__pokemon')->insertOrIgnore([
+                'species' => $species, 'species_name' => Str::headline($species), 'pokemon' => $species,
+                'form_index' => $formIndex, 'pokedex_id' => 9000 + $i, 'internal_pokedex_id' => 9000 + $i,
+                'primary_type' => 'normal', 'secondary_type' => 'normal', 'generation' => 1, 'pokemon_type' => 'normal',
+                'base_hp' => 1, 'base_atk' => 1, 'base_def' => 1, 'base_spa' => 1, 'base_spd' => 1, 'base_spe' => 1,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
     }
 
     protected function createTestImportCsv(string $ownerUuid, string $gameCode): ImportCsv
@@ -96,25 +80,5 @@ trait PKSancTestHelper
         $csv->uploader_uuid = $ownerUuid;
         $csv->save();
         return $csv;
-    }
-
-    /**
-     * Creates a reference model if it does not exist yet
-     * @param class-string<Model> $model The model class
-     * @param array $key The primary key column and value
-     * @param array $attributes The other attributes to fill
-     * @return Model
-     */
-    private function createReference(string $model, array $key, array $attributes): Model
-    {
-        $existing = $model::where($key)->first();
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        $entity = new $model();
-        $entity->forceFill(array_merge($key, $attributes));
-        $entity->save();
-        return $entity;
     }
 }

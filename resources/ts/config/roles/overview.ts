@@ -41,6 +41,15 @@ async function openPermissionModal(row: HTMLTableRowElement) {
 }
 
 /**
+ * Opens the modify page of a role
+ * @param {HTMLTableRowElement} row The row of the role to modify
+ */
+function openModifyPage(row: HTMLTableRowElement) {
+    const id = (row.querySelector('input[name="id"]') as HTMLInputElement).value;
+    window.location.href = `/config/role/${id}/modify`;
+}
+
+/**
  * Toggles a permission on the currently selected role
  * @param {HTMLTableRowElement} row The row containing the permission info
  * @param {boolean} hasPermission Whether the role should have the permission
@@ -59,5 +68,6 @@ async function togglePermission(row: HTMLTableRowElement, hasPermission: boolean
 (<any>window).init = init;
 (<any>window).openModal = openModal;
 (<any>window).openPermissionModal = openPermissionModal;
+(<any>window).openModifyPage = openModifyPage;
 (<any>window).togglePermission = togglePermission;
 

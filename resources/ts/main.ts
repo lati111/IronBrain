@@ -1,5 +1,4 @@
 import {closeModal, openModal} from "./components/modal";
-import {GenericFormData} from "axios";
 
 const toasts:Element = document.querySelector('#toasts')!;
 
@@ -9,7 +8,7 @@ const toasts:Element = document.querySelector('#toasts')!;
  * Initializes the toasts on the page
  */
 function toastInit() {
-    const url = new URL(window.location);
+    const url = new URL(window.location.href);
 
     const message = url.searchParams.get('message');
     if (message !== null) {
@@ -89,11 +88,11 @@ export function unfreezePage() {
 /**
  * Performs a post operation to the given url
  * @param {string} url The url to post to
- * @param {GenericFormData|string} data The parameters in either json, of formdata format
+ * @param {FormData|string} data The parameters in either json, of formdata format
  * @param {string[]} whitelist A whitelist errors that are allowed to be shown to the user
  * @return {FetchResponse} The response object
  */
-export async function postData(url: string, data: GenericFormData|string = new FormData, whitelist: string[] = []) {
+export async function postData(url: string, data: FormData|string = new FormData, whitelist: string[] = []) {
     url = urlFormatter(url);
 
     let csrf = document.querySelector('meta[name="csrf-token"]') as Element|null;
@@ -102,13 +101,13 @@ export async function postData(url: string, data: GenericFormData|string = new F
         return;
     }
 
-    const csrfToken = csrf.getAttribute('content') as Element|null
+    const csrfToken = csrf.getAttribute('content')
     if (csrfToken === null) {
         console.error('Csrf token not found');
         return;
     }
 
-    const headers:{ Accept: string; "X-CSRF-TOKEN": Element; "Sec-Fetch-Site": string } = {
+    const headers: Record<string, string> = {
         'Accept': 'application/json',
         "Sec-Fetch-Site": "same-origin",
         'X-CSRF-TOKEN': csrfToken
@@ -118,7 +117,6 @@ export async function postData(url: string, data: GenericFormData|string = new F
         headers['Content-Type'] = 'application/json';
     }
 
-    // @ts-ignore
     const response = await fetch(url, {
         method: 'post',
         body: data,

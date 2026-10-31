@@ -2,13 +2,7 @@
 
 namespace App\Console\Commands\Core;
 
-use App\Models\Auth\Permission;
-use App\Models\Config\Module;
-use App\Models\Config\Submodule;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 
 class GenericImport extends Command
 {
@@ -17,7 +11,7 @@ class GenericImport extends Command
      *
      * @var string
      */
-    protected $signature = 'import:all';
+    protected $signature = 'import:all {--refresh-images : Download all images again, even if they already exist}';
 
     /**
      * The console command description.
@@ -29,12 +23,34 @@ class GenericImport extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): void
+    public function handle(): int
     {
-        $this->call('import:permissions');
-        $this->call('import:modules');
+        $failed = [];
 
-        $this->call('import:pksanc');
-        $this->call('import:arsenal');
+        // Modules depend on the permissions, so only import them when the permissions are up to date
+        if ($this->call('import:permissions') !== self::SUCCESS) {
+            $failed[] = 'permissions';
+            $this->warn('Skipping modules, as they depend on the permissions.');
+            $failed[] = 'modules';
+        } elseif ($this->call('import:modules') !== self::SUCCESS) {
+            $failed[] = 'modules';
+        }
+
+        $imageOptions = ['--refresh-images' => $this->option('refresh-images')];
+        if ($this->call('import:pksanc', $imageOptions) !== self::SUCCESS) {
+            $failed[] = 'pksanc';
+        }
+
+        if ($this->call('import:arsenal', $imageOptions) !== self::SUCCESS) {
+            $failed[] = 'arsenal';
+        }
+
+        if ($failed !== []) {
+            $this->error('Import finished with errors in: ' . implode(', ', $failed));
+            return self::FAILURE;
+        }
+
+        $this->info('All imports successful!');
+        return self::SUCCESS;
     }
 }

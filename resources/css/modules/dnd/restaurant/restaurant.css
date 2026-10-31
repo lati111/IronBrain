@@ -1,0 +1,1397 @@
+/*| Sidebar |*/
+
+.inventory-sidebar {
+    width: 20rem;
+    flex-shrink: 0;
+    background-color: white;
+    position: sticky;
+    top: 1rem;
+}
+
+.inventory-sidebar.collapsed {
+    width: auto;
+}
+
+.inventory-sidebar.collapsed .inventory-sidebar-body {
+    display: none;
+}
+
+.inventory-sidebar.collapsed .inventory-sidebar-toggle-icon {
+    display: inline-block;
+    transform: rotate(180deg);
+}
+
+.inventory-tab {
+    border-bottom: 2px solid transparent;
+    color: rgb(107 114 128);
+    padding-inline: 0.625rem;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.inventory-tab:hover {
+    color: inherit;
+    border-bottom-color: rgb(229 231 235);
+}
+
+.inventory-tab.active {
+    border-bottom-color: rgb(220 38 38);
+    color: inherit;
+    font-weight: 600;
+}
+
+/* The sidebars hold up to five tabs, which wrap onto a second row rather than crowding together. Each tab takes the
+   room its label needs and shares out what is left, so a row stays filled */
+.inventory-sidebar .inventory-sidebar-body:has(> .inventory-tab) {
+    flex-wrap: wrap;
+    column-gap: 0.25rem;
+    padding: 0.125rem 0.25rem 0;
+}
+
+.inventory-sidebar .inventory-tab {
+    flex: 1 1 auto;
+    font-size: 0.875rem;
+    padding-block: 0.5rem;
+}
+
+.inventory-list {
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.inventory-list-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.25rem;
+    border-bottom: 1px solid rgb(243 244 246);
+}
+
+.inventory-list-row:hover {
+    background-color: rgb(249 250 251);
+}
+
+.inventory-list-row.clickable {
+    cursor: pointer;
+}
+
+.inventory-list-row[draggable="true"] {
+    cursor: grab;
+}
+
+/*| Manage restaurant |*/
+
+.restaurant-details {
+    background-color: white;
+    padding: 1rem;
+}
+
+/*| Recipe modal |*/
+
+.recipe-components {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* A shared minimum height, so the modal doesn't jump in size when switching tabs */
+.recipe-panel {
+    min-height: 19rem;
+}
+
+.recipe-component-list {
+    max-height: 15rem;
+    overflow-y: auto;
+}
+
+.recipe-component-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    border-bottom: 1px solid rgb(243 244 246);
+}
+
+/* What a variant keeps from its base recipe, which can be crossed out to take it away */
+.recipe-base-row {
+    background-color: rgb(249 250 251);
+}
+
+.recipe-base-row.removed [data-field="name"],
+.recipe-base-row.removed [data-field="amount"] {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+/* Variants are listed under their base recipe */
+.recipe-variant-row [data-field="name"] {
+    padding-left: 0.75rem;
+    color: rgb(75 85 99);
+}
+
+.inventory-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.inventory-icon[src=""],
+.inventory-icon:not([src]) {
+    visibility: hidden;
+}
+
+/*| Storage spaces |*/
+
+.inventory-storage-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    gap: 1rem;
+}
+
+.inventory-storage {
+    position: relative;
+    overflow: hidden;
+    min-height: 10rem;
+    border-radius: 0.25rem;
+    border: 1px solid rgb(209 213 219);
+    background-color: white;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    transition: box-shadow 0.1s, border-color 0.1s;
+}
+
+.inventory-storage-background {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.inventory-storage > *:not(.inventory-storage-background) {
+    position: relative;
+}
+
+.inventory-storage-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: rgb(255 255 255 / 0.8);
+    border-bottom: 1px solid rgb(229 231 235);
+}
+
+/* Draggable cards can be grabbed anywhere, the header just signals it */
+.inventory-storage[draggable="true"] .inventory-storage-header {
+    cursor: grab;
+}
+
+.inventory-storage-handle {
+    color: rgb(156 163 175);
+    letter-spacing: -0.3em;
+    user-select: none;
+}
+
+.inventory-storage.dragging {
+    opacity: 0.4;
+}
+
+.inventory-capacity-bar {
+    height: 0.25rem;
+    background-color: rgb(229 231 235);
+}
+
+.inventory-capacity-bar > div {
+    height: 100%;
+    background-color: rgb(34 197 94);
+    transition: width 0.2s;
+}
+
+.inventory-capacity-bar.full > div {
+    background-color: rgb(220 38 38);
+}
+
+.inventory-storage-items {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    min-height: 6rem;
+}
+
+.inventory-general {
+    border-style: dashed;
+    border-width: 2px;
+    min-height: 8rem;
+}
+
+/* The pile of ingredients brought in during service stands out until it is sorted */
+.inventory-pile {
+    min-height: 0;
+    border-color: rgb(251 191 36);
+    border-width: 2px;
+}
+
+.inventory-pile .inventory-storage-items {
+    min-height: 0;
+}
+
+#discard-edge {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 6rem;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    background-color: rgb(220 38 38 / 0.9);
+    color: white;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(100%);
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+#discard-edge.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+}
+
+#discard-edge img {
+    /* The x icon is dark by default; invert it so it reads against the red background */
+    filter: invert(1);
+}
+
+.drop-hover {
+    border-color: rgb(220 38 38);
+    box-shadow: 0 0 0 2px rgb(220 38 38 / 0.4);
+}
+
+/*| Items |*/
+
+.inventory-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    max-width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 9999px;
+    background-color: white;
+    cursor: grab;
+    user-select: none;
+}
+
+.inventory-item[data-type="equipment"] {
+    border-radius: 0.25rem;
+    border-style: dashed;
+}
+
+.inventory-item-amount {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(75 85 99);
+}
+
+/* How many days an ingredient stack has left before it expires */
+.inventory-item-expiry {
+    font-size: 0.7rem;
+    color: rgb(107 114 128);
+    white-space: nowrap;
+}
+
+.inventory-item-expiry:empty {
+    display: none;
+}
+
+/* Stacks with a day or less left */
+.inventory-item.expiring {
+    border-color: rgb(249 115 22);
+}
+
+.inventory-item.expiring .inventory-item-expiry {
+    color: rgb(194 65 12);
+    font-weight: 600;
+}
+
+/*| Service |*/
+
+.service-room {
+    background-color: white;
+    overflow: hidden;
+}
+
+.service-room .inventory-storage-header {
+    padding: 0.25rem 0.625rem;
+}
+
+.service-tables {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.service-table {
+    width: 12rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 0.5rem;
+    background-color: rgb(249 250 251);
+}
+
+.service-seats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem;
+}
+
+/* Each seat is shown individually, and only empty seats accept a dragged customer */
+.service-seat {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 1.875rem;
+    padding: 0.125rem 0.125rem 0.125rem 1.125rem;
+    border: 1px dashed rgb(209 213 219);
+    border-radius: 0.25rem;
+    background-color: white;
+    transition: box-shadow 0.1s, border-color 0.1s;
+}
+
+.service-seat.occupied {
+    border-style: solid;
+}
+
+/* Kept for a customer a waiter is bringing over */
+.service-seat.reserved {
+    border-color: rgb(245 158 11);
+    background-color: rgb(255 251 235);
+}
+
+/* A customer at the entrance a waiter is bringing to a table */
+.service-customer.on-the-way {
+    border-style: dashed;
+    border-color: rgb(245 158 11);
+}
+
+.service-seat-number {
+    position: absolute;
+    left: 0.375rem;
+    font-size: 0.7rem;
+    color: rgb(156 163 175);
+}
+
+.service-customer {
+    min-width: 0;
+}
+
+/*| Service clock |*/
+
+/* Wide enough for the time along with the browser's clock picker, without either being cut off */
+.service-clock {
+    font-size: 1.5rem;
+    font-weight: 600;
+    width: 10.5rem;
+    flex-shrink: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    text-align: right;
+}
+
+.service-clock-step {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.375rem;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 0.25rem;
+    background-color: white;
+}
+
+/*| Kitchen |*/
+
+/* The floor keeps room for three tables side by side, which the kitchen shrinks for when the page is narrow */
+.service-floor {
+    min-width: 38.5rem;
+}
+
+/* The kitchen takes a large share of the width next to the floor, without crowding the floor out */
+.service-kitchen {
+    flex: 0 1 42%;
+    min-width: 22rem;
+    max-width: 48rem;
+    background-color: white;
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    font-size: 0.875rem;
+}
+
+.service-kitchen-title {
+    padding: 0.375rem 0.625rem;
+    font-weight: 600;
+    border-bottom: 2px solid rgb(220 38 38);
+}
+
+/* Two areas per row when there is room, one when the kitchen is narrow */
+.kitchen-areas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+
+.kitchen-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    border-bottom: 1px solid rgb(229 231 235);
+    border-right: 1px solid rgb(243 244 246);
+    min-width: 0;
+    /* Lets the lists inside lay themselves out by the width of their area */
+    container-type: inline-size;
+}
+
+.kitchen-area-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(107 114 128);
+}
+
+/* Meals take half the row when two fit side by side, and the full row otherwise */
+.kitchen-meal-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+}
+
+/* Notes and the plated portions always take the full row */
+.kitchen-meal-list > :not(.kitchen-meal) {
+    grid-column: 1 / -1;
+}
+
+@container (min-width: 24rem) {
+    .kitchen-meal-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Cookers and the serving area accept dragged meals */
+.kitchen-drop-zone {
+    border: 1px dashed rgb(209 213 219);
+    border-radius: 0.25rem;
+    min-height: 2rem;
+    transition: box-shadow 0.1s, border-color 0.1s;
+}
+
+/* Cookers are small tiles, several to a row */
+.kitchen-cookers {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem;
+}
+
+@container (min-width: 24rem) {
+    .kitchen-cookers {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    /* An occupied cooker takes half the row, the same as meals elsewhere */
+    .kitchen-cookers .kitchen-cooker.occupied {
+        grid-column: span 2;
+    }
+}
+
+.kitchen-cooker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-height: 0;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+}
+
+/* An occupied cooker takes the full row when the area is narrow, so its meal has room */
+.kitchen-cooker.occupied {
+    grid-column: 1 / -1;
+    border-style: solid;
+}
+
+/* An empty cooker only shows its name */
+.kitchen-cooker [data-meal]:empty {
+    display: none;
+}
+
+#kitchen-serving {
+    padding: 0.25rem;
+}
+
+.kitchen-equipment {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    column-gap: 0.75rem;
+    font-size: 0.75rem;
+}
+
+.kitchen-equipment-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+.kitchen-equipment-row:hover {
+    background-color: rgb(249 250 251);
+}
+
+/* Fewer than 25% of the pieces are clean */
+.kitchen-equipment-row.low {
+    color: rgb(194 65 12);
+    background-color: rgb(255 247 237);
+}
+
+/* Fewer than 5% of the pieces are clean */
+.kitchen-equipment-row.critical {
+    color: rgb(185 28 28);
+    background-color: rgb(254 242 242);
+}
+
+/* Clean, in use and dirty, in fixed columns so they line up between rows and with the legend */
+.kitchen-equipment-counts,
+.kitchen-equipment-legend {
+    display: grid;
+    grid-template-columns: repeat(3, 2.5rem);
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.kitchen-equipment-legend {
+    justify-content: end;
+    font-size: 0.65rem;
+    color: rgb(156 163 175);
+    padding-right: 0.25rem;
+}
+
+[data-count="clean"] {
+    color: rgb(21 128 61);
+}
+
+[data-count="in use"] {
+    color: rgb(37 99 235);
+}
+
+[data-count="dirty"] {
+    color: rgb(161 98 7);
+}
+
+/* How many pieces to clean, with the button showing how long it takes */
+.meal-menu-clean {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Name, timer and actions on a single line, with the name giving way when space runs out */
+.kitchen-meal {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.125rem 0.375rem;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 0.25rem;
+    background-color: rgb(249 250 251);
+    font-size: 0.8rem;
+    line-height: 1.25;
+}
+
+.kitchen-meal[draggable="true"] {
+    cursor: grab;
+}
+
+.kitchen-meal.clickable {
+    cursor: pointer;
+}
+
+/* A shadow rather than a border colour, which would cover up the meal's status colour */
+.kitchen-meal.clickable:hover {
+    box-shadow: 0 0 0 1px rgb(156 163 175);
+}
+
+/* A meal's status is shown by its colour, with a stronger edge on the left */
+.kitchen-meal[data-status] {
+    border-left-width: 4px;
+}
+
+.kitchen-meal[data-status="planned"] {
+    border-color: rgb(209 213 219);
+    border-left-color: rgb(156 163 175);
+    background-color: rgb(249 250 251);
+}
+
+.kitchen-meal[data-status="prepped"] {
+    border-color: rgb(191 219 254);
+    border-left-color: rgb(59 130 246);
+    background-color: rgb(239 246 255);
+}
+
+.kitchen-meal[data-status="cooking"] {
+    border-color: rgb(254 215 170);
+    border-left-color: rgb(249 115 22);
+    background-color: rgb(255 247 237);
+}
+
+.kitchen-meal[data-status="done"],
+.kitchen-meal[data-status="serving"] {
+    border-color: rgb(187 247 208);
+    border-left-color: rgb(34 197 94);
+    background-color: rgb(240 253 244);
+}
+
+.kitchen-meal.spoiled {
+    border-color: rgb(254 202 202);
+    border-left-color: rgb(220 38 38);
+    background-color: rgb(254 242 242);
+}
+
+.kitchen-meal-actions:empty {
+    display: none;
+}
+
+/* The other meals a meal still waits on */
+.kitchen-meal-needs {
+    font-size: 0.75rem;
+    color: rgb(180 83 9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.kitchen-meal-needs:empty {
+    display: none;
+}
+
+.meal-menu-status:empty {
+    display: none;
+}
+
+/* A small menu hovering over a meal, positioned by the script */
+.meal-menu {
+    position: fixed;
+    z-index: 40;
+    min-width: 11rem;
+    max-width: 16rem;
+    padding: 0.25rem;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 0.375rem;
+    background-color: white;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+
+.meal-menu-status {
+    display: block;
+    padding: 0.25rem 0.5rem;
+    color: rgb(107 114 128);
+    border-bottom: 1px solid rgb(243 244 246);
+    margin-bottom: 0.25rem;
+}
+
+.meal-menu-option {
+    text-align: left;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.meal-menu-option:hover,
+.meal-menu-option:focus {
+    background-color: rgb(254 242 242);
+    color: rgb(220 38 38);
+}
+
+/* The entrance is hidden while nobody is waiting, unless a customer is being dragged and could be dropped there */
+#general-storage.empty:not(.visible),
+#service-entrance.empty:not(.visible) {
+    display: none;
+}
+
+/*| Orders |*/
+
+.service-table {
+    cursor: pointer;
+}
+
+.service-table:hover {
+    border-color: rgb(156 163 175);
+}
+
+/* How long ago the table ordered, or was fully served */
+.service-table-order {
+    font-size: 0.75rem;
+}
+
+.service-table-order:empty {
+    display: none;
+}
+
+.service-table-order.waiting {
+    color: rgb(194 65 12);
+    font-weight: 600;
+}
+
+.service-table-order.fulfilled {
+    color: rgb(21 128 61);
+}
+
+/* How many of the table's ordered portions have been served */
+.service-table-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.service-table-progress.hidden {
+    display: none;
+}
+
+.service-table-progress-bar {
+    flex: 1;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: rgb(229 231 235);
+    overflow: hidden;
+}
+
+.service-table-progress-fill {
+    height: 100%;
+    border-radius: 9999px;
+    background-color: rgb(234 88 12);
+    transition: width 0.2s ease;
+}
+
+.service-table-progress.complete .service-table-progress-fill {
+    background-color: rgb(22 163 74);
+}
+
+.service-table-progress-count {
+    font-size: 0.7rem;
+    color: rgb(107 114 128);
+}
+
+.kitchen-plates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.kitchen-plate {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+}
+
+/* The recipes to pick from on the left, the order being taken on the right */
+.order-columns {
+    display: grid;
+    grid-template-columns: 16rem minmax(20rem, 1fr);
+    gap: 1rem;
+}
+
+.order-list {
+    display: flex;
+    flex-direction: column;
+    height: 18rem;
+    overflow-y: auto;
+    border: 1px solid rgb(243 244 246);
+    border-radius: 0.25rem;
+}
+
+.order-recipe,
+.order-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid rgb(243 244 246);
+    font-size: 0.875rem;
+}
+
+.order-recipe {
+    cursor: pointer;
+}
+
+.order-recipe:hover {
+    background-color: rgb(254 242 242);
+}
+
+/* A recipe with variants, which opens to list them */
+.order-recipe-group {
+    font-weight: 500;
+    user-select: none;
+}
+
+.order-recipe-group.expanded {
+    background-color: rgb(249 250 251);
+}
+
+.order-recipe-variant {
+    padding-left: 1.5rem;
+}
+
+/* The menu's search bar */
+.order-search {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+    background-color: white;
+    cursor: text;
+}
+
+.order-search:focus-within {
+    border-color: rgb(248 113 113);
+    box-shadow: 0 0 0 2px rgb(254 226 226);
+}
+
+.order-search-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: rgb(156 163 175);
+}
+
+.order-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.875rem;
+}
+
+/* A type of recipe on the menu, such as meals or drinks, heading the recipes of that type */
+.order-recipe-type {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.375rem 0.5rem 0.25rem;
+    background-color: rgb(249 250 251);
+    border-bottom: 1px solid rgb(229 231 235);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(107 114 128);
+}
+
+.order-details-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgb(243 244 246);
+    font-size: 0.875rem;
+}
+
+/* Eaten portions fade, as only their price still matters */
+.order-details-item.consumed {
+    opacity: 0.55;
+}
+
+/* What the items come to, and what the table pays after the discount and tip */
+.order-details-totals {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 1rem;
+    text-align: right;
+}
+
+.order-item.served {
+    color: rgb(21 128 61);
+}
+
+.order-details-item.served {
+    color: rgb(21 128 61);
+}
+
+/*| Money inputs |*/
+
+/* While not being edited, the input's raw amount is hidden behind its value in coins */
+.money-input-wrapper {
+    position: relative;
+}
+
+.money-input-wrapper .money-input:not(:focus) {
+    color: transparent;
+}
+
+.money-input-display {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.money-input:focus + .money-input-display {
+    display: none;
+}
+
+/*| Staff |*/
+
+/* The staff spans the full width of the kitchen, above the other areas */
+.kitchen-staff-area {
+    grid-column: 1 / -1;
+}
+
+.kitchen-staff {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    min-height: 2rem;
+}
+
+.kitchen-employee {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 4.75rem;
+    padding: 0.125rem;
+    border-radius: 0.25rem;
+    cursor: grab;
+    text-align: center;
+}
+
+.kitchen-employee:hover {
+    background-color: rgb(249 250 251);
+}
+
+.kitchen-employee-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    flex-shrink: 0;
+    border: 2px solid rgb(209 213 219);
+    border-radius: 9999px;
+    background-color: rgb(243 244 246);
+    background-size: cover;
+    background-position: center;
+    font-weight: 600;
+    color: rgb(75 85 99);
+}
+
+/* The colour of an employee's ring shows where they work */
+.kitchen-employee-icon[data-station="prep"] {
+    border-color: rgb(59 130 246);
+}
+
+.kitchen-employee-icon[data-station="cleaning"] {
+    border-color: rgb(20 184 166);
+}
+
+.kitchen-employee-icon[data-station="cooking"] {
+    border-color: rgb(239 68 68);
+}
+
+.kitchen-employee-icon[data-station="tables"] {
+    border-color: rgb(245 158 11);
+}
+
+/* The icon of the employee waiting a table, in the table's header */
+.service-table-waiter {
+    display: flex;
+}
+
+.service-table-waiter:empty {
+    display: none;
+}
+
+.service-table-waiter .kitchen-employee-icon {
+    width: 1.375rem;
+    height: 1.375rem;
+    border-width: 1px;
+    font-size: 0.65rem;
+    cursor: grab;
+}
+
+.kitchen-employee-name {
+    max-width: 100%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kitchen-employee-task {
+    max-width: 100%;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    color: rgb(107 114 128);
+}
+
+/* The prep and cleaning areas take dropped employees */
+.kitchen-work-area {
+    transition: box-shadow 0.1s;
+}
+
+.kitchen-work-area.drop-hover,
+.kitchen-staff-area.drop-hover {
+    box-shadow: inset 0 0 0 2px rgb(59 130 246 / 0.5);
+}
+
+/* Small icons of the employees working in an area, next to its title */
+.kitchen-area-staff {
+    display: flex;
+    flex: 1;
+    gap: 0.125rem;
+}
+
+.kitchen-area-staff .kitchen-employee-icon {
+    width: 1.375rem;
+    height: 1.375rem;
+    border-width: 1px;
+    font-size: 0.65rem;
+    cursor: grab;
+}
+
+/* Planned meals queued for prep */
+.kitchen-meal[data-status="planned"][data-queued] {
+    border-left-color: rgb(147 197 253);
+    border-left-style: dashed;
+}
+
+/* How many pieces are queued for cleaning, and how long until they are clean */
+.kitchen-equipment-cleaning {
+    margin-left: auto;
+    font-size: 0.65rem;
+    color: rgb(13 148 136);
+    white-space: nowrap;
+}
+
+/* The entrance only takes the room its waiting customers need */
+#service-entrance {
+    min-height: 0;
+}
+
+#service-entrance .inventory-storage-header {
+    padding: 0.25rem 0.625rem;
+}
+
+#service-entrance .inventory-storage-items {
+    min-height: 2.5rem;
+    padding: 0.375rem;
+}
+
+/*| Progress |*/
+
+/* A thin bar along the bottom of a meal or a piece of equipment, filled as far as its cooking, prep or cleaning is */
+.kitchen-meal,
+.kitchen-equipment-row {
+    position: relative;
+    overflow: hidden;
+}
+
+.kitchen-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background-color: rgb(0 0 0 / 0.06);
+}
+
+.kitchen-progress > div,
+.kitchen-total-progress > div {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.kitchen-meal[data-status="cooking"] .kitchen-progress > div {
+    background-color: rgb(249 115 22);
+}
+
+.kitchen-meal[data-status="planned"] .kitchen-progress > div {
+    background-color: rgb(59 130 246);
+}
+
+.kitchen-equipment-row .kitchen-progress > div {
+    background-color: rgb(20 184 166);
+}
+
+/* How far along the whole queue of the prep or cleaning area is */
+.kitchen-total-progress {
+    height: 0.25rem;
+    border-radius: 9999px;
+    background-color: rgb(229 231 235);
+    overflow: hidden;
+}
+
+.kitchen-total-progress.hidden {
+    display: none;
+}
+
+[data-station-progress="prep"] > div {
+    background-color: rgb(59 130 246);
+}
+
+[data-station-progress="cleaning"] > div {
+    background-color: rgb(20 184 166);
+}
+
+/* Recipes on sale during this service */
+.inventory-list-row.on-sale [data-field="meta"] {
+    color: rgb(194 65 12);
+    font-weight: 600;
+}
+
+/*| Quality |*/
+
+/* How well a meal turned out, next to its name */
+.kitchen-meal-quality {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgb(124 58 237);
+    white-space: nowrap;
+}
+
+.kitchen-meal-quality:empty {
+    display: none;
+}
+
+/* Plated portions that spoiled before they were brought out */
+.kitchen-plate.spoiled {
+    border-color: rgb(220 38 38);
+    background-color: rgb(254 242 242);
+    color: rgb(185 28 28);
+}
+
+/*| Waiters |*/
+
+/* The job the waiter is on at a table, with how far along it is */
+.service-table-job {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    font-size: 0.7rem;
+    color: rgb(180 83 9);
+}
+
+.service-table-job.hidden {
+    display: none;
+}
+
+.service-table-job-bar {
+    height: 2px;
+    background-color: rgb(0 0 0 / 0.06);
+}
+
+.service-table-job-bar > div {
+    height: 100%;
+    background-color: rgb(245 158 11);
+    transition: width 0.3s ease;
+}
+
+/*| Finances */
+
+.finance-list {
+    display: flex;
+    flex-direction: column;
+    max-width: 48rem;
+    margin: 0 auto;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+}
+
+.finance-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+}
+
+.finance-row + .finance-row {
+    border-top: 1px solid rgb(229 231 235);
+}
+
+.finance-row:hover,
+.finance-row:focus-visible {
+    background-color: rgb(249 250 251);
+}
+
+.finance-row-date {
+    width: 12rem;
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+    white-space: nowrap;
+}
+
+.finance-amount {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.finance-amount.positive {
+    color: rgb(21 128 61);
+}
+
+.finance-amount.negative {
+    color: rgb(185 28 28);
+}
+
+/* Wide enough for the order table, while staying within the screen */
+.finance-details {
+    width: min(48rem, 85vw);
+}
+
+.finance-section-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.finance-table {
+    width: 100%;
+    font-size: 0.875rem;
+    border-collapse: collapse;
+}
+
+.finance-table th {
+    text-align: left;
+    font-weight: 500;
+    color: rgb(107 114 128);
+    border-bottom: 1px solid rgb(229 231 235);
+}
+
+.finance-table th,
+.finance-table td {
+    padding: 0.25rem 0.5rem;
+}
+
+.finance-table tbody tr + tr td {
+    border-top: 1px solid rgb(243 244 246);
+}
+
+/* Amounts line up on the right */
+.finance-table th:last-child,
+.finance-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.finance-table tr.muted td {
+    color: rgb(156 163 175);
+}
+
+/* The description of a transaction, which can be read in full but not edited */
+.finance-description {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.25rem;
+    background-color: rgb(249 250 251);
+    resize: vertical;
+}
+
+/*| Players */
+
+/* A player's own employees stand out, while those of others can't be moved */
+.kitchen-employee.own .kitchen-employee-icon {
+    box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+
+.kitchen-employee.locked {
+    cursor: default;
+    opacity: 0.6;
+}
+
+/* How satisfied the customer was with a portion */
+.order-satisfaction {
+    font-size: 0.75rem;
+    color: rgb(202 138 4);
+    white-space: nowrap;
+}
+
+/*| Boosts */
+
+/* The boosts active now, shown under the kitchen's title */
+.kitchen-boosts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.kitchen-boost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    padding: 0 0.375rem;
+    border-radius: 9999px;
+    background-color: rgb(254 249 195);
+    color: rgb(133 77 14);
+    white-space: nowrap;
+}
+
+/* Cancels the boost, stopping it early */
+.kitchen-boost-cancel {
+    font-weight: 600;
+    line-height: 1;
+    opacity: 0.6;
+}
+
+.kitchen-boost-cancel:hover {
+    opacity: 1;
+}
+
+/* What a boost can be activated on, two columns of checkboxes */
+.boost-targets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem 1rem;
+    padding: 0.5rem 0.75rem 0.625rem;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.375rem;
+}
+
+.boost-targets legend {
+    padding: 0 0.25rem;
+    color: rgb(107 114 128);
+}
+
+.boost-target {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+#finance-modal {
+    align-items: start;
+}

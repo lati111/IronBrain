@@ -33,6 +33,12 @@ abstract class DuskTestCase extends BaseTestCase
      */
     public static function prepare(): void
     {
+        // A ChromeDriver kept elsewhere than Dusk's own bin folder, such as one matching the local Chrome
+        $chromedriver = getenv('DUSK_CHROMEDRIVER') ?: ($_ENV['DUSK_CHROMEDRIVER'] ?? null);
+        if ($chromedriver) {
+            static::useChromedriver($chromedriver);
+        }
+
         if (! static::runningInSail()) {
             static::startChromeDriver();
         }
@@ -54,7 +60,8 @@ abstract class DuskTestCase extends BaseTestCase
         })->all());
 
         return RemoteWebDriver::create(
-            $_ENV['DUSK_DRIVER_URL'] ?? 'http://localhost:9515',
+            // An IP rather than localhost, which can resolve to IPv6 while ChromeDriver only listens on IPv4
+            $_ENV['DUSK_DRIVER_URL'] ?? 'http://127.0.0.1:9515',
             DesiredCapabilities::chrome()->setCapability(
                 ChromeOptions::CAPABILITY, $options
             )

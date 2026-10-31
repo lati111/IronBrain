@@ -41,7 +41,7 @@ class ArsenalOwnedSlotCardlist extends AbstractCardlist
                 return $item;
             });
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $items);
+        return $this->respondWithItems($request, $items);
     }
 
     /** { @inheritdoc } */

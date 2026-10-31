@@ -2,7 +2,6 @@
 
 namespace App\Service\Arsenal;
 
-use App\Enum\PKSanc\ImportQueries;
 use ErrorException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;

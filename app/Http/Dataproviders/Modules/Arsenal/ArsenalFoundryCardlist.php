@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Dataproviders\Modules\Arsenal;
 
-use App\Enum\GenericStringEnum;
 use App\Http\Dataproviders\AbstractCardlist;
 use App\Http\Dataproviders\Traits\HasPages;
 use App\Models\Arsenal\Companion;
@@ -23,7 +22,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Lati111\LaravelDataproviders\Traits\Dataprovider;
 use Lati111\LaravelDataproviders\Traits\Paginatable;
-use Symfony\Component\HttpFoundation\Response;
 
 class ArsenalFoundryCardlist extends AbstractCardlist
 {
@@ -35,7 +33,7 @@ class ArsenalFoundryCardlist extends AbstractCardlist
         $blueprints = $this->getData($request)->get();
 
         if ($blueprints->isEmpty()) {
-            return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, collect());
+            return $this->respondWithItems($request, collect());
         }
 
         $user = Auth::user();
@@ -59,7 +57,7 @@ class ArsenalFoundryCardlist extends AbstractCardlist
             return $bp;
         });
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $result);
+        return $this->respondWithItems($request, $result);
     }
 
     /** { @inheritdoc } */
