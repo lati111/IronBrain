@@ -159,7 +159,7 @@ class PlayerStaffTest extends AbstractFeatureTester
         $this->callApi('api.dnd.restaurant.floor.customer.seat', ['table_uuid' => $this->table->uuid, 'seat' => 2], ['customer_uuid' => $customer->uuid])->assertForbidden();
     }
 
-    public function test_players_send_their_waiter_to_take_an_order_but_dont_note_it_down(): void
+    public function test_players_send_their_waiter_to_take_an_order_and_note_it_down(): void
     {
         $this->createTestCustomer($this->restaurant, $this->table, 'Bilbo');
         $this->callApi('api.dnd.restaurant.service.order.place', ['table_uuid' => $this->table->uuid])->assertForbidden();
@@ -168,10 +168,17 @@ class PlayerStaffTest extends AbstractFeatureTester
         $this->callApi('api.dnd.restaurant.service.order.place', ['table_uuid' => $this->table->uuid])->assertCreated();
         $this->assertEquals(Order::STATUS_TAKING, Order::where('table_uuid', $this->table->uuid)->value('status'));
 
-        $response = $this->callApi('api.dnd.restaurant.service.order.place', ['table_uuid' => $this->table->uuid,
-            'items' => [['recipe_uuid' => $this->stew->uuid, 'customer_uuid' => null]]]);
-        $response->assertForbidden();
-        $this->assertEquals('Players can\'t note down orders', $response->json('message'));
+        $this->advance(2);
+        $this->callApi('api.dnd.restaurant.service.order.place', ['table_uuid' => $this->table->uuid,
+            'items' => [['recipe_uuid' => $this->stew->uuid, 'customer_uuid' => null]]])->assertCreated();
+    }
+
+    public function test_players_dont_note_down_orders_at_tables_they_dont_wait(): void
+    {
+        $this->createTestCustomer($this->restaurant, $this->table, 'Bilbo');
+
+        $this->callApi('api.dnd.restaurant.service.order.place', ['table_uuid' => $this->table->uuid,
+            'items' => [['recipe_uuid' => $this->stew->uuid, 'customer_uuid' => null]]])->assertForbidden();
     }
 
     //| conversions

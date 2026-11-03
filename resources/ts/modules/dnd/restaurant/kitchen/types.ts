@@ -297,6 +297,8 @@ export interface ServiceState {
     waiting: WaitingJob[];
     orders: Order[];
     viewer: Viewer;
+    /** The players controlling employees that have the page open */
+    online: string[];
     /** How many changes the restaurant has seen, sent along when refreshing to learn whether anything changed */
     version: number;
 }

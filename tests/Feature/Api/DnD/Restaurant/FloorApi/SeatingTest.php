@@ -3,9 +3,11 @@
 namespace Tests\Feature\Api\DnD\Restaurant\FloorApi;
 
 use App\Models\DnD\Restaurant\Customer;
+use App\Models\DnD\Restaurant\Order;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\Table;
 use App\Models\DnD\Restaurant\Work;
+use App\Service\DnD\Restaurant\OrderService;
 use App\Service\DnD\Restaurant\ShiftService;
 use App\Service\DnD\Restaurant\WorkService;
 use Illuminate\Testing\TestResponse;
@@ -13,8 +15,8 @@ use Tests\Feature\AbstractFeatureTester;
 use Tests\Traits\DnD\RestaurantTestHelper;
 
 /**
- * Covers seating customers during service: a table's waiter walks them over from the entrance, which takes a few
- * minutes, while a table without a waiter seats them straight away
+ * Covers seating customers during service: a table's waiter walks them over from the entrance, which takes a minute,
+ * and then takes their order, while a table without a waiter seats them straight away
  */
 class SeatingTest extends AbstractFeatureTester
 {
@@ -61,12 +63,57 @@ class SeatingTest extends AbstractFeatureTester
         $this->seat($this->bilbo, 1)->assertOk();
         $this->assertNull($this->bilbo->fresh()->table_uuid);
 
-        $this->callApi('api.dnd.restaurant.service.time', ['advance' => WorkService::SEATING_MINUTES - 1])->assertOk();
         $this->assertNull($this->bilbo->fresh()->table_uuid);
-        $response = $this->callApi('api.dnd.restaurant.service.time', ['advance' => 1])->assertOk();
+        $this->callApi('api.dnd.restaurant.service.time', ['advance' => WorkService::SEATING_MINUTES])->assertOk();
 
         $this->assertEquals([$this->table->uuid, 1], [$this->bilbo->fresh()->table_uuid, $this->bilbo->fresh()->seat]);
         $this->assertFalse(Work::where('customer_uuid', $this->bilbo->uuid)->exists());
+    }
+
+    public function test_seating_a_customer_starts_taking_their_order(): void
+    {
+        $this->assignTestWaiter($this->table, 'Sam');
+        $this->seat($this->bilbo, 1)->assertOk();
+        $this->assertEquals(0, Order::count());
+
+        // A minute to walk them over, and then the waiter takes the order of the one seated
+        $this->callApi('api.dnd.restaurant.service.time', ['advance' => WorkService::SEATING_MINUTES])->assertOk();
+        $order = Order::where('table_uuid', $this->table->uuid)->first();
+        $this->assertEquals(Order::STATUS_TAKING, $order->status);
+
+        $this->callApi('api.dnd.restaurant.service.time', ['advance' => OrderService::ORDER_MINUTES_PER_CUSTOMER])->assertOk();
+        $this->assertEquals(Order::STATUS_TAKEN, $order->fresh()->status);
+        $this->assertEquals('12:03', $order->fresh()->ordered_at->format('H:i'));
+    }
+
+    public function test_the_whole_seating_takes_a_minute_plus_taking_the_order_in_one_go(): void
+    {
+        $this->assignTestWaiter($this->table, 'Sam');
+        $this->seat($this->bilbo, 1)->assertOk();
+
+        $this->callApi('api.dnd.restaurant.service.time', ['advance' => WorkService::SEATING_MINUTES + OrderService::ORDER_MINUTES_PER_CUSTOMER])->assertOk();
+
+        $this->assertEquals(Order::STATUS_TAKEN, Order::where('table_uuid', $this->table->uuid)->value('status'));
+    }
+
+    public function test_an_order_already_being_taken_covers_customers_seated_after(): void
+    {
+        $this->assignTestWaiter($this->table, 'Sam');
+        $this->seat($this->bilbo, 1)->assertOk();
+        $this->callApi('api.dnd.restaurant.service.time', ['advance' => WorkService::SEATING_MINUTES])->assertOk();
+
+        $this->seat($this->createTestCustomer($this->restaurant, null, 'Frodo'), 2)->assertOk();
+        $this->callApi('api.dnd.restaurant.service.time', ['advance' => 30])->assertOk();
+
+        $this->assertEquals(1, Order::where('table_uuid', $this->table->uuid)->count());
+    }
+
+    public function test_seating_at_a_table_without_a_waiter_starts_no_order(): void
+    {
+        $this->seat($this->bilbo, 1)->assertOk();
+        $this->callApi('api.dnd.restaurant.service.time', ['advance' => 30])->assertOk();
+
+        $this->assertEquals(0, Order::count());
     }
 
     public function test_a_seat_is_kept_for_a_customer_on_their_way(): void

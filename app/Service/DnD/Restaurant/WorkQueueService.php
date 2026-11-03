@@ -296,7 +296,8 @@ class WorkQueueService
     }
 
     /**
-     * Finishes a waiter's job: the order is taken, the portion is served, or the customer is seated. Unlike the work
+     * Finishes a waiter's job: the order is taken, the portion is served, or the customer is seated, after which the
+     * waiter goes to take their order. Unlike the work
      * areas, waiters have no total to keep, so the job is cleared straight away
      * @param Work $job The job
      * @param Carbon $at When it finished, in the restaurant's time
@@ -311,6 +312,13 @@ class WorkQueueService
             $this->finishDelivery($job->ServedMeal, $at);
         }
 
+        // The plates carried along arrive on the same trip, and their jobs go along with this one
+        foreach ($job->Carried as $carried) {
+            if ($carried->ServedMeal !== null) {
+                $this->finishDelivery($carried->ServedMeal, $at);
+            }
+        }
+
         $customer = $job->Customer;
         $table = $job->Table;
         $job->delete();
@@ -321,8 +329,38 @@ class WorkQueueService
             try {
                 $this->floorService->seatCustomer($customer, $table, $job->seat);
             } catch (InvalidArgumentException) {
+                return;
             }
+
+            $this->startOrderTaking($table->refresh(), $at);
         }
+    }
+
+    /**
+     * Has the waiter of a table go and take an order straight after seating a customer there, for everyone seated.
+     * Nothing is started when an order is already being taken, as that one covers the table, or nobody waits it
+     * @param Table $table The table
+     * @param Carbon $at When the customer was seated, in the restaurant's time
+     */
+    private function startOrderTaking(Table $table, Carbon $at): void
+    {
+        $beingTaken = Order::where('table_uuid', $table->uuid)->whereIn('status', [Order::STATUS_TAKING, Order::STATUS_TAKEN])
+            ->whereDoesntHave('Items')->exists();
+        if ($table->employee_uuid === null || $beingTaken) {
+            return;
+        }
+
+        $restaurant = $table->getRestaurant();
+        $order = new Order();
+        $order->restaurant_uuid = $restaurant->uuid;
+        $order->table_uuid = $table->uuid;
+        $order->service_uuid = $restaurant->getCurrentService()?->uuid;
+        $order->status = Order::STATUS_TAKING;
+        $order->ordered_at = $at;
+        $order->total_price = 0;
+        $order->save();
+
+        $this->createJob($restaurant, WorkStation::WAITING, $table->Customers()->count() * OrderService::ORDER_MINUTES_PER_CUSTOMER, table: $table, order: $order);
     }
 
     /**

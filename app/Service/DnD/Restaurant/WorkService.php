@@ -28,8 +28,8 @@ use InvalidArgumentException;
  */
 class WorkService
 {
-    /** @var int How long seating a customer takes their waiter, in minutes */
-    public const int SEATING_MINUTES = 3;
+    /** @var int How long seating a customer takes their waiter, in minutes, before they take the table's order */
+    public const int SEATING_MINUTES = 1;
 
     public function __construct(
         private readonly WorkQueueService $workQueueService,
@@ -538,7 +538,11 @@ class WorkService
     {
         $budget = $minutes;
         $done = 0.0;
-        foreach ($this->workQueueService->getWaitingQueue($waiter->Tables->pluck('uuid')->all()) as $job) {
+        $tables = $waiter->Tables->pluck('uuid')->all();
+
+        // The queue is looked up again after every job, as finishing one can add the next, such as taking the order of
+        // a customer who was just seated
+        while (($job = $this->workQueueService->getWaitingQueue($tables)->first()) !== null) {
             $remaining = $job->getRemaining();
             if ($budget < $remaining) {
                 $job->progress = round($job->progress + $budget, 2);

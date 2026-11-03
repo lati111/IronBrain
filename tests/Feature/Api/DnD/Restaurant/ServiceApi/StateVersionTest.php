@@ -44,7 +44,7 @@ class StateVersionTest extends AbstractFeatureTester
         $version = $this->fetch('api.dnd.restaurant.service.get')->json('data.version');
 
         $unchanged = $this->fetch('api.dnd.restaurant.service.get', $version);
-        $this->assertEquals(['unchanged' => true, 'version' => $version], $unchanged->json('data'));
+        $this->assertEquals(['unchanged' => true, 'version' => $version, 'online' => []], $unchanged->json('data'));
 
         // A change returns the version it brought, so the page that made it doesn't fetch it again
         $changed = $this->advance()->json('data.version');

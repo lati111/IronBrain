@@ -60,9 +60,8 @@ class OrderApi extends AbstractServiceApi
             return $this->notFound('Table');
         }
 
-        // Players send the waiter of their table to take an order, though only the owner and managers note it down
-        $denied = $this->denyPlayerUnlessWaiting($restaurant, $table)
-            ?? ($request->filled('items') ? $this->denyPlayerUnless($restaurant, fn () => false, 'Players can\'t note down orders') : null);
+        // Players send the waiter of their table to take an order, and note it down once taken
+        $denied = $this->denyPlayerUnlessWaiting($restaurant, $table);
         if ($denied !== null) {
             return $denied;
         }

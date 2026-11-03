@@ -7,6 +7,8 @@ import {Employee, ServiceState, StaffArea} from "./types";
 
 let serviceUrl = '';
 let state: ServiceState | null = null;
+/** The players that have the page open, as last reported by the server */
+let online: string[] = [];
 
 /** Called whenever the service state changes, in the order they were added, so the kitchen and floor show it */
 const stateListeners: ((state: ServiceState) => void)[] = [];
@@ -28,6 +30,7 @@ export function onServiceState(listener: (state: ServiceState) => void): void {
 
 function setState(data: ServiceState): void {
     state = data;
+    online = data.online ?? online;
     stateListeners.forEach((listener) => listener(data));
 }
 
@@ -36,6 +39,11 @@ function setState(data: ServiceState): void {
 /** Whether the one looking is a player, who only controls the employees assigned to them */
 export function isPlayer(): boolean {
     return state?.viewer.player ?? false;
+}
+
+/** Whether a player has the page open right now */
+export function isOnline(userUuid: string): boolean {
+    return online.includes(userUuid);
 }
 
 /** Whether the one looking may move an employee around: anyone but a player, and a player their own employees */
@@ -93,7 +101,10 @@ export function isIdle(): boolean {
 
 /** Fetches the service again when the page is left alone, unless something was changed in the meantime */
 async function refreshState(): Promise<void> {
-    if (!isIdle()) return;
+    // Asking while the page is open also tells the others that this player is here, so it is done while the page is
+    // visible even when it isn't left alone
+    if (document.visibilityState !== 'visible') return;
+    const idle = isIdle();
 
     const count = changeCount;
     const query = new FormData();
@@ -101,8 +112,15 @@ async function refreshState(): Promise<void> {
 
     try {
         const response = await getData(serviceUrl, query);
-        if (count === changeCount && isIdle() && !response.data.unchanged) {
+        const previouslyOnline = online;
+        online = response.data.online ?? online;
+
+        if (!idle || count !== changeCount || !isIdle()) return;
+        if (!response.data.unchanged) {
             setState(response.data);
+        } else if (state !== null && JSON.stringify(previouslyOnline) !== JSON.stringify(online)) {
+            // Nothing changed, but who is online did, which decides who is offered what
+            setState(state);
         }
     } catch {
         // Tried again on the next refresh

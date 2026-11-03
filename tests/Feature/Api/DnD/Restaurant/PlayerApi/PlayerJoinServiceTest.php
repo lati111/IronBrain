@@ -6,7 +6,9 @@ use App\Enum\DnD\Restaurant\WorkStation;
 use App\Models\Auth\User;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Models\DnD\Restaurant\RestaurantUser;
+use App\Service\DnD\Restaurant\PresenceService;
 use App\Service\DnD\Restaurant\ShiftService;
+use Illuminate\Testing\TestResponse;
 use Tests\Feature\AbstractFeatureTester;
 use Tests\Traits\DnD\RestaurantTestHelper;
 
@@ -46,6 +48,40 @@ class PlayerJoinServiceTest extends AbstractFeatureTester
         $this->actingAs($this->player)
             ->get(route('dnd.restaurant.service', ['restaurant_uuid' => $this->restaurant->uuid]))
             ->assertOk();
+    }
+
+    private function getService(User $user, array $query = []): TestResponse
+    {
+        return $this->withHeaders(['Accept' => 'application/json'])->actingAs($user)
+            ->getJson(route('api.dnd.restaurant.service.get', ['restaurant_uuid' => $this->restaurant->uuid] + $query));
+    }
+
+    public function test_players_with_employees_are_online_while_their_page_asks_for_the_service(): void
+    {
+        $this->assertEquals([], $this->getService($this->getAdminUser())->json('data.online'));
+
+        $this->getService($this->player)->assertOk();
+
+        $this->assertEquals([$this->player->uuid], $this->getService($this->getAdminUser())->json('data.online'));
+    }
+
+    public function test_online_is_sent_along_even_when_nothing_changed(): void
+    {
+        $version = $this->getService($this->player)->json('data.version');
+
+        $response = $this->getService($this->getAdminUser(), ['version' => $version]);
+
+        $this->assertTrue($response->json('data.unchanged'));
+        $this->assertEquals([$this->player->uuid], $response->json('data.online'));
+    }
+
+    public function test_players_are_offline_once_their_page_stops_asking(): void
+    {
+        $this->getService($this->player)->assertOk();
+
+        $this->travel(PresenceService::ONLINE_SECONDS + 1)->seconds();
+
+        $this->assertEquals([], $this->getService($this->getAdminUser())->json('data.online'));
     }
 
     public function test_players_load_the_service_and_floor(): void

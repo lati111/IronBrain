@@ -7,7 +7,7 @@ import {toggleMenu} from "./kitchen/menu";
 import {describeOrder, openOrderDetails} from "./kitchen/order-details";
 import {getAddButton, initSidebar, KitchenTab, renderKitchenTab, renderSidebarList} from "./kitchen/sidebar";
 import {
-    canControl, getServiceState, isIdle, isPlayer, mayWait, mayWaitAny, onServiceState, post as postService, refreshServiceState,
+    canControl, getServiceState, isIdle, isOnline, isPlayer, mayWait, mayWaitAny, onServiceState, post as postService, refreshServiceState,
 } from "./kitchen/state";
 import {assignWaiter, getTableOrders, getWaiter, renderTableService} from "./kitchen/tables";
 import {Order} from "./kitchen/types";
@@ -259,10 +259,11 @@ function openTableMenu(table: Table, anchor: HTMLElement): void {
     const waiter = getWaiter(table);
 
     toggleMenu(anchor, waiter !== null ? `${status} · ${waiter.name}` : `${status} · no waiter`, (option) => {
-        // Orders are taken by the table's waiter, one at a time, and noted down by whoever runs the service once they
-        // have taken it. Players send their waiter to take one, and move their own employees around
+        // Orders are taken by the table's waiter, one at a time, and noted down once they have taken it: by the player
+        // of the waiter, or by whoever runs the service. Players send their waiter to take one, and move their own
+        // employees around
         const taken = orders.find((order) => order.status === 'taken');
-        if (taken !== undefined && !isPlayer()) {
+        if (taken !== undefined && mayWait(table.uuid)) {
             option('Note down order', () => openOrderModal(orderTable, getSeatedCustomers(table), taken));
         }
         if (waiter !== null) {
@@ -294,13 +295,23 @@ async function startOrder(table: Table): Promise<void> {
 }
 
 /**
+ * Whether the one looking is offered the order modal for a taken order: the player of the table's waiter while they
+ * have the page open, otherwise whoever runs the service, who can always note an order down from the table's menu
+ */
+function isOfferedOrder(table: Table): boolean {
+    const viewer = getServiceState()?.viewer;
+    const player = getWaiter(table)?.player_uuid ?? null;
+    const playerHere = player !== null && isOnline(player);
+
+    return playerHere ? viewer?.user_uuid === player : !isPlayer();
+}
+
+/**
  * Opens the order modal for an order the waiter is done taking, so what was ordered can be noted down. Closing it
- * puts that order off, after which it is still noted down from the table's menu. Only whoever runs the service notes
- * orders down, and never on top of another modal
+ * puts that order off, after which it is still noted down from the table's menu. It is offered to the waiter's player
+ * while they are online, and to whoever runs the service otherwise, and never on top of another modal
  */
 function offerTakenOrder(): void {
-    if (isPlayer()) return;
-
     const orders = getServiceState()?.orders ?? [];
     if (offeredOrder !== null && !isOrderModalOpen()) {
         if (orders.some((order) => order.uuid === offeredOrder && order.status === 'taken')) {
@@ -311,7 +322,8 @@ function offerTakenOrder(): void {
 
     if (document.querySelector('.modal:not(.hidden)') !== null) return;
 
-    const order = orders.find((candidate: Order) => candidate.status === 'taken' && !putOffOrders.has(candidate.uuid));
+    const order = orders.find((candidate: Order) => candidate.status === 'taken' && !putOffOrders.has(candidate.uuid)
+        && floor.tables.some((table) => table.uuid === candidate.table_uuid && isOfferedOrder(table)));
     const table = order !== undefined ? floor.tables.find((candidate) => candidate.uuid === order.table_uuid) : undefined;
     if (order === undefined || table === undefined) return;
 

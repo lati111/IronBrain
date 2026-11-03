@@ -7,12 +7,14 @@ use App\Models\DnD\Restaurant\Recipe;
 use App\Models\DnD\Restaurant\Restaurant;
 use App\Service\DnD\Restaurant\InventoryService;
 use App\Service\DnD\Restaurant\OrderService;
+use App\Service\DnD\Restaurant\PresenceService;
 use App\Service\DnD\Restaurant\ServiceStateService;
 use App\Service\DnD\Restaurant\ShiftService;
 use App\Service\DnD\Restaurant\WorkService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -52,7 +54,13 @@ class ServiceApi extends AbstractServiceApi
         }
 
         if ($request->filled('version') && (int) $request->get('version') === $restaurant->state_version) {
-            return $this->respond(Response::HTTP_OK, 'Unchanged', ['unchanged' => true, 'version' => $restaurant->state_version]);
+            // Who is online changes without the restaurant changing, so it is always sent along
+            $presence = app(PresenceService::class);
+            $presence->touch($restaurant, Auth::user());
+
+            return $this->respond(Response::HTTP_OK, 'Unchanged', [
+                'unchanged' => true, 'version' => $restaurant->state_version, 'online' => $presence->getOnlinePlayers($restaurant),
+            ]);
         }
 
         return $this->respond(Response::HTTP_OK, 'Service retrieved', $this->getState($restaurant));

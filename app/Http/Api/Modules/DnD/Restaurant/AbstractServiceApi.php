@@ -5,6 +5,7 @@ use App\Http\Api\AbstractApi;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\RespondsWithErrors;
 use App\Http\Api\Modules\DnD\Restaurant\Traits\GuardsPlayers;
 use App\Models\DnD\Restaurant\Restaurant;
+use App\Service\DnD\Restaurant\PresenceService;
 use App\Service\DnD\Restaurant\ServiceStateService;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -31,10 +32,14 @@ abstract class AbstractServiceApi extends AbstractApi
     protected function getState(Restaurant $restaurant): array
     {
         $user = Auth::user();
+        $presence = app(PresenceService::class);
+        $presence->touch($restaurant, $user);
 
         return $this->serviceStateService->getState($restaurant)
             // Who is looking: players only control the employees assigned to them
-            + ['viewer' => ['user_uuid' => $user?->uuid, 'player' => $user !== null && $restaurant->isPlayer($user)]];
+            + ['viewer' => ['user_uuid' => $user?->uuid, 'player' => $user !== null && $restaurant->isPlayer($user)]]
+            // Which players have the page open, as the one to note down an order is their player when they do
+            + ['online' => $presence->getOnlinePlayers($restaurant)];
     }
 
     /**
