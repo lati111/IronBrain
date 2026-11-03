@@ -278,6 +278,14 @@
                     <input type="number" name="multiplier" class="underlined" min="0" step="0.01" value="1" required/>
                 </x-form.input-wrapper>
             </div>
+            <div class="flex gap-3">
+                <x-form.input-wrapper label_text="Quality bonus" cls="flex-1">
+                    <input type="number" name="quality_bonus" class="underlined" min="-9999" max="9999" step="1" value="0" title="Added to the quality of meals made with it"/>
+                </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Quality multiplier" cls="flex-1">
+                    <input type="number" name="quality_multiplier" class="underlined" min="-1" max="999" step="0.01" value="0" title="Added up with the other equipment used, so 0.1 and 0.2 make how well the meal turned out 30% more"/>
+                </x-form.input-wrapper>
+            </div>
             <x-form.input-wrapper label_text="Storage">
                 {{--| A hidden field before the checkbox ensures an explicit 0 is sent when unchecked, instead of the field being left out |--}}
                 <input type="hidden" name="requires_storage" value="0"/>

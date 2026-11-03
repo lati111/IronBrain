@@ -290,7 +290,6 @@ class ServiceStateService
             'prep_time' => $meal->Recipe->prep_time,
             'cooker_uuid' => $meal->cooker_uuid,
             'cooker_slot' => $meal->cooker_slot,
-            // Null while nobody is in the cooking area to cook it
             'cooking_minutes_left' => $status === Meal::STATUS_COOKING && $meal->cooking_ends_at !== null ? $this->minutesUntil($now, $meal->cooking_ends_at) : null,
             'cooking_progress' => $status === Meal::STATUS_COOKING ? $this->getCookingProgress($meal) : null,
             // How fast it is being worked on, where 1 is normal, while it is prepped or cooking
@@ -298,10 +297,15 @@ class ServiceStateService
             'expires_in_minutes' => $meal->expires_at !== null ? $this->minutesUntil($now, $meal->expires_at) : null,
             'spoiled' => $meal->isSpoiledAt($now),
             'portions_left' => $meal->portions_left,
-            // The quality it is served at, with what boosts added, of which the bonus is part
+            // The quality it is served at, made up of how it turned out and what is added to it
             'quality' => $meal->getServedQuality(),
+            'quality_roll' => $meal->quality,
             'quality_bonus' => $meal->quality_bonus,
             'ingredient_quality' => $meal->ingredient_quality,
+            // What the cooking and the equipment add, which the cooking only knows of once it has gone on a while
+            'cooking_quality' => $meal->getCookingQuality(),
+            'equipment_bonus' => $meal->equipment_bonus,
+            'equipment_multiplier' => $meal->equipment_multiplier,
             // A finished meal without a quality yet asks for it
             'finished' => $meal->isFinishedAt($now),
             // Other meals still to be put in while it is being prepared, with how many portions of each

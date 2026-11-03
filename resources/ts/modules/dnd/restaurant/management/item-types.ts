@@ -122,6 +122,8 @@ export function openEquipmentModal(uuid: string | null): void {
             size:          String(equipment.size),
             cleaning_time: String(equipment.cleaning_time),
             multiplier:    String(equipment.multiplier),
+            quality_bonus: String(equipment.quality_bonus),
+            quality_multiplier: String(equipment.quality_multiplier),
             parent_uuid:   equipment.parent_uuid ?? '',
         });
         // The checkbox shares its name with a hidden fallback field, so namedItem would return a RadioNodeList instead

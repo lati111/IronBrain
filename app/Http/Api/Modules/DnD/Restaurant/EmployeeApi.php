@@ -33,6 +33,7 @@ class EmployeeApi extends AbstractFloorApi
             'cleaning_speed' => 'nullable|numeric|min:0|max:100',
             'prep_speed'     => 'nullable|numeric|min:0|max:100',
             'capacity'       => 'nullable|integer|min:1|max:100',
+            'cooking_quality' => 'nullable|integer|min:0|max:9999',
             'player_uuid'    => 'nullable|string|max:255',
         ]);
         if ($invalid !== null) {
@@ -55,6 +56,7 @@ class EmployeeApi extends AbstractFloorApi
         $employee->cleaning_speed  = round((float) ($request->get('cleaning_speed') ?? 1), 2);
         $employee->prep_speed      = round((float) ($request->get('prep_speed') ?? 1), 2);
         $employee->capacity        = (int) ($request->get('capacity') ?? Employee::DEFAULT_CAPACITY);
+        $employee->cooking_quality = (int) ($request->get('cooking_quality') ?? 0);
 
         if ($request->hasFile('icon')) {
             $employee->icon = FileStorage::putFile(self::EMPLOYEE_ICON_PATH, $request->file('icon'));
@@ -80,6 +82,7 @@ class EmployeeApi extends AbstractFloorApi
             'cleaning_speed' => 'nullable|numeric|min:0|max:100',
             'prep_speed'     => 'nullable|numeric|min:0|max:100',
             'capacity'       => 'nullable|integer|min:1|max:100',
+            'cooking_quality' => 'nullable|integer|min:0|max:9999',
             // An empty player leaves the employee to the owner and managers, while leaving it out keeps the current one
             'player_uuid'    => 'nullable|string|max:255',
         ]);
@@ -114,6 +117,9 @@ class EmployeeApi extends AbstractFloorApi
         }
         if ($request->filled('capacity')) {
             $employee->capacity = (int) $request->get('capacity');
+        }
+        if ($request->filled('cooking_quality')) {
+            $employee->cooking_quality = (int) $request->get('cooking_quality');
         }
 
         if ($request->hasFile('icon')) {

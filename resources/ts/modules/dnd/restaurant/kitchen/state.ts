@@ -59,7 +59,7 @@ function getOwnEmployees(): Employee[] {
 /** Whether the one looking may do the work of an area of the kitchen: anyone but a player, and a player while one of
  * their employees works there */
 export function mayWorkAt(area: StaffArea): boolean {
-    return !isPlayer() || getOwnEmployees().some((employee) => employee.station === area);
+    return !isPlayer() || getOwnEmployees().some((employee) => employee.stations.includes(area));
 }
 
 /** Whether the one looking may do the work of a table: anyone but a player, and a player while one of their employees

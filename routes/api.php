@@ -119,7 +119,8 @@ Route::prefix('/dnd/restaurant')
                 ->withoutMiddleware('dnd.restaurant.manager');
 
             Route::post('/meal/{meal_uuid}/quality', [\App\Http\Api\Modules\DnD\Restaurant\MealApi::class, 'setMealQuality'])
-                ->name('api.dnd.restaurant.service.meal.quality');
+                ->name('api.dnd.restaurant.service.meal.quality')
+                ->withoutMiddleware('dnd.restaurant.manager');
             Route::post('/meal/{meal_uuid}/plate', [\App\Http\Api\Modules\DnD\Restaurant\MealApi::class, 'plateMeal'])
                 ->name('api.dnd.restaurant.service.meal.plate')
                 ->withoutMiddleware('dnd.restaurant.manager');

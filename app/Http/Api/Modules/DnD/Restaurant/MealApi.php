@@ -188,7 +188,7 @@ class MealApi extends AbstractServiceApi
     }
 
     /**
-     * Sets how well a finished meal turned out
+     * Sets how well a finished meal turned out, which is up to the cooks when a player controls one of them
      * @param Request $request The request parameters as given by Laravel
      * @param string $restaurant_uuid The uuid of the restaurant
      * @param string $meal_uuid The uuid of the meal
@@ -204,7 +204,8 @@ class MealApi extends AbstractServiceApi
         }
 
         return $this->withMeal($restaurant_uuid, $meal_uuid, 'Quality saved',
-            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->setQuality($restaurant, $meal, (int) $request->get('quality')));
+            fn (Restaurant $restaurant, Meal $meal) => $this->kitchenService->setQuality($restaurant, $meal, (int) $request->get('quality')),
+            fn (Restaurant $restaurant) => $this->denyPlayerUnlessWorking($restaurant, WorkStation::COOKING));
     }
 
     /**

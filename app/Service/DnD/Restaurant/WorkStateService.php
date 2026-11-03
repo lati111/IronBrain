@@ -96,6 +96,8 @@ class WorkStateService
                 'name' => $employee->name,
                 'icon' => $employee->icon !== null ? asset('img/' . $employee->icon) : null,
                 'station' => $employee->station?->value,
+                // Every area they work in, which can be prep and cooking together
+                'stations' => $employee->stations ?? [],
                 // The player controlling the employee, if any
                 'player_uuid' => $employee->player_uuid,
                 'player_name' => $employee->Player?->username,
@@ -180,9 +182,19 @@ class WorkStateService
         }
 
         // The cooking area has no queue, as the cookers do the cooking while the cooks look after them
-        if ($employee->station === WorkStation::COOKING) {
-            $cooking = Meal::where('restaurant_uuid', $employee->restaurant_uuid)->where('status', Meal::STATUS_COOKING)->exists();
-            return $cooking ? 'Cooking' : 'Cooking (idle)';
+        $cooking = null;
+        if ($employee->worksAt(WorkStation::COOKING)) {
+            $cooking = Meal::where('restaurant_uuid', $employee->restaurant_uuid)->where('status', Meal::STATUS_COOKING)->exists()
+                ? 'Cooking' : 'Cooking (idle)';
+        }
+
+        // Someone in both areas does their prepping at half speed, besides looking after the cookers
+        if ($employee->worksAt(WorkStation::PREP)) {
+            return $cooking !== null ? sprintf('%s, and %s', $tasks[WorkStation::PREP->value], strtolower($cooking)) : $tasks[WorkStation::PREP->value];
+        }
+
+        if ($cooking !== null) {
+            return $cooking;
         }
 
         if ($employee->station !== null) {

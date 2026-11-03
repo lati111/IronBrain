@@ -10,6 +10,7 @@ use App\Models\DnD\Restaurant\Employee;
 use App\Models\DnD\Restaurant\Equipment;
 use App\Models\DnD\Restaurant\Meal;
 use App\Models\DnD\Restaurant\Restaurant;
+use App\Models\DnD\Restaurant\Work;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -168,19 +169,35 @@ class BoostService
 
     //| Cooking
 
+    /** @var float How fast the quality penalty builds up while the cooks are busy prepping, compared to nobody being there */
+    public const float BUSY_COOK_ABSENCE = 0.25;
+
     /**
-     * Checks whether anyone works in the cooking area, as the cookers only cook while someone looks after them
+     * Gets how well the cookers are looked after right now. Without a cook nobody is there, and the cooks that are all
+     * busy prepping are there for part of it. Otherwise the best cook among those free to look after them counts
      * @param Restaurant $restaurant The restaurant
-     * @return bool Whether anyone cooks
+     * @return array{absence: float, skill: float} How much of the time counts as absent, from 0 to 1, and the skill of the cook
      */
-    public function hasCooks(Restaurant $restaurant): bool
+    public function getAttendance(Restaurant $restaurant): array
     {
-        return Employee::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::COOKING->value)->exists();
+        $cooks = Employee::where('restaurant_uuid', $restaurant->uuid)->whereJsonContains('stations', WorkStation::COOKING->value)->get();
+        if ($cooks->isEmpty()) {
+            return ['absence' => 1.0, 'skill' => 0.0];
+        }
+
+        $prepping = Work::where('restaurant_uuid', $restaurant->uuid)->where('station', WorkStation::PREP->value)
+            ->whereColumn('progress', '<', 'work')->exists();
+        $free = $cooks->filter(fn (Employee $cook) => !($prepping && $cook->worksAt(WorkStation::PREP)));
+        if ($free->isEmpty()) {
+            return ['absence' => self::BUSY_COOK_ABSENCE, 'skill' => 0.0];
+        }
+
+        return ['absence' => 0.0, 'skill' => (float) $free->max('cooking_quality')];
     }
 
     /**
      * Cooks the meals that are still cooking over a stretch of time, finishing those that get done along the way.
-     * Without anyone in the cooking area nothing cooks, so the meals aren't done until someone is
+     * They cook with or without a cook, though the quality suffers while nobody looks after them
      * @param Restaurant $restaurant The restaurant
      * @param Carbon $from When the stretch starts, in the restaurant's time
      * @param Carbon $to When it ends
@@ -188,17 +205,17 @@ class BoostService
     public function advanceCooking(Restaurant $restaurant, Carbon $from, Carbon $to): void
     {
         $boosts = $this->getBoosts($restaurant, $from);
-        $cooking = $this->hasCooks($restaurant);
+        $attendance = $this->getAttendance($restaurant);
         foreach ($this->getCookingMeals($restaurant) as $meal) {
-            $finishedAt = $cooking ? $this->cook($meal, $from, $to, $boosts) : null;
-            $this->schedule($meal, $finishedAt ?? ($cooking ? $this->project($meal, $to, $boosts) : null));
+            $finishedAt = $this->cook($meal, $from, $to, $boosts, $attendance);
+            $this->schedule($meal, $finishedAt ?? $this->project($meal, $to, $boosts));
             $meal->save();
         }
     }
 
     /**
-     * Works out again when a cooking meal is done, after its progress or speed changed, or someone started or stopped
-     * cooking. A meal with nothing left to cook is done there and then, while one nobody cooks isn't done at all
+     * Works out again when a cooking meal is done, after its progress or speed changed. A meal with nothing left to
+     * cook is done there and then
      * @param Meal $meal The meal, cooking
      * @param Carbon $now The restaurant's current time
      * @param Collection<ActiveBoost>|null $boosts The boosts that may be active, or null to look them up
@@ -207,13 +224,12 @@ class BoostService
     {
         $restaurant = $meal->getRestaurant();
         $boosts ??= $this->getBoosts($restaurant, $now);
-        $this->schedule($meal, $this->hasCooks($restaurant) ? $this->project($meal, $now, $boosts) : null);
+        $this->schedule($meal, $this->project($meal, $now, $boosts));
         $meal->save();
     }
 
     /**
-     * Reschedules every meal still cooking, as when a boost changed how fast they go, or someone started or stopped
-     * cooking
+     * Reschedules every meal still cooking, as when a boost changed how fast they go
      */
     public function rescheduleAll(Restaurant $restaurant, Carbon $now): void
     {
@@ -239,10 +255,12 @@ class BoostService
     }
 
     /**
-     * Cooks a meal over a stretch of time, through the stretches between boosts running out
+     * Cooks a meal over a stretch of time, through the stretches between boosts running out, keeping track of how well
+     * the cookers were looked after for the quality of the meal
+     * @param array{absence: float, skill: float} $attendance How well the cookers are looked after
      * @return Carbon|null When it got done, or null when it is still cooking at the end
      */
-    private function cook(Meal $meal, Carbon $from, Carbon $to, Collection $boosts): ?Carbon
+    private function cook(Meal $meal, Carbon $from, Carbon $to, Collection $boosts, array $attendance): ?Carbon
     {
         $work = (float) $meal->Recipe->cooking_time;
         $points = [...$this->getBoundaries($boosts, $from, $to), $to];
@@ -255,15 +273,28 @@ class BoostService
 
             if ($needed <= $available) {
                 $meal->cooking_progress = $work;
+                $this->trackAttendance($meal, $needed, $attendance);
                 return $at->copy()->addSeconds((int) round($needed * 60));
             }
 
             $meal->cooking_progress = round($meal->cooking_progress + $available * $speed, 4);
+            $this->trackAttendance($meal, $available, $attendance);
             $at = $until->copy();
         }
 
         $meal->cooking_progress = round(min($work, $meal->cooking_progress), 2);
         return null;
+    }
+
+    /**
+     * Notes down how well the cookers were looked after over some minutes of a meal's cooking
+     * @param array{absence: float, skill: float} $attendance How well the cookers were looked after
+     */
+    private function trackAttendance(Meal $meal, float $minutes, array $attendance): void
+    {
+        $meal->cooking_minutes = round($meal->cooking_minutes + $minutes, 4);
+        $meal->cooking_absent = round($meal->cooking_absent + $minutes * $attendance['absence'], 4);
+        $meal->cooking_skill = round($meal->cooking_skill + $minutes * $attendance['skill'], 4);
     }
 
     /**
@@ -291,13 +322,12 @@ class BoostService
     }
 
     /**
-     * Sets when a cooking meal is done, after which it stays good for its recipe's good for time. A meal nobody cooks
-     * has no time it is done, so it neither gets done nor goes off until someone cooks it. Does not save
-     * @param Carbon|null $doneAt When it is done, or null when nobody cooks it
+     * Sets when a cooking meal is done, after which it stays good for its recipe's good for time. Does not save
+     * @param Carbon $doneAt When it is done
      */
-    private function schedule(Meal $meal, ?Carbon $doneAt): void
+    private function schedule(Meal $meal, Carbon $doneAt): void
     {
         $meal->cooking_ends_at = $doneAt;
-        $meal->expires_at = $doneAt?->copy()->addHours($meal->Recipe->good_for);
+        $meal->expires_at = $doneAt->copy()->addHours($meal->Recipe->good_for);
     }
 }

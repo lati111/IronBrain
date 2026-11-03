@@ -55,6 +55,9 @@ export interface EquipmentType {
     size: number;
     cleaning_time: number;
     multiplier: number;
+    /** What meals made with it gain in quality, flat, and as a multiplier that adds up with the other equipment used */
+    quality_bonus: number;
+    quality_multiplier: number;
     parent_uuid: string | null;
     requires_storage: boolean;
     stored: number;

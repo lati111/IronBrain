@@ -133,7 +133,7 @@ class WorkQueueService
      */
     public function getSpeed(Collection $employees, WorkStation $station): float
     {
-        return round($employees->filter(fn (Employee $employee) => $employee->station === $station)
+        return round($employees->filter(fn (Employee $employee) => $employee->worksAt($station))
             ->sum(fn (Employee $employee) => $employee->getSpeed($station)), 2);
     }
 
@@ -145,7 +145,7 @@ class WorkQueueService
     public function getCleaners(Collection $employees): array
     {
         return $employees
-            ->filter(fn (Employee $employee) => $employee->station === WorkStation::CLEANING && $employee->cleaning_speed > 0)
+            ->filter(fn (Employee $employee) => $employee->worksAt(WorkStation::CLEANING) && $employee->cleaning_speed > 0)
             ->sortBy([['cleaning_speed', 'desc'], ['name', 'asc']])
             ->mapWithKeys(fn (Employee $employee) => [$employee->uuid => $employee->cleaning_speed])
             ->all();
@@ -158,7 +158,7 @@ class WorkQueueService
      */
     public function getWaiters(Collection $employees): Collection
     {
-        return $employees->filter(fn (Employee $employee) => $employee->station === null && $employee->Tables->isNotEmpty());
+        return $employees->filter(fn (Employee $employee) => $employee->stations === null && $employee->Tables->isNotEmpty());
     }
 
     /**

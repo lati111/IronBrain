@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -50,6 +51,10 @@ class WorkApi extends AbstractServiceApi
     {
         $invalid = $this->validateRequest($request, [
             'station' => ['nullable', 'string', Rule::in(WorkStation::values())],
+            // Works the area besides the one they work in, instead of moving them there
+            'combine' => 'nullable|boolean',
+            // When stopping, the only area they stop working in
+            'leave'   => ['nullable', 'string', Rule::in(WorkStation::values())],
         ]);
         if ($invalid !== null) {
             return $invalid;
@@ -73,11 +78,17 @@ class WorkApi extends AbstractServiceApi
         }
 
         $station = $request->filled('station') ? WorkStation::from($request->get('station')) : null;
-        $this->workService->assignEmployee($employee, $station);
+        $leave = $request->filled('leave') ? WorkStation::from($request->get('leave')) : null;
 
-        $message = $station !== null
-            ? sprintf('%s is working at %s', $employee->name, strtolower($station->label()))
-            : $employee->name . ' stopped working';
+        try {
+            $this->workService->assignEmployee($employee, $station, $request->boolean('combine'), $leave);
+        } catch (InvalidArgumentException $exception) {
+            return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
+        }
+
+        $employee->refresh();
+        $areas = collect($employee->getStations())->map(fn (WorkStation $area) => strtolower($area->label()))->join(' and ');
+        $message = $areas !== '' ? sprintf('%s is working at %s', $employee->name, $areas) : $employee->name . ' stopped working';
         return $this->respond(Response::HTTP_OK, $message, $this->getState($restaurant));
     }
 

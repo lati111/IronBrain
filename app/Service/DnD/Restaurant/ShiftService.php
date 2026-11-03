@@ -137,7 +137,7 @@ class ShiftService
             ActiveBoost::where('restaurant_uuid', $restaurant->uuid)->delete();
 
             // The staff goes home, while prep that is still queued waits for the next service
-            Employee::where('restaurant_uuid', $restaurant->uuid)->update(['station' => null]);
+            Employee::where('restaurant_uuid', $restaurant->uuid)->update(['stations' => null]);
             Table::where('restaurant_uuid', $restaurant->uuid)->update(['employee_uuid' => null]);
 
             $restaurant->addMoney($restaurant->shift_total);

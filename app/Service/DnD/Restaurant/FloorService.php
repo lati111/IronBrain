@@ -67,6 +67,7 @@ class FloorService
                 'cleaning_speed' => $employee->cleaning_speed,
                 'prep_speed' => $employee->prep_speed,
                 'capacity' => $employee->capacity,
+                'cooking_quality' => $employee->cooking_quality,
                 'player_uuid' => $employee->player_uuid,
                 'player_name' => $employee->Player?->username,
             ])->values()->all(),

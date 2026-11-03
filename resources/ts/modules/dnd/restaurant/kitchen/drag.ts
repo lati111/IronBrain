@@ -1,6 +1,6 @@
 import {BoostTarget, setupDropTarget} from "../shared";
 import {postParameters} from "./state";
-import {Employee, Meal, Plate, ServiceBoost} from "./types";
+import {Employee, Meal, Plate, ServiceBoost, StaffArea} from "./types";
 
 /**
  * What can be dragged around the service page. The item being dragged is kept as well, as drop targets can't read
@@ -18,6 +18,8 @@ export const BOOST_MIME = 'application/x-restaurant-boost';
 let draggedMeal: Meal | null = null;
 let draggedPlate: Plate | null = null;
 let draggedEmployee: Employee | null = null;
+/** The work area the dragged employee's icon was taken from, when it was taken from one */
+let draggedFrom: StaffArea | null = null;
 let draggedBoost: ServiceBoost | null = null;
 
 export function getDraggedMeal(): Meal | null {
@@ -30,6 +32,10 @@ export function getDraggedPlate(): Plate | null {
 
 export function getDraggedEmployee(): Employee | null {
     return draggedEmployee;
+}
+
+export function getDraggedFrom(): StaffArea | null {
+    return draggedFrom;
 }
 
 /**
@@ -67,14 +73,19 @@ export function setupBoostDrag(row: HTMLElement, boost: ServiceBoost): void {
     setupDrag(row, BOOST_MIME, boost.uuid, () => draggedBoost = boost, () => draggedBoost = null, 'copy');
 }
 
-export function setupEmployeeDrag(element: HTMLElement, employee: Employee): void {
+/** @param from The work area the element is shown in, when dragging an icon out of one */
+export function setupEmployeeDrag(element: HTMLElement, employee: Employee, from: StaffArea | null = null): void {
     element.addEventListener('dragstart', (event) => {
         draggedEmployee = employee;
+        draggedFrom = from;
         event.dataTransfer!.setData(EMPLOYEE_MIME, employee.uuid);
         event.dataTransfer!.effectAllowed = 'move';
         event.stopPropagation();
     });
-    element.addEventListener('dragend', () => draggedEmployee = null);
+    element.addEventListener('dragend', () => {
+        draggedEmployee = null;
+        draggedFrom = null;
+    });
 }
 
 /** Sets up an element to take the boosts that can be activated on what it is, activating them there */

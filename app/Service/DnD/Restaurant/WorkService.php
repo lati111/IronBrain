@@ -44,24 +44,33 @@ class WorkService
 
     /**
      * Puts an employee to work in a work area, which takes them off the tables they wait, or stops them working
-     * altogether when no area is given. Work done so far is kept, as work is only done when the clock moves
+     * altogether when no area is given. Prep and cooking can be worked together, which has them prep at half speed.
+     * Work done so far is kept, as work is only done when the clock moves
      * @param Employee $employee The employee
      * @param WorkStation|null $station The work area, or null to stop working
+     * @param bool $combine Whether to add the area to the one they work in, instead of moving them there
+     * @param WorkStation|null $leave When stopping, the only area they stop working in, rather than all of them
+     * @throws InvalidArgumentException Thrown when combining areas other than prep and cooking
      */
-    public function assignEmployee(Employee $employee, ?WorkStation $station): void
+    public function assignEmployee(Employee $employee, ?WorkStation $station, bool $combine = false, ?WorkStation $leave = null): void
     {
-        DB::transaction(function () use ($employee, $station) {
+        $combinable = [WorkStation::PREP, WorkStation::COOKING];
+        if ($combine && $station !== null && $employee->getStations() !== []) {
+            $working = array_filter($employee->getStations(), fn (WorkStation $area) => !in_array($area, $combinable, true));
+            if (!in_array($station, $combinable, true) || $working !== []) {
+                throw new InvalidArgumentException('Only prep and cooking can be worked together');
+            }
+        }
+
+        DB::transaction(function () use ($employee, $station, $combine, $leave) {
             Table::where('employee_uuid', $employee->uuid)->update(['employee_uuid' => null]);
 
-            $wasCooking = $employee->station === WorkStation::COOKING;
-            $employee->station = $station;
-            $employee->save();
-
-            // The cookers only cook while someone looks after them, so the meals in them are done sooner or later
-            if ($wasCooking || $station === WorkStation::COOKING) {
-                $restaurant = $employee->Restaurant;
-                $this->boostService->rescheduleAll($restaurant, $restaurant->getNow());
+            if ($station === null) {
+                $employee->setStations($leave !== null ? array_filter($employee->getStations(), fn (WorkStation $area) => $area !== $leave) : []);
+            } else {
+                $employee->setStations($combine ? [...$employee->getStations(), $station] : [$station]);
             }
+            $employee->save();
         });
     }
 
@@ -75,15 +84,8 @@ class WorkService
     {
         DB::transaction(function () use ($table, $employee) {
             if ($employee !== null) {
-                $wasCooking = $employee->station === WorkStation::COOKING;
-                $employee->station = null;
+                $employee->setStations([]);
                 $employee->save();
-
-                // Leaving the cooking area may leave the cookers without anyone to cook
-                if ($wasCooking) {
-                    $restaurant = $employee->Restaurant;
-                    $this->boostService->rescheduleAll($restaurant, $restaurant->getNow());
-                }
             }
 
             $table->employee_uuid = $employee?->uuid;
@@ -441,7 +443,8 @@ class WorkService
         $start = $restaurant->getNow();
         $end = $start->copy()->addSeconds((int) round($minutes * 60));
 
-        // Meals in a cooker cook on by themselves, at the speed of their cooker, equipment and boosts
+        // Meals in a cooker cook on by themselves, at the speed of their cooker, equipment and boosts, with a cook looking
+        // after them for the best quality
         $this->boostService->advanceCooking($restaurant, $start, $end);
 
         foreach (WorkStation::areas() as $station) {

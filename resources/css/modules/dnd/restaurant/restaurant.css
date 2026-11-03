@@ -1014,6 +1014,11 @@
     border-color: rgb(239 68 68);
 }
 
+/* Working in both prep and cooking */
+.kitchen-employee-icon[data-station="combined"] {
+    border-color: rgb(168 85 247);
+}
+
 .kitchen-employee-icon[data-station="tables"] {
     border-color: rgb(245 158 11);
 }

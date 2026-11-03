@@ -150,6 +150,8 @@ class InventoryStateService
                 'size' => $piece->size,
                 'cleaning_time' => $piece->cleaning_time,
                 'multiplier' => $piece->multiplier,
+                'quality_bonus' => $piece->quality_bonus,
+                'quality_multiplier' => $piece->quality_multiplier,
                 'parent_uuid' => $piece->parent_uuid,
                 'requires_storage' => $piece->requires_storage,
                 'stored' => $piece->requires_storage

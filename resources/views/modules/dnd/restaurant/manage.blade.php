@@ -213,6 +213,9 @@
                 <x-form.input-wrapper label_text="Capacity" cls="flex-1">
                     <input type="number" name="capacity" class="underlined" min="1" max="100" step="1" value="2" title="How many plates they carry to a table at once" required/>
                 </x-form.input-wrapper>
+                <x-form.input-wrapper label_text="Cooking quality" cls="flex-1">
+                    <input type="number" name="cooking_quality" class="underlined" min="0" max="9999" step="1" value="0" title="The quality they add to meals over their whole cooking time, while they look after the cookers" required/>
+                </x-form.input-wrapper>
             </div>
             <x-form.input-wrapper label_text="Controlled by">
                 <select name="player_uuid" class="underlined"></select>

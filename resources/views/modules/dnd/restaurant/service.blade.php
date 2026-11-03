@@ -115,7 +115,7 @@
                     </section>
 
                     {{--| The cookers only cook while someone works in the cooking area |--}}
-                    <section id="kitchen-cooking-area" class="kitchen-area">
+                    <section id="kitchen-cooking-area" class="kitchen-area" title="Hold shift while dropping an employee to have them work here and in preparation, preparing at half speed">
                         <div class="flex justify-between items-center gap-2">
                             <h4 class="kitchen-area-title">Cooking</h4>
                             <div class="kitchen-area-staff" data-station-staff="cooking"></div>

@@ -190,6 +190,10 @@ return new class extends Migration
             $table->string('category', 32);
             $table->decimal('cleaning_time', 8, 2)->default(0);
             $table->decimal('multiplier', 8, 2)->default(1.0);
+            // What meals made with the equipment gain in quality: a flat amount, and a multiplier that adds up with those
+            // of the other equipment used, so 0.1 and 0.2 together make 30% more
+            $table->integer('quality_bonus')->default(0);
+            $table->decimal('quality_multiplier', 8, 2)->default(0);
             $table->decimal('size', 8, 2)->default(1);
             // How many pieces are dirty or in use during service. The rest of the stored and owned pieces are clean
             $table->integer('amount_dirty')->default(0);
@@ -354,9 +358,12 @@ return new class extends Migration
             $table->decimal('prep_speed', 8, 2)->default(1);
             // How many plates the employee carries to a table in one trip, as a waiter
             $table->unsignedInteger('capacity')->default(2);
+            // The quality a cook adds to the meals in the cookers over their whole cooking time, while they look after them
+            $table->integer('cooking_quality')->default(0);
 
-            // The work area the employee works in during service, prep, cooking or cleaning, or null while idle or waiting
-            $table->string('station', 16)->nullable();
+            // The work areas the employee works in during service, as a list of prep, cooking or cleaning. Prep and cooking
+            // can be combined, which halves the speed of prepping. Null while idle or waiting
+            $table->json('stations')->nullable();
 
             $table->timestamps();
 
@@ -385,6 +392,9 @@ return new class extends Migration
             $table->integer('quality_bonus')->default(0);
             $table->integer('ingredient_quality')->default(0);
             $table->integer('fresh_for_bonus')->default(0);
+            // What the equipment used adds to the quality: a flat amount, and a multiplier on how well it turned out
+            $table->integer('equipment_bonus')->default(0);
+            $table->decimal('equipment_multiplier', 8, 2)->default(0);
 
             // The cooker the meal is cooking in, and which piece of that equipment it occupies
             $table->foreignUuid('cooker_uuid')->nullable();
@@ -394,6 +404,11 @@ return new class extends Migration
             $table->dateTime('cooking_ends_at')->nullable();
             // Minutes of cooking done at normal speed
             $table->decimal('cooking_progress', 10, 2)->default(0);
+            // How the cooking went, in minutes of the restaurant's time spent cooking, of which were without a cook (a cook
+            // busy prepping counting for part), and the skill of the cooks over it. The cooking quality follows from these
+            $table->decimal('cooking_minutes', 10, 2)->default(0);
+            $table->decimal('cooking_absent', 10, 2)->default(0);
+            $table->decimal('cooking_skill', 10, 2)->default(0);
             $table->dateTime('expires_at')->nullable();
 
             // Which ingredients were taken from which storage space, so a cancelled plan can be refunded

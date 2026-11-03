@@ -178,6 +178,8 @@ class ItemTypeApi extends AbstractInventoryApi
             'category'         => ['required', 'string', Rule::in(EquipmentCategory::values())],
             'cleaning_time'    => 'required|numeric|min:0|max:999999',
             'multiplier'       => 'required|numeric|min:0',
+            'quality_bonus'    => 'nullable|integer|min:-9999|max:9999',
+            'quality_multiplier' => 'nullable|numeric|min:-1|max:999',
             'size'             => 'required|numeric|gt:0|max:999999',
             'parent_uuid'      => 'nullable|string|max:255',
             'requires_storage' => 'nullable|boolean',
@@ -204,6 +206,8 @@ class ItemTypeApi extends AbstractInventoryApi
         $equipment->category         = EquipmentCategory::from($request->get('category'));
         $equipment->cleaning_time    = round((float) $request->get('cleaning_time'), 2);
         $equipment->multiplier       = (float) $request->get('multiplier');
+        $equipment->quality_bonus    = (int) $request->get('quality_bonus', 0);
+        $equipment->quality_multiplier = round((float) $request->get('quality_multiplier', 0), 2);
         $equipment->size             = round((float) $request->get('size'), 2);
         // Equipment needs storage unless explicitly said otherwise
         $equipment->requires_storage = $request->has('requires_storage') ? $request->boolean('requires_storage') : true;
@@ -227,6 +231,8 @@ class ItemTypeApi extends AbstractInventoryApi
             'category'         => ['nullable', 'string', Rule::in(EquipmentCategory::values())],
             'cleaning_time'    => 'nullable|numeric|min:0|max:999999',
             'multiplier'       => 'nullable|numeric|min:0',
+            'quality_bonus'    => 'nullable|integer|min:-9999|max:9999',
+            'quality_multiplier' => 'nullable|numeric|min:-1|max:999',
             'size'             => 'nullable|numeric|gt:0|max:999999',
             'parent_uuid'      => 'nullable|string|max:255',
             'requires_storage' => 'nullable|boolean',
@@ -269,6 +275,8 @@ class ItemTypeApi extends AbstractInventoryApi
         $equipment->category      = $request->filled('category') ? EquipmentCategory::from($request->get('category')) : $equipment->category;
         $equipment->cleaning_time = $request->has('cleaning_time') ? round((float) $request->get('cleaning_time'), 2) : $equipment->cleaning_time;
         $equipment->multiplier    = $request->has('multiplier') ? (float) $request->get('multiplier') : $equipment->multiplier;
+        $equipment->quality_bonus = $request->filled('quality_bonus') ? (int) $request->get('quality_bonus') : $equipment->quality_bonus;
+        $equipment->quality_multiplier = $request->filled('quality_multiplier') ? round((float) $request->get('quality_multiplier'), 2) : $equipment->quality_multiplier;
         $equipment->size          = $request->has('size') ? round((float) $request->get('size'), 2) : $equipment->size;
         $equipment->save();
 

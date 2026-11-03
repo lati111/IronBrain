@@ -18,6 +18,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property integer fresh_for_bonus Added to the recipe's fresh for time by boosts, in minutes
  * @property integer ingredient_quality The average quality of the ingredients it was made with, also added to the
  *                                      quality it is served at
+ * @property integer equipment_bonus What the equipment it was made with adds to the quality it is served at
+ * @property float equipment_multiplier What the equipment it was made with adds to the multiplier on how well it turned out
+ * @property float cooking_minutes How many minutes the meal has been cooked for, in the restaurant's time
+ * @property float cooking_absent How many of those minutes nobody cooked, where a cook busy prepping counts for part
+ * @property float cooking_skill The skill of the cooks over the cooking, added up per minute
  * @property string|null cooker_uuid The uuid of the cooker equipment the meal is in, while cooking
  * @property integer|null cooker_slot Which piece of the cooker equipment the meal occupies, from 1
  * @property Carbon|null cooking_ends_at When the meal is done cooking, in the restaurant's time. While it is still
@@ -46,6 +51,9 @@ class Meal extends RestaurantDataModel
     /** @var string The meal has been taken out of the cooker to be served */
     public const string STATUS_SERVING = 'serving';
 
+    /** @var int What a meal loses in quality when nobody cooks it for its whole cooking time. Less is lost for less time */
+    public const int ABSENCE_PENALTY = 20;
+
     /** @inheritdoc */
     public const string TABLE_NAME = 'dnd__restaurant_meal';
     /** @inheritdoc */
@@ -58,6 +66,11 @@ class Meal extends RestaurantDataModel
         'quality_bonus'   => 'integer',
         'ingredient_quality' => 'integer',
         'fresh_for_bonus' => 'integer',
+        'equipment_bonus' => 'integer',
+        'equipment_multiplier' => 'float',
+        'cooking_minutes' => 'float',
+        'cooking_absent'  => 'float',
+        'cooking_skill'   => 'float',
         'cooking_progress' => 'float',
         'cooker_slot'     => 'integer',
         'cooking_ends_at' => 'datetime',
@@ -94,12 +107,32 @@ class Meal extends RestaurantDataModel
     }
 
     /**
-     * Gets the quality the meal is served at: how well it turned out, with what boosts and its ingredients added
+     * Gets what the cooking added to the quality: what the cooks' skill gave over the time they looked after the meal,
+     * less what the time nobody did took off
+     * @return int The quality, negative when the cooking went badly
+     */
+    public function getCookingQuality(): int
+    {
+        if ($this->cooking_minutes <= 0) {
+            return 0;
+        }
+
+        return (int) round($this->cooking_skill / $this->cooking_minutes - self::ABSENCE_PENALTY * $this->cooking_absent / $this->cooking_minutes);
+    }
+
+    /**
+     * Gets the quality the meal is served at: how well it turned out, made more by the equipment's multiplier, with what
+     * boosts, its ingredients, the cooking and the equipment's bonuses added
      * @return int|null The quality, or null when it hasn't been set yet
      */
     public function getServedQuality(): ?int
     {
-        return $this->quality !== null ? $this->quality + $this->quality_bonus + $this->ingredient_quality : null;
+        if ($this->quality === null) {
+            return null;
+        }
+
+        return (int) round($this->quality * (1 + $this->equipment_multiplier))
+            + $this->quality_bonus + $this->ingredient_quality + $this->getCookingQuality() + $this->equipment_bonus;
     }
 
     /**

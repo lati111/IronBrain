@@ -1,13 +1,22 @@
 import {setField, setupDropTarget} from "../shared";
-import {EMPLOYEE_MIME, getDraggedEmployee, setupEmployeeDrag} from "./drag";
+import {EMPLOYEE_MIME, getDraggedEmployee, getDraggedFrom, setupEmployeeDrag} from "./drag";
 import {cloneTemplate, createNote} from "./elements";
 import {canControl, getServiceState, isPlayer, postParameters} from "./state";
 import {Employee, StaffArea} from "./types";
 
 /** The staff, who are dragged into the work areas to work there and back with the rest of the staff to stop */
 
-/** Employees work in the area they are dropped on, and stop when dropped back with the rest of the staff */
+/** Whether shift was held when the employee was dropped, which has them work the area besides the one they work in */
+let combining = false;
+
+/**
+ * Employees work in the area they are dropped on, and stop when dropped back with the rest of the staff. Holding shift
+ * while dropping them on prep or cooking has them work both, prepping at half speed. An icon dragged out of one of the
+ * areas back to the staff only leaves that area
+ */
 export function setupStaffDropTargets(): void {
+    document.addEventListener('drop', (event) => combining = event.shiftKey, true);
+
     const areas: [string, StaffArea | null][] = [
         ['kitchen-staff-area', null],
         ['kitchen-prep-area', 'prep'],
@@ -17,7 +26,11 @@ export function setupStaffDropTargets(): void {
     for (const [id, station] of areas) {
         setupDropTarget(document.getElementById(id) as HTMLElement, EMPLOYEE_MIME, (uuid) => assignEmployee(uuid, station), () => {
             const employee = getDraggedEmployee();
-            return employee !== null && (employee.station !== station || employee.tables.length > 0);
+            if (employee === null) return false;
+
+            return station === null
+                ? employee.stations.length > 0 || employee.tables.length > 0
+                : !employee.stations.includes(station) || employee.tables.length > 0;
         });
     }
 }
@@ -33,8 +46,9 @@ export function renderStaff(): void {
 
     // Each work area shows who works there, who can be dragged from there as well
     document.querySelectorAll<HTMLElement>('[data-station-staff]').forEach((element) => {
-        const working = employees.filter((candidate) => candidate.station === element.dataset.stationStaff);
-        element.replaceChildren(...working.map(createDraggableEmployeeIcon));
+        const area = element.dataset.stationStaff as StaffArea;
+        const working = employees.filter((candidate) => candidate.stations.includes(area));
+        element.replaceChildren(...working.map((employee) => createDraggableEmployeeIcon(employee, area)));
     });
 }
 
@@ -45,7 +59,7 @@ function createEmployeeElement(employee: Employee): HTMLElement {
     setField(element, 'name', employee.name);
     setField(element, 'task', employee.task);
     if (employee.station !== null) {
-        element.dataset.station = employee.station;
+        element.dataset.station = employee.stations.length > 1 ? 'combined' : employee.station;
     }
     element.title = describeEmployee(employee);
 
@@ -77,7 +91,7 @@ function createEmployeeIcon(employee: Employee): HTMLElement {
 
     // The ring around the icon shows where they work, with waiting tables counting as a place of its own
     if (employee.station !== null) {
-        icon.dataset.station = employee.station;
+        icon.dataset.station = employee.stations.length > 1 ? 'combined' : employee.station;
     } else if (employee.tables.length > 0) {
         icon.dataset.station = 'tables';
     }
@@ -86,16 +100,24 @@ function createEmployeeIcon(employee: Employee): HTMLElement {
 }
 
 /** The employee's icon named after them, which can be dragged elsewhere by whoever controls them */
-export function createDraggableEmployeeIcon(employee: Employee): HTMLElement {
+export function createDraggableEmployeeIcon(employee: Employee, from: StaffArea | null = null): HTMLElement {
     const icon = createEmployeeIcon(employee);
     icon.title = describeEmployee(employee);
     if (canControl(employee)) {
         icon.draggable = true;
-        setupEmployeeDrag(icon, employee);
+        setupEmployeeDrag(icon, employee, from);
     }
     return icon;
 }
 
 async function assignEmployee(uuid: string, station: StaffArea | null): Promise<void> {
-    await postParameters(`/employee/${uuid}/assign`, station !== null ? {station} : {}, false);
+    const parameters: Record<string, string> = {};
+    if (station !== null) {
+        parameters.station = station;
+        if (combining) parameters.combine = '1';
+    } else if (getDraggedFrom() !== null) {
+        parameters.leave = getDraggedFrom()!;
+    }
+
+    await postParameters(`/employee/${uuid}/assign`, parameters, false);
 }

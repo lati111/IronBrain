@@ -21,8 +21,10 @@ class SatisfactionService
     /** @var int The highest rating */
     public const int MAX = 5;
 
-    /** @var array<int, int> What turning out above or below the recipe's difficulty adds, by the least it was over by */
-    private const array QUALITY = [5 => 1, 0 => 0, -5 => -1];
+    /** @var int How many points of quality above the recipe's difficulty add a satisfaction */
+    public const int QUALITY_PER_SATISFACTION = 5;
+    /** @var int What turning out below the recipe's difficulty adds, by up to this many points under it */
+    private const int QUALITY_UNDER = -1;
     /** @var int What turning out further below the recipe's difficulty than that adds */
     private const int QUALITY_WORST = -2;
 
@@ -63,8 +65,8 @@ class SatisfactionService
     }
 
     /**
-     * What the quality a meal turned out at adds, against the difficulty of its recipe. Nothing counts when the
-     * quality wasn't set, or the recipe no longer exists
+     * What the quality a meal turned out at adds, against the difficulty of its recipe: one for every 5 points above it,
+     * and a penalty when it is below. Nothing counts when the quality wasn't set, or the recipe no longer exists
      */
     private function rateQuality(?int $quality, ?Recipe $recipe): int
     {
@@ -72,14 +74,13 @@ class SatisfactionService
             return 0;
         }
 
+        // Every 5 points above the difficulty adds one
         $margin = $quality - $recipe->difficulty;
-        foreach (self::QUALITY as $least => $change) {
-            if ($margin >= $least) {
-                return $change;
-            }
+        if ($margin >= 0) {
+            return intdiv($margin, self::QUALITY_PER_SATISFACTION);
         }
 
-        return self::QUALITY_WORST;
+        return $margin >= -self::QUALITY_PER_SATISFACTION ? self::QUALITY_UNDER : self::QUALITY_WORST;
     }
 
     /**

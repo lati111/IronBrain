@@ -24,7 +24,7 @@ class PlayerAccessService
     public function worksAt(Restaurant $restaurant, User $player, WorkStation $station): bool
     {
         return Employee::where('restaurant_uuid', $restaurant->uuid)->where('player_uuid', $player->uuid)
-            ->where('station', $station->value)->exists();
+            ->whereJsonContains('stations', $station->value)->exists();
     }
 
     /**

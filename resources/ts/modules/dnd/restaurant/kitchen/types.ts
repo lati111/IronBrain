@@ -114,6 +114,12 @@ export interface Meal {
     quality: number | null;
     /** What boosts added to the quality */
     quality_bonus: number;
+    /** How well it turned out, as set by whoever runs the service, before anything is added or multiplied */
+    quality_roll: number | null;
+    /** What the cooking added to the quality, negative when nobody looked after the cookers, and what the equipment adds */
+    cooking_quality: number;
+    equipment_bonus: number;
+    equipment_multiplier: number;
     /** The average quality of the ingredients it was made with, also added to the quality */
     ingredient_quality: number;
     /** How fast it is being worked on while prepped or cooking, where 1 is normal */
@@ -193,6 +199,8 @@ export interface Employee {
     icon: string | null;
     /** The area of the kitchen the employee works in, or null while idle or waiting tables */
     station: StaffArea | null;
+    /** Every area they work in, which can be prep and cooking together, with prepping at half speed */
+    stations: StaffArea[];
     /** The uuids of the tables the employee waits, when waiting tables rather than working in a work area */
     tables: string[];
     /** The task the employee is on, such as "Prepping Stew" */

@@ -36,6 +36,7 @@ export interface Employee {
     cleaning_speed: number;
     prep_speed: number;
     capacity: number;
+    cooking_quality: number;
     /** The player controlling the employee during service, if any */
     player_uuid: string | null;
     player_name: string | null;

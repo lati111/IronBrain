@@ -193,6 +193,7 @@ class KitchenService
         // Equipment carried over for cooking won't be cooked in
         $this->equipmentService->releaseEquipment($restaurant, $this->equipmentService->getCarriedEquipment($meal), dirty: true);
         $meal->carried_equipment = null;
+        $this->applyEquipmentQuality($meal);
 
         // It stays good for the recipe's good for time, and only fresh for its fresh for time within that
         $meal->expires_at = $now->copy()->addHours($meal->getRecipe()->good_for);
@@ -256,8 +257,24 @@ class KitchenService
             $meal->status = Meal::STATUS_COOKING;
             $meal->cooker_uuid = $cooker->uuid;
             $meal->cooker_slot = $slot;
+            $this->applyEquipmentQuality($meal);
             $this->boostService->reschedule($meal, $restaurant->getNow());
         });
+    }
+
+    /**
+     * Takes what the equipment a meal is made with adds to its quality: the flat bonuses, and the multipliers added up
+     * so equipment with 0.1, 0 and 0.2 makes it 30% better. Each piece of equipment counts once, whatever the amount,
+     * the cooker included. Does not save
+     * @param Meal $meal The meal, with its cooker if it is cooking
+     */
+    private function applyEquipmentQuality(Meal $meal): void
+    {
+        $uuids = array_filter(array_unique([...array_column($meal->equipment ?? [], 'equipment_uuid'), $meal->cooker_uuid]));
+        $pieces = Equipment::whereIn('uuid', $uuids)->get();
+
+        $meal->equipment_bonus = (int) $pieces->sum('quality_bonus');
+        $meal->equipment_multiplier = round((float) $pieces->sum('quality_multiplier'), 2);
     }
 
     /**
@@ -265,18 +282,13 @@ class KitchenService
      * @param Restaurant $restaurant The restaurant
      * @param Meal $meal The meal
      * @return int The minutes left, rounded up
-     * @throws InvalidArgumentException Thrown when the meal isn't cooking, or nobody is cooking it
+     * @throws InvalidArgumentException Thrown when the meal isn't cooking
      */
     public function getMinutesUntilDone(Restaurant $restaurant, Meal $meal): int
     {
         $now = $restaurant->getNow();
         if ($meal->getStatusAt($now) !== Meal::STATUS_COOKING) {
             throw new InvalidArgumentException('Only meals that are still cooking can be skipped');
-        }
-
-        // Without anyone in the cooking area it won't get done, however long is skipped
-        if ($meal->cooking_ends_at === null) {
-            throw new InvalidArgumentException('Nobody is cooking ' . $meal->getRecipe()->name);
         }
 
         return max(0, (int) ceil(($meal->cooking_ends_at->getTimestamp() - $now->getTimestamp()) / 60));

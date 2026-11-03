@@ -106,8 +106,7 @@ function describeTimer(meal: Meal): string {
 
 function describeBaseTimer(meal: Meal): string {
     if (meal.status === 'cooking') {
-        // Nothing cooks while nobody works in the cooking area
-        return meal.cooking_minutes_left !== null ? `${formatMinutes(meal.cooking_minutes_left)} left` : 'waiting for a cook';
+        return meal.cooking_minutes_left !== null ? `${formatMinutes(meal.cooking_minutes_left)} left` : '';
     }
 
     if (meal.expires_in_minutes !== null && !meal.spoiled) {
@@ -148,7 +147,7 @@ function getMealMenuOptions(meal: Meal): [string, () => void][] {
         const left = meal.portions_left === 1 ? 'last portion' : `${meal.portions_left} portions left`;
         options.push([`Plate a portion (${left})`, () => post(`/meal/${meal.uuid}/plate`)]);
     }
-    if (meal.finished && runsService) {
+    if (meal.finished && mayWorkAt('cooking')) {
         options.push([meal.quality === null ? 'Set quality' : `Change quality (Q${meal.quality})`, () => openQualityModal(meal)]);
     }
     if (runsService) {
