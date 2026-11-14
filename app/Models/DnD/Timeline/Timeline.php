@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string name The display name of the timeline
  * @property string|null description The description of the timeline
  * @property string|null cover_image The path to the cover image, if any
+ * @property int|null current_year The year the story is at now, if set
+ * @property int|null display_start_year The first year shown when the timeline is opened, if set
+ * @property int|null display_end_year The last year shown when the timeline is opened, if set
  */
 class Timeline extends DndTimelineModel
 {
@@ -21,6 +24,13 @@ class Timeline extends DndTimelineModel
     public const string TABLE_NAME = 'dnd__timeline_timeline';
     /** @inheritdoc */
     protected $table = self::TABLE_NAME;
+
+    /** @inheritdoc */
+    protected $casts = [
+        'current_year' => 'integer',
+        'display_start_year' => 'integer',
+        'display_end_year' => 'integer',
+    ];
 
     /** @var string The folder cover images are saved in */
     public const string COVER_IMAGE_PATH = 'modules/dnd/timeline/cover';

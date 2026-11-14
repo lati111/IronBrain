@@ -20,6 +20,10 @@ return new class extends Migration
             $table->text('description')->nullable();
             // The path to the cover image within storage, if any
             $table->string('cover_image')->nullable();
+            // Settings, each of which is optional: the year the story is at now, and the years shown on opening
+            $table->integer('current_year')->nullable();
+            $table->integer('display_start_year')->nullable();
+            $table->integer('display_end_year')->nullable();
             $table->timestamps();
 
             $table->foreign('owner_uuid')->references('uuid')->on('auth__user')->onDelete('cascade')->onUpdate('no action');

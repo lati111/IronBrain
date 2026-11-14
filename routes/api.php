@@ -336,4 +336,22 @@ Route::prefix('/dnd/timeline')
     ->group(function() {
         Route::post('/create', [\App\Http\Api\Modules\DnD\Timeline\TimelineApi::class, 'createTimeline'])
             ->name('api.dnd.timeline.create');
+
+        Route::prefix('/{timeline_uuid}')->group(function() {
+            Route::get('/', [\App\Http\Api\Modules\DnD\Timeline\ItemApi::class, 'getItems'])
+                ->name('api.dnd.timeline.get');
+
+            Route::post('/settings/edit', [\App\Http\Api\Modules\DnD\Timeline\SettingsApi::class, 'editSettings'])
+                ->name('api.dnd.timeline.settings.edit');
+
+            Route::post('/category/{category_uuid}/edit', [\App\Http\Api\Modules\DnD\Timeline\CategoryApi::class, 'editCategory'])
+                ->name('api.dnd.timeline.category.edit');
+
+            Route::post('/item/create', [\App\Http\Api\Modules\DnD\Timeline\ItemApi::class, 'createItem'])
+                ->name('api.dnd.timeline.item.create');
+            Route::post('/item/{type}/{item_uuid}/edit', [\App\Http\Api\Modules\DnD\Timeline\ItemApi::class, 'editItem'])
+                ->name('api.dnd.timeline.item.edit');
+            Route::post('/item/{type}/{item_uuid}/delete', [\App\Http\Api\Modules\DnD\Timeline\ItemApi::class, 'deleteItem'])
+                ->name('api.dnd.timeline.item.delete');
+        });
     });

@@ -1,0 +1,173 @@
+/* The toolbar and timeline take up the full page width, as timelines tend to be wide */
+.timeline-page {
+    width: 100%;
+}
+
+.timeline-scroll {
+    overflow-x: auto;
+    border: 1px solid #C9CCD3;
+    border-radius: 0.5rem;
+    background-color: white;
+    cursor: grab;
+    user-select: none;
+}
+
+.timeline-scroll.dragging, .timeline-scroll.dragging * {
+    cursor: grabbing !important;
+}
+
+.timeline-track {
+    position: relative;
+}
+
+/*| Periods, which color the background of the years they cover |*/
+
+.timeline-period {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid;
+    border-right: 1px solid;
+}
+
+.timeline-period-label {
+    position: sticky;
+    left: 0;
+    display: inline-block;
+    max-width: 100%;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.timeline-period-label:hover {
+    text-decoration: underline;
+}
+
+/*| Axis |*/
+
+.timeline-axis {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #4b5563;
+}
+
+.timeline-tick {
+    position: absolute;
+    width: 1px;
+    height: 8px;
+    background-color: #4b5563;
+}
+
+.timeline-tick-label {
+    position: absolute;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+/*| The year the story is at now, shown as a line across the timeline |*/
+
+.timeline-now {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 2px dashed #dc2626;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.timeline-now-label {
+    position: absolute;
+    bottom: 2px;
+    left: 4px;
+    padding: 0 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #dc2626;
+    background-color: white;
+    border-radius: 0.2rem;
+}
+
+/*| Events, shown as a dot on the axis with their name above |*/
+
+.timeline-event-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px #4b5563;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 3;
+}
+
+.timeline-event-stem {
+    position: absolute;
+    width: 1px;
+    background-color: #9ca3af;
+    z-index: 1;
+}
+
+.timeline-event-label {
+    position: absolute;
+    padding: 1px 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-left-width: 4px;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    z-index: 2;
+}
+
+/*| Timespans, shown as a bar below the axis |*/
+
+.timeline-timespan {
+    position: absolute;
+    padding: 0 6px;
+    font-size: 0.8rem;
+    line-height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* The name of a timespan too short to hold it, placed right after its bar */
+.timeline-timespan-label {
+    position: absolute;
+    font-size: 0.8rem;
+    line-height: 22px;
+    white-space: nowrap;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.timeline-event-dot:hover, .timeline-event-label:hover, .timeline-timespan:hover, .timeline-timespan-label:hover {
+    filter: brightness(0.9);
+}
+
+/*| Legend |*/
+
+.timeline-legend-swatch {
+    display: inline-block;
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 0.2rem;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+}
