@@ -557,6 +557,18 @@ Registered in `AppServiceProvider` and available in any `Validator::make()` call
 | `pksanc__origin` | Origin data (OT name, met location, met level, ID number) |
 | `pksanc__pokedex_marking` | Per-user Pokédex markings (caught, seen, etc.) |
 
+### DnD Timeline Tables (prefix `dnd__timeline`)
+
+| Table | Description |
+|-------|-------------|
+| `dnd__timeline_timeline` | User-owned timelines; the container for all categories and items |
+| `dnd__timeline_category` | Categories of a timeline, with a hex color; names are unique per timeline |
+| `dnd__timeline_event` | Items that take place on a single year |
+| `dnd__timeline_timespan` | Items that take place from one year to another |
+| `dnd__timeline_period` | Like timespans, but for wider periods of time such as ages or eras |
+
+All items share a name, optional description, category, comma separated tags, and a `source` that is hidden from the UI. Years are signed, so a timeline can run from before its world's year zero.
+
 ### Migrations & Seeders
 
 ```bash
