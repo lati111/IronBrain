@@ -64,7 +64,8 @@ function renderCustomerRows(list: HTMLElement, search: string): number {
         const seated = customer.table_uuid !== null
             ? `Seated at ${getTable(customer.table_uuid)?.name ?? 'a table'}, seat ${customer.seat}`
             : 'Not seated';
-        const row = createListRow(customer.name, seated, () => openCustomerModal(customer.uuid));
+        const meta = customer.revealed ? seated : `${seated} · Players see ${customer.hidden_name || 'Stranger'}`;
+        const row = createListRow(customer.name, meta, () => openCustomerModal(customer.uuid));
         row.title = customer.description ?? '';
 
         list.appendChild(row);

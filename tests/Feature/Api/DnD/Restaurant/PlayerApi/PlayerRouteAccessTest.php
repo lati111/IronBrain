@@ -54,6 +54,7 @@ class PlayerRouteAccessTest extends AbstractFeatureTester
         'api.dnd.restaurant.service.meal.cook',
         'api.dnd.restaurant.service.meal.serve',
         'api.dnd.restaurant.service.meal.plate',
+        'api.dnd.restaurant.service.meal.quality',
         'api.dnd.restaurant.service.equipment.clean',
         'api.dnd.restaurant.service.equipment.clean-all',
     ];

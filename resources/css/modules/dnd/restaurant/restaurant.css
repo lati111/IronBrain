@@ -380,6 +380,12 @@
 }
 
 /* A customer at the entrance a waiter is bringing to a table */
+/* A customer whose real name the players don't know yet, as whoever runs the restaurant sees them */
+.service-customer.unrevealed {
+    font-style: italic;
+    border-style: dashed;
+}
+
 .service-customer.on-the-way {
     border-style: dashed;
     border-color: rgb(245 158 11);

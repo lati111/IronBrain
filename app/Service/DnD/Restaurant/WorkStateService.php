@@ -223,7 +223,7 @@ class WorkStateService
             WorkStation::CLEANING => sprintf('Cleaning %d %s', $job->amount, $job->Equipment?->name ?? 'equipment'),
             WorkStation::WAITING => match (true) {
                 $job->order_uuid !== null => 'Taking an order at ' . ($job->Table?->name ?? 'a table'),
-                $job->customer_uuid !== null => sprintf('Seating %s at %s', $job->Customer?->name ?? 'a customer', $job->Table?->name ?? 'a table'),
+                $job->customer_uuid !== null => sprintf('Seating %s at %s', $job->Customer?->getShownName() ?? 'a customer', $job->Table?->name ?? 'a table'),
                 default => sprintf('Bringing %s to %s', $this->describePlates($job), $job->Table?->name ?? 'a table'),
             },
         };

@@ -39,7 +39,7 @@ class CustomerApi extends AbstractFloorApi
             'description' => 'nullable|string',
             // Whether they walk in straight away, waiting at the entrance to be seated
             'at_entrance' => 'nullable|boolean',
-        ]);
+        ] + self::CUSTOMER_RULES);
         if ($invalid !== null) {
             return $invalid;
         }
@@ -54,6 +54,7 @@ class CustomerApi extends AbstractFloorApi
         $customer->name            = $request->get('name');
         $customer->description     = $request->get('description');
         $customer->entered_at      = $request->boolean('at_entrance') ? $restaurant->getNow() : null;
+        $this->fillCustomer($customer, $request);
         $customer->save();
 
         return $this->respondWithFloor(Response::HTTP_CREATED, 'Customer created', $restaurant, ['uuid' => $customer->uuid]);
@@ -71,7 +72,7 @@ class CustomerApi extends AbstractFloorApi
         $invalid = $this->validateRequest($request, [
             'name'        => 'nullable|string|max:64',
             'description' => 'nullable|string',
-        ]);
+        ] + self::CUSTOMER_RULES);
         if ($invalid !== null) {
             return $invalid;
         }
@@ -88,9 +89,47 @@ class CustomerApi extends AbstractFloorApi
 
         $customer->name        = $request->get('name', $customer->name);
         $customer->description = $request->has('description') ? $request->get('description') : $customer->description;
+        $this->fillCustomer($customer, $request);
         $customer->save();
 
-        return $this->respondWithFloor(Response::HTTP_OK, 'Customer updated', $restaurant);
+        $message = match (true) {
+            !$request->has('revealed') || $request->has('name') => 'Customer updated',
+            $customer->revealed => $customer->name . ' is revealed',
+            default => $customer->name . ' is hidden as ' . ($customer->hidden_name ?: Customer::UNKNOWN_NAME),
+        };
+        return $this->respondWithFloor(Response::HTTP_OK, $message, $restaurant);
+    }
+
+    /** @var array The rules for the hidden name, whether it is revealed, and how the customer tips */
+    private const array CUSTOMER_RULES = [
+        'hidden_name'     => 'nullable|string|max:64',
+        'revealed'        => 'nullable|boolean',
+        'tip_expectation' => 'nullable|integer|min:1|max:5',
+        'tip_rate'        => 'nullable|numeric|min:0|max:10000',
+        'tip_cap'         => 'nullable|numeric|min:0|max:99999999',
+    ];
+
+    /**
+     * Sets the hidden name, whether it is revealed, and how the customer tips, from the fields that are given. A
+     * hidden name that is left empty goes back to none
+     */
+    private function fillCustomer(Customer $customer, Request $request): void
+    {
+        if ($request->has('hidden_name')) {
+            $customer->hidden_name = $request->filled('hidden_name') ? trim($request->get('hidden_name')) : null;
+        }
+        if ($request->has('revealed')) {
+            $customer->revealed = $request->boolean('revealed');
+        }
+        if ($request->filled('tip_expectation')) {
+            $customer->tip_expectation = (int) $request->get('tip_expectation');
+        }
+        if ($request->filled('tip_rate')) {
+            $customer->tip_rate = round((float) $request->get('tip_rate'), 2);
+        }
+        if ($request->filled('tip_cap')) {
+            $customer->tip_cap = round((float) $request->get('tip_cap'), 2);
+        }
     }
 
     /**
@@ -147,7 +186,7 @@ class CustomerApi extends AbstractFloorApi
             $waiter = $table?->employee_uuid !== null && $restaurant->isInService() ? Employee::find($table->employee_uuid) : null;
             if ($waiter !== null) {
                 $this->workService->queueSeating($restaurant, $customer, $table, (int) $seat);
-                return $this->respondWithFloor(Response::HTTP_OK, sprintf('%s is seating %s', $waiter->name, $customer->name), $restaurant);
+                return $this->respondWithFloor(Response::HTTP_OK, sprintf('%s is seating %s', $waiter->name, $customer->getShownName()), $restaurant);
             }
 
             $this->floorService->seatCustomer($customer, $table, $seat !== null ? (int) $seat : null,
@@ -192,7 +231,7 @@ class CustomerApi extends AbstractFloorApi
             return $this->respond(Response::HTTP_BAD_REQUEST, $exception->getMessage());
         }
 
-        return $this->respondWithFloor(Response::HTTP_OK, $atEntrance ? $customer->name . ' is at the entrance' : $customer->name . ' left', $restaurant);
+        return $this->respondWithFloor(Response::HTTP_OK, $atEntrance ? $customer->getShownName() . ' is at the entrance' : $customer->getShownName() . ' left', $restaurant);
     }
 
     /**

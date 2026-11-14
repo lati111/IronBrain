@@ -68,7 +68,7 @@ class OrderService
                     'recipe_uuid' => $item->recipe_uuid,
                     'name' => $item->name,
                     'customer_uuid' => $item->customer_uuid,
-                    'customer_name' => $item->Customer?->name,
+                    'customer_name' => $item->Customer?->getShownName(),
                     'price' => $item->price,
                     'served' => $item->served_at !== null,
                     // A plate set aside for it, which the waiter is bringing
@@ -319,8 +319,10 @@ class OrderService
         DB::transaction(function () use ($restaurant, $order) {
             $this->clearTable($restaurant, $order);
 
-            // Orders placed before they were paid on finishing are already in the shift total
+            // Orders placed before they were paid on finishing are already in the shift total. The customers tip as
+            // they pay, for the portions that satisfied them enough
             if ($order->paid_at === null) {
+                $order->tip = round($order->tip + $this->getCustomerTips($order), 2);
                 $restaurant->shift_total = round($restaurant->shift_total + $order->getPayable(), 2);
                 $restaurant->save();
                 $order->paid_at = $restaurant->getNow();
@@ -329,6 +331,31 @@ class OrderService
             $order->status = Order::STATUS_FINISHED;
             $order->save();
         });
+    }
+
+    /**
+     * Works out what the customers of an order tip as they pay. A customer tips for each of their portions that was
+     * served leaving them at least as satisfied as they expect, a share of its price for each satisfaction from their
+     * expectation on: their tip rate for meeting it, twice that for one above it, and so on. All together it never goes
+     * over their tip cap. Portions for the table as a whole, and of customers no longer around, go without
+     * @param Order $order The order
+     * @return float What they tip together, in bits
+     */
+    public function getCustomerTips(Order $order): float
+    {
+        $tips = 0.0;
+        foreach ($order->Items()->with('Customer')->get()->whereNotNull('customer_uuid')->groupBy('customer_uuid') as $items) {
+            $customer = $items->first()->Customer;
+            if ($customer === null) {
+                continue;
+            }
+
+            $tip = $items->filter(fn (OrderItem $item) => $item->satisfaction !== null && $item->satisfaction >= $customer->tip_expectation)
+                ->sum(fn (OrderItem $item) => $item->price * $customer->tip_rate / 100 * ($item->satisfaction - $customer->tip_expectation + 1));
+            $tips += min($tip, $customer->tip_cap);
+        }
+
+        return round($tips, 2);
     }
 
     /**
@@ -453,7 +480,7 @@ class OrderService
     private function assertSeated(?Customer $customer, ?Table $table): void
     {
         if ($customer !== null && $table !== null && $customer->table_uuid !== $table->uuid) {
-            throw new InvalidArgumentException($customer->name . ' isn\'t seated at ' . $table->name);
+            throw new InvalidArgumentException($customer->getShownName() . ' isn\'t seated at ' . $table->name);
         }
     }
 

@@ -68,8 +68,17 @@ export function openCustomerModal(uuid: string | null): void {
 
     const form = prepareEditModal('customer', uuid);
     if (customer !== null) {
-        setFormValues(form, {name: customer.name, description: customer.description ?? ''});
+        setFormValues(form, {
+            name:            customer.name,
+            hidden_name:     customer.hidden_name ?? '',
+            tip_expectation: String(customer.tip_expectation),
+            tip_rate:        String(customer.tip_rate),
+            tip_cap:         String(customer.tip_cap),
+            description:     customer.description ?? '',
+        });
     }
+    // The checkbox shares its name with a hidden fallback field, so namedItem would return a RadioNodeList instead
+    (form.querySelector('input[name="revealed"][type="checkbox"]') as HTMLInputElement).checked = customer?.revealed ?? false;
 
     showEditModal('customer', customer !== null);
 }

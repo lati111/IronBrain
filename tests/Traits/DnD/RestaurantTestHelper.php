@@ -76,6 +76,8 @@ trait RestaurantTestHelper
         $customer->table_uuid = $table?->uuid;
         $customer->seat = $table !== null ? $seat : null;
         $customer->name = $name;
+        // Known by their name to everyone, unless a test hides it
+        $customer->revealed = true;
         $customer->save();
         return $customer;
     }

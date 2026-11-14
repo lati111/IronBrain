@@ -461,6 +461,7 @@
             <x-form.input-wrapper label_text="Name">
                 <input type="text" name="name" class="underlined" maxlength="64" placeholder="Name..." required/>
             </x-form.input-wrapper>
+            @include('modules.dnd.restaurant.snippits.customer-fields')
             <x-form.input-wrapper label_text="Description (optional)">
                 <textarea name="description" class="underlined" rows="3"></textarea>
             </x-form.input-wrapper>

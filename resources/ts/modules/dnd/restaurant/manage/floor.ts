@@ -23,6 +23,14 @@ export interface Table {
 export interface Customer {
     uuid: string;
     name: string;
+    /** What players see until the name is revealed, and whether it is */
+    hidden_name: string | null;
+    revealed: boolean;
+    /** How satisfied a portion has to leave them to tip for it, what they tip per portion as a percentage of its
+     * price for each satisfaction from there on, and the most they tip for an order */
+    tip_expectation: number;
+    tip_rate: number;
+    tip_cap: number;
     description: string | null;
     /** Both null while the customer is not seated */
     table_uuid: string | null;

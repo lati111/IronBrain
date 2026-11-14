@@ -133,7 +133,7 @@ class FinanceService
             'items' => $order->Items->sortBy('created_at')->map(fn (OrderItem $item) => [
                 'name' => $item->name,
                 'price' => $item->price,
-                'customer' => $item->Customer?->name,
+                'customer' => $item->Customer?->getShownName(),
                 'satisfaction' => $item->satisfaction,
             ])->values()->all(),
             'satisfaction' => $this->satisfactionService->average($order->Items),
@@ -165,7 +165,7 @@ class FinanceService
             foreach ($items as $item) {
                 // Free portions share in the tip and discount evenly when nothing in the order had a price
                 $share = $total > 0 ? $item->price / $total : 1 / $items->count();
-                $name = $item->Customer?->name ?? self::UNASSIGNED;
+                $name = $item->Customer?->getShownName() ?? self::UNASSIGNED;
                 $key = $item->customer_uuid ?? self::UNASSIGNED;
 
                 $customers[$key] ??= ['name' => $name, 'portions' => 0, 'profit' => 0.0, 'items' => []];

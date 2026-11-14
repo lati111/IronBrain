@@ -28,7 +28,11 @@ interface Table {
 
 interface Customer {
     uuid: string;
+    /** The real name, or for players the hidden name until it is revealed */
     name: string;
+    revealed: boolean;
+    /** What players see until the name is revealed, only sent to whoever runs the restaurant */
+    hidden_name?: string | null;
     description: string | null;
     /** Both null while the customer is not seated */
     table_uuid: string | null;
@@ -157,8 +161,18 @@ function renderSidebar(): void {
     }
 
     renderSidebarList(floor.customers, (customer) => customer.name, 'No customers yet', (row, customer) => {
-        setField(row, 'meta', describeLocation(customer));
+        setField(row, 'meta', customer.revealed || isPlayer() ? describeLocation(customer) : `${describeLocation(customer)} · Players see ${describeHiddenName(customer)}`);
         row.title = customer.description ?? '';
+
+        // Whoever runs the restaurant reveals a customer's real name to the players, or hides it again
+        if (!isPlayer()) {
+            const toggle = document.createElement('button');
+            toggle.className = 'interactive px-2 text-xs';
+            toggle.textContent = customer.revealed ? 'Hide' : 'Reveal';
+            toggle.title = customer.revealed ? `Show players ${describeHiddenName(customer)} again` : `Show players ${customer.name}`;
+            toggle.addEventListener('click', () => setRevealed(customer.uuid, !customer.revealed));
+            getAddButton(row).before(toggle);
+        }
 
         // Only customers that aren't on the floor yet can be brought to the entrance
         const addButton = getAddButton(row);
@@ -371,6 +385,12 @@ function createCustomerChip(customer: Customer): HTMLElement {
     setField(chip, 'name', customer.name);
     chip.title = customer.description ?? customer.name;
 
+    // Whoever runs the restaurant sees which customers the players don't know the name of yet
+    if (!customer.revealed && !isPlayer()) {
+        chip.classList.add('unrevealed');
+        chip.title = `${chip.title} (players see ${describeHiddenName(customer)})`;
+    }
+
     // A customer a waiter is bringing over shows where they are going
     const seating = customer.seating;
     if (seating !== null) {
@@ -455,7 +475,28 @@ async function createCustomer(): Promise<void> {
     setFloor(response.floor);
 }
 
+/** Reveals a customer's real name to the players, or hides it again behind their hidden name */
+async function setRevealed(uuid: string, revealed: boolean): Promise<void> {
+    const formData = new FormData();
+    formData.append('revealed', revealed ? '1' : '0');
+
+    try {
+        const response = await postOnce(`${apiUrl}/customer/${uuid}/edit`, formData);
+        if (response?.ok) {
+            response.announce();
+            setFloor(response.data.floor);
+        }
+    } catch {
+        // The error has already been shown to the user
+    }
+}
+
 //| Helpers
+
+/** What players know a customer as until their name is revealed */
+function describeHiddenName(customer: Customer): string {
+    return customer.hidden_name || 'Stranger';
+}
 
 function getCustomer(uuid: string): Customer | null {
     return floor.customers.find((customer) => customer.uuid === uuid) ?? null;

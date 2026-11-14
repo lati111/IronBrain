@@ -12,6 +12,7 @@ use App\Models\DnD\Restaurant\RestaurantUser;
 use App\Models\DnD\Restaurant\Room;
 use App\Models\DnD\Restaurant\Table;
 use App\Models\DnD\Restaurant\Work;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,7 +28,11 @@ class FloorService
     {
         $rooms = Room::where('restaurant_uuid', $restaurant->uuid)->orderBy('order')->orderBy('created_at')->get();
         $tables = Table::where('restaurant_uuid', $restaurant->uuid)->withCount('Customers')->orderBy('name')->get();
-        $customers = Customer::where('restaurant_uuid', $restaurant->uuid)->orderBy('name')->get();
+        // Players only know customers by their hidden name until it is revealed, and don't know how they tip
+        $user = Auth::user();
+        $player = $user !== null && $restaurant->isPlayer($user);
+        $customers = Customer::where('restaurant_uuid', $restaurant->uuid)->get()
+            ->sortBy(fn (Customer $customer) => strtolower($customer->getShownName()));
         $seating = Work::where('restaurant_uuid', $restaurant->uuid)->whereNotNull('customer_uuid')->get()->keyBy('customer_uuid');
         $employees = Employee::where('restaurant_uuid', $restaurant->uuid)->with('Player')->orderBy('name')->get();
         $players = RestaurantUser::where('restaurant_uuid', $restaurant->uuid)->where('role', RestaurantUser::ROLE_PLAYER)
@@ -48,7 +53,8 @@ class FloorService
             ])->values()->all(),
             'customers' => $customers->map(fn (Customer $customer) => [
                 'uuid' => $customer->uuid,
-                'name' => $customer->name,
+                'name' => $customer->getShownName(),
+                'revealed' => $customer->revealed,
                 'description' => $customer->description,
                 'table_uuid' => $customer->table_uuid,
                 'seat' => $customer->seat,
@@ -59,7 +65,13 @@ class FloorService
                 'seating' => isset($seating[$customer->uuid])
                     ? ['table_uuid' => $seating[$customer->uuid]->table_uuid, 'seat' => $seating[$customer->uuid]->seat]
                     : null,
-            ])->values()->all(),
+            ] + ($player ? [] : [
+                // What players see until the name is revealed, and how the customer tips
+                'hidden_name' => $customer->hidden_name,
+                'tip_expectation' => $customer->tip_expectation,
+                'tip_rate' => $customer->tip_rate,
+                'tip_cap' => $customer->tip_cap,
+            ]))->values()->all(),
             'employees' => $employees->map(fn (Employee $employee) => [
                 'uuid' => $employee->uuid,
                 'name' => $employee->name,
@@ -215,7 +227,7 @@ class FloorService
     public function setAtEntrance(Customer $customer, ?Carbon $at): void
     {
         if ($customer->table_uuid !== null) {
-            throw new InvalidArgumentException($customer->name . ' is seated');
+            throw new InvalidArgumentException($customer->getShownName() . ' is seated');
         }
 
         DB::transaction(function () use ($customer, $at) {
