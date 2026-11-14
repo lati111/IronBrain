@@ -39,5 +39,12 @@
             "name": "Access DnD Restaurant Simulator",
             "description": "Allows the user to access the DnD restaurant simulator module."
         }
+    ],
+    "dnd_timeline": [
+        {
+            "permission": "dnd_timeline.access",
+            "name": "Access Fantasy Timeline",
+            "description": "Allows the user to access the fantasy timeline module."
+        }
     ]
 }

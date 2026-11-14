@@ -2,17 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 
-//| Home
-
-Route::prefix('/home/overview')->group(function() {
-    Route::get('/', [\App\Http\Dataproviders\Config\Module\ModuleOverviewCardlist::class, 'data'])
-        ->name('data.home.overview.cardlist');
-
-    Route::get('/pages', [\App\Http\Dataproviders\Config\Module\ModuleOverviewCardlist::class, 'count'])
-        ->name('data.home.overview.pages');
-});
-
-
 //| Config
 
 Route::prefix('/config')->group(function() {

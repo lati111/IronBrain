@@ -133,3 +133,11 @@ Route::prefix('/dnd/restaurant')
             ->name('dnd.restaurant.service.start');
     });
 
+//| dnd timeline
+Route::prefix('/dnd/timeline')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_timeline.access'])
+    ->group(function() {
+        Route::get('/', [\App\Http\Controllers\Modules\DnD\Timeline\DndTimelineController::class, 'showOverview'])
+            ->name('dnd.timeline.overview');
+    });
+

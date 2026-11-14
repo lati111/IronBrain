@@ -31,6 +31,7 @@ The publicly available repository for [ironbrain.io](https://ironbrain.io) — a
 | Module | Description |
 |--------|-------------|
 | **PKSanc** | Pokémon Save Collection manager. Upload Pokémon from save files via CSV, browse your collection, track Pokédex completion, and manage game data. |
+| **DnD** | Tools for Dungeons & Dragons campaigns, grouped as submodules: the **Restaurant Simulator** for running a restaurant within your campaign, and the **Fantasy Timeline** for keeping track of the history of your world. |
 
 ---
 
@@ -478,12 +479,6 @@ Remove a Pokédex marking for the authenticated user.
 ## Dataprovider Endpoints
 
 All endpoints support the query parameters and return the response format described under [Dataprovider System](#dataprovider-system). Each listed route also has a legacy `/pages` variant that returns the page count.
-
-### Home
-
-| Endpoint | Description | Auth |
-|----------|-------------|------|
-| `GET /data/home/overview` | Navigation module cards | None |
 
 ### Config
 

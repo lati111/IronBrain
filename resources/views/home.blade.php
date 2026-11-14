@@ -6,11 +6,8 @@
 @section('header')
     @vite([
         'resources/css/home.css',
-        'resources/ts/home.ts'
     ])
 @endsection
-
-@section('onload_functions', 'init()')
 
 @section('content')
     {{--| main info |--}}
@@ -28,32 +25,25 @@
     </section>
 
     {{--| module cards |--}}
-    <div dusk="projects">
-        <div class="flex flex-row justify-center mb-3" dusk="form">
-            <x-datalist.cardlist.list id="module-cardlist" url="{{route('data.home.overview.cardlist')}}">
-                {{--| template |--}}
-                <x-datalist.cardlist.template dataprovider_id="module-cardlist" cls="max-w-md flex flex-col items-center gap-2">
-                    <img data-name="thumbnail" data-alt-name="name" class="max-w-sm">
+    <div class="flex flex-col items-center gap-8 mb-3" dusk="projects">
+        @if(count($overviewModules) > 0)
+            <div class="flex justify-center flex-wrap gap-6 max-w-screen-2xl w-full">
+                @foreach($overviewModules as $module)
+                    <x-modules.card :module="$module"/>
+                @endforeach
+            </div>
+        @endif
 
-                    <div class="card-body">
-                        <h4 class="title text-center">
-                            <a data-attribute-name="route" data-settable-attribute="href" class="interactive">
-                                <span class="text-xl" data-name="name"></span>
-                            </a>
-                        </h4>
-
-                        <p class="card-text text-center">
-                            <span data-name="description"></span>
-                        </p>
-
-                        <div class="flex justify-content-between align-items-center">
-                            <small class="text-body-secondary" title="Last Updated">
-                                <span data-name="time_ago"></span>
-                            </small>
-                        </div>
-                    </div>
-                </x-datalist.cardlist.template>
-            </x-datalist.cardlist.list>
-        </div>
+        {{--| submodules, grouped under their main module |--}}
+        @foreach($overviewGroups as $group)
+            <section class="flex flex-col items-center gap-4 max-w-screen-2xl w-full" dusk="group-{{$group['module']->code}}">
+                <h2 class="title text-2xl text-center w-full border-b gray-border pb-1">{{$group['module']->name}}</h2>
+                <div class="flex justify-center flex-wrap gap-6 w-full">
+                    @foreach($group['submodules'] as $submodule)
+                        <x-modules.card :module="$submodule"/>
+                    @endforeach
+                </div>
+            </section>
+        @endforeach
     </div>
 @stop

@@ -50,6 +50,27 @@ class ImportModulesTest extends AbstractUnitTester
         $this->assertTrue(Submodule::where('module_id', $module->id)->where('code', 'sub')->exists());
     }
 
+    public function testImportSubmoduleOverview(): void
+    {
+        $this->writeModules([$this->module('import_test', ['submodules' => [
+            ['code' => 'shown', 'name' => 'Shown', 'description' => 'In the overview', 'thumbnail' => 'shown.png', 'order' => 1, 'route' => 'home', 'permission' => null, 'in_overview' => true],
+            ['code' => 'hidden', 'name' => 'Hidden', 'order' => 2, 'route' => 'home', 'permission' => null],
+        ]])]);
+
+        $this->artisan('import:modules')->assertExitCode(0);
+
+        $module = Module::where('code', 'import_test')->first();
+        $shown = Submodule::where('module_id', $module->id)->where('code', 'shown')->first();
+        $this->assertTrue((bool) $shown->in_overview);
+        $this->assertEquals('In the overview', $shown->description);
+        $this->assertEquals('shown.png', $shown->thumbnail);
+
+        $hidden = Submodule::where('module_id', $module->id)->where('code', 'hidden')->first();
+        $this->assertFalse((bool) $hidden->in_overview);
+        $this->assertNull($hidden->description);
+        $this->assertNull($hidden->thumbnail);
+    }
+
     public function testInvalidRouteFailsAndRollsBack(): void
     {
         $this->writeModules([
