@@ -5,10 +5,14 @@ namespace Tests\Unit\Controller\Modules\DnD\Timeline;
 use App\Models\Auth\Permission;
 use App\Models\Auth\RolePermission;
 use App\Models\Auth\User;
+use App\Models\DnD\Timeline\Timeline;
+use Tests\Traits\DnD\TimelineTestHelper;
 use Tests\Unit\Controller\AbstractControllerUnitTester;
 
 class DndTimelineControllerTest extends AbstractControllerUnitTester
 {
+    use TimelineTestHelper;
+
     protected Permission $permission;
 
     public function setUp(): void
@@ -54,5 +58,35 @@ class DndTimelineControllerTest extends AbstractControllerUnitTester
             ->actingAs($this->getTestUser())
             ->get(route('dnd.timeline.overview'));
         $response->assertViewIs('errors.auth.forbidden');
+    }
+
+    //| show timeline test
+    public function testTimelineShowForOwner(): void
+    {
+        $timeline = $this->createTestTimeline($this->getAdminUser());
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.timeline.show', ['timeline_uuid' => $timeline->uuid]));
+        $this->assertView($response, 'modules.dnd.timeline.timeline');
+        $response->assertViewHas('timeline', fn (Timeline $shown) => $shown->uuid === $timeline->uuid);
+    }
+
+    public function testTimelineShowOfOtherUserIsNotFound(): void
+    {
+        $timeline = $this->createTestTimeline($this->getTestUser());
+
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.timeline.show', ['timeline_uuid' => $timeline->uuid]));
+        $response->assertNotFound();
+    }
+
+    public function testTimelineShowOfMissingTimelineIsNotFound(): void
+    {
+        $response = $this
+            ->actingAs($this->getAdminUser())
+            ->get(route('dnd.timeline.show', ['timeline_uuid' => $this->getFalseUuid(Timeline::class)]));
+        $response->assertNotFound();
     }
 }

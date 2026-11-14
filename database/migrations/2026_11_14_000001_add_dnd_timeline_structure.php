@@ -18,6 +18,8 @@ return new class extends Migration
             $table->foreignUuid('owner_uuid');
             $table->string('name', 64);
             $table->text('description')->nullable();
+            // The path to the cover image within storage, if any
+            $table->string('cover_image')->nullable();
             $table->timestamps();
 
             $table->foreign('owner_uuid')->references('uuid')->on('auth__user')->onDelete('cascade')->onUpdate('no action');

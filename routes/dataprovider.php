@@ -84,3 +84,13 @@ Route::prefix('/dnd/restaurant/data')
         Route::dataprovider('/overview', 'data.dnd.restaurant.overview',
             \App\Http\Dataproviders\Modules\DnD\Restaurant\RestaurantOverviewCardlist::class);
     });
+
+
+//| DnD Timeline
+
+Route::prefix('/dnd/timeline/data')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_timeline.access'])
+    ->group(function() {
+        Route::dataprovider('/overview', 'data.dnd.timeline.overview',
+            \App\Http\Dataproviders\Modules\DnD\Timeline\TimelineOverviewCardlist::class);
+    });

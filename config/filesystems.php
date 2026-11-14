@@ -85,6 +85,8 @@ return [
         public_path('img/modules/dnd/restaurant/ingredient') => storage_path('app/modules/dnd/restaurant/ingredient'),
         public_path('img/modules/dnd/restaurant/room') => storage_path('app/modules/dnd/restaurant/room'),
         public_path('img/modules/dnd/restaurant/employee') => storage_path('app/modules/dnd/restaurant/employee'),
+
+        public_path('img/modules/dnd/timeline/cover') => storage_path('app/modules/dnd/timeline/cover'),
     ],
 
 ];

@@ -328,3 +328,12 @@ Route::prefix('/pksanc')
                 ->name('api.pksanc.pokedex.unmark');
         });
     });
+
+//| DnD Timeline
+
+Route::prefix('/dnd/timeline')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_timeline.access'])
+    ->group(function() {
+        Route::post('/create', [\App\Http\Api\Modules\DnD\Timeline\TimelineApi::class, 'createTimeline'])
+            ->name('api.dnd.timeline.create');
+    });

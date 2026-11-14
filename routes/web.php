@@ -139,5 +139,8 @@ Route::prefix('/dnd/timeline')
     ->group(function() {
         Route::get('/', [\App\Http\Controllers\Modules\DnD\Timeline\DndTimelineController::class, 'showOverview'])
             ->name('dnd.timeline.overview');
+
+        Route::get('/{timeline_uuid}', [\App\Http\Controllers\Modules\DnD\Timeline\DndTimelineController::class, 'showTimeline'])
+            ->name('dnd.timeline.show');
     });
 

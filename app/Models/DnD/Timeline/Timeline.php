@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string owner_uuid The uuid of the user that owns this timeline
  * @property string name The display name of the timeline
  * @property string|null description The description of the timeline
+ * @property string|null cover_image The path to the cover image, if any
  */
 class Timeline extends DndTimelineModel
 {
@@ -20,6 +21,18 @@ class Timeline extends DndTimelineModel
     public const string TABLE_NAME = 'dnd__timeline_timeline';
     /** @inheritdoc */
     protected $table = self::TABLE_NAME;
+
+    /** @var string The folder cover images are saved in */
+    public const string COVER_IMAGE_PATH = 'modules/dnd/timeline/cover';
+
+    /**
+     * Gets the url of the cover image
+     * @return string|null The url, or null when the timeline has no cover image
+     */
+    public function getCoverUrl(): ?string
+    {
+        return $this->cover_image !== null ? asset('img/' . $this->cover_image) : null;
+    }
 
     /**
      * Check whether a user may access this timeline
