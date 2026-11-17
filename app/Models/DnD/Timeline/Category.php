@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string name The display name of the category, unique within its timeline
  * @property string|null description The description of the category
  * @property string color The color of the category as #RRGGBB
+ * @property bool hidden_by_default Whether the category is filtered out when the timeline is opened
  */
 class Category extends DndTimelineModel
 {
@@ -20,6 +21,11 @@ class Category extends DndTimelineModel
     public const string TABLE_NAME = 'dnd__timeline_category';
     /** @inheritdoc */
     protected $table = self::TABLE_NAME;
+
+    /** @inheritdoc */
+    protected $casts = [
+        'hidden_by_default' => 'boolean',
+    ];
 
     //| Relationships
 

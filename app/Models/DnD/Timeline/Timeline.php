@@ -73,6 +73,14 @@ class Timeline extends DndTimelineModel
     }
 
     /**
+     * The relationship for the saved tag filter presets of the timeline
+     * @return HasMany
+     */
+    public function FilterPresets(): HasMany {
+        return $this->hasMany(FilterPreset::class, 'timeline_uuid', 'uuid');
+    }
+
+    /**
      * The relationship for the events of the timeline
      * @return HasMany
      */

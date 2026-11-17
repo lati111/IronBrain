@@ -7,6 +7,8 @@ export interface Category {
     name: string;
     description: string | null;
     color: string;
+    /** Whether the category is filtered out when the timeline is opened */
+    hidden_by_default: boolean;
 }
 
 export interface TimelineItem {
@@ -33,8 +35,28 @@ export interface TimelineSettings {
     display_end_year: number | null;
 }
 
+/** A saved set of tag lists to filter and highlight a timeline by */
+export interface FilterPreset {
+    uuid: string;
+    name: string;
+    blacklist: string[];
+    whitelist: string[];
+    highlight: string[];
+}
+
+/** The tags the timeline is filtered and highlighted by, in lowercase */
+export interface TagFilter {
+    /** Items with any of these tags are hidden */
+    blacklist: ReadonlySet<string>;
+    /** Items without all of these tags are hidden */
+    whitelist: ReadonlySet<string>;
+    /** Items with any of these tags are highlighted */
+    highlight: ReadonlySet<string>;
+}
+
 export interface TimelineState {
     settings: TimelineSettings;
+    presets: FilterPreset[];
     categories: Category[];
     events: TimelineEvent[];
     timespans: TimelineSpan[];
@@ -229,16 +251,30 @@ function getYearRange(state: TimelineState): {start: number, end: number} | null
  * @param track The element to draw into, inside a scrollable container
  * @param state The timeline state
  * @param zoom How far zoomed in, where 1 fits the whole timeline in the visible width
+ * @param hiddenCategories The uuids of the categories that are filtered out. Items without a category are always shown
+ * @param tagFilter The tags to hide, require and highlight items by
  * @param onSelect Called when an item is clicked
  * @return Where the years were placed, or null when there was nothing to draw
  */
-export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: number, onSelect: SelectItemCallback): TimelineLayout | null {
+export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: number, hiddenCategories: ReadonlySet<string>, tagFilter: TagFilter, onSelect: SelectItemCallback): TimelineLayout | null {
     track.innerHTML = '';
 
     const range = getYearRange(state);
     if (range === null) {
         return null;
     }
+
+    const isShown = (item: TimelineItem) => {
+        if (hiddenCategories.has(item.category_uuid ?? '')) return false;
+
+        const tags = item.tags.map(tag => tag.toLowerCase());
+        if (tags.some(tag => tagFilter.blacklist.has(tag))) return false;
+        return [...tagFilter.whitelist].every(required => tags.includes(required));
+    };
+    const isHighlighted = (item: TimelineItem) => item.tags.some(tag => tagFilter.highlight.has(tag.toLowerCase()));
+    const shownEvents = state.events.filter(isShown);
+    const shownTimespans = state.timespans.filter(isShown);
+    const shownPeriods = state.periods.filter(isShown);
 
     const colors = new Map(state.categories.map(category => [category.uuid, category.color]));
     const getColor = (item: TimelineItem) => colors.get(item.category_uuid ?? '') ?? UNCATEGORIZED_COLOR;
@@ -249,14 +285,14 @@ export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: n
     const x = (year: number) => (year - range.start) * pixelsPerYear;
 
     //| Lay out the rows, with event labels above the axis and timespans below it
-    const events = state.events.map(event => {
+    const events = shownEvents.map(event => {
         const left = x(event.year) - 6;
         return {event, left, right: left + measureLabel(event.name), group: event.category_uuid ?? ''};
     });
     const eventLanes = assignLanes(events);
 
     // A name too long for its bar is placed right after it instead, taking up room in its row so nothing covers it
-    const timespans = state.timespans.map(timespan => {
+    const timespans = shownTimespans.map(timespan => {
         const left = x(timespan.start_year);
         const barRight = Math.max(x(timespan.end_year), left + 6);
         const labelWidth = measureLabel(timespan.name);
@@ -276,7 +312,7 @@ export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: n
     track.style.height = `${height}px`;
 
     //| Periods
-    for (const period of state.periods) {
+    for (const period of shownPeriods) {
         const color = getColor(period);
         const element = createElement('timeline-period', {
             left: `${x(period.start_year)}px`,
@@ -287,6 +323,7 @@ export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: n
         // Only the name opens the period, so clicks on the rest of its wide band don't get in the way
         const label = createElement('timeline-period-label', {color}, period.name);
         label.title = getTooltip('period', period);
+        if (isHighlighted(period)) label.classList.add('timeline-highlight');
         label.addEventListener('click', () => onSelect('period', period));
         element.appendChild(label);
         track.appendChild(element);
@@ -324,6 +361,7 @@ export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: n
         const dot = createElement('timeline-event-dot', {left: `${x(event.year)}px`, top: `${axisY}px`, backgroundColor: color});
         for (const element of [label, dot]) {
             element.title = tooltip;
+            if (isHighlighted(event)) element.classList.add('timeline-highlight');
             element.addEventListener('click', () => onSelect('event', event));
             track.appendChild(element);
         }
@@ -353,6 +391,7 @@ export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: n
 
         for (const element of elements) {
             element.title = getTooltip('timespan', timespan);
+            if (isHighlighted(timespan)) element.classList.add('timeline-highlight');
             element.addEventListener('click', () => onSelect('timespan', timespan));
             track.appendChild(element);
         }
@@ -362,17 +401,23 @@ export function renderTimeline(track: HTMLElement, state: TimelineState, zoom: n
 }
 
 /**
- * Lists the categories with their colors
+ * Lists the categories with their colors. Clicking one filters it out of the timeline, or brings it back
  * @param legend The element to list them in
  * @param categories The categories
+ * @param hiddenCategories The uuids of the categories that are filtered out
+ * @param onToggle Called when a category is clicked
  */
-export function renderLegend(legend: HTMLElement, categories: Category[]): void {
+export function renderLegend(legend: HTMLElement, categories: Category[], hiddenCategories: ReadonlySet<string>, onToggle: (uuid: string) => void): void {
     legend.innerHTML = '';
     for (const category of categories) {
-        const entry = document.createElement('span');
-        if (category.description) {
-            entry.title = category.description;
-        }
+        const hidden = hiddenCategories.has(category.uuid);
+
+        const entry = document.createElement('button');
+        entry.type = 'button';
+        entry.className = 'timeline-legend-entry' + (hidden ? ' timeline-legend-entry-hidden' : '');
+        entry.title = (category.description ? category.description + '\n' : '') + (hidden ? 'Click to show' : 'Click to hide');
+        entry.setAttribute('aria-pressed', String(!hidden));
+        entry.addEventListener('click', () => onToggle(category.uuid));
 
         const swatch = document.createElement('span');
         swatch.className = 'timeline-legend-swatch';

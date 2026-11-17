@@ -59,6 +59,20 @@ class EditCategoryTest extends AbstractApiFeatureTester
         $this->assertEquals(['Conflicts'], array_column($response->json('data.timeline.categories'), 'name'));
     }
 
+    public function test_category_default_visibility_is_saved(): void
+    {
+        $this->assertFalse($this->category->fresh()->hidden_by_default);
+
+        $response = $this->post(['hidden_by_default' => '1']);
+        $response->assertOk();
+        $this->assertTrue($this->category->fresh()->hidden_by_default);
+        $this->assertTrue($response->json('data.timeline.categories.0.hidden_by_default'));
+
+        // An unticked checkbox isn't sent
+        $this->post()->assertOk();
+        $this->assertFalse($this->category->fresh()->hidden_by_default);
+    }
+
     public function test_category_may_keep_its_name(): void
     {
         $this->post(['name' => 'Wars'])->assertOk();

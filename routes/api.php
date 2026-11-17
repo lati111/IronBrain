@@ -344,8 +344,15 @@ Route::prefix('/dnd/timeline')
             Route::post('/settings/edit', [\App\Http\Api\Modules\DnD\Timeline\SettingsApi::class, 'editSettings'])
                 ->name('api.dnd.timeline.settings.edit');
 
+            Route::post('/preset/save', [\App\Http\Api\Modules\DnD\Timeline\PresetApi::class, 'savePreset'])
+                ->name('api.dnd.timeline.preset.save');
+            Route::post('/preset/{preset_uuid}/delete', [\App\Http\Api\Modules\DnD\Timeline\PresetApi::class, 'deletePreset'])
+                ->name('api.dnd.timeline.preset.delete');
+
             Route::post('/category/{category_uuid}/edit', [\App\Http\Api\Modules\DnD\Timeline\CategoryApi::class, 'editCategory'])
                 ->name('api.dnd.timeline.category.edit');
+            Route::post('/category/{category_uuid}/delete', [\App\Http\Api\Modules\DnD\Timeline\CategoryApi::class, 'deleteCategory'])
+                ->name('api.dnd.timeline.category.delete');
 
             Route::post('/item/create', [\App\Http\Api\Modules\DnD\Timeline\ItemApi::class, 'createItem'])
                 ->name('api.dnd.timeline.item.create');

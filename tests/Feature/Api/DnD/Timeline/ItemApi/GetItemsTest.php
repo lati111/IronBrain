@@ -48,7 +48,8 @@ class GetItemsTest extends AbstractApiFeatureTester
         $response->assertOk();
         $this->assertEquals(['current_year' => null, 'display_start_year' => null, 'display_end_year' => null],
             $response->json('data.timeline.settings'));
-        $this->assertEquals([['uuid' => $category->uuid, 'name' => 'Wars', 'description' => null, 'color' => '#aa3311']],
+        $this->assertEquals([], $response->json('data.timeline.presets'));
+        $this->assertEquals([['uuid' => $category->uuid, 'name' => 'Wars', 'description' => null, 'color' => '#aa3311', 'hidden_by_default' => false]],
             $response->json('data.timeline.categories'));
         $this->assertEquals(['Earlier', 'Later'], array_column($response->json('data.timeline.events'), 'name'));
         $this->assertEquals(-20, $response->json('data.timeline.events.0.year'));

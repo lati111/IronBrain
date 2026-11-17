@@ -3,6 +3,7 @@ import {openModal, init as initModals, closeModal} from "../../../components/mod
 import {
     Category,
     ItemType,
+    TagFilter,
     TimelineEvent,
     TimelineLayout,
     TimelineSpan,
@@ -15,8 +16,13 @@ import {
 let apiUrl = '';
 let state: TimelineState = {
     settings: {current_year: null, display_start_year: null, display_end_year: null},
+    presets: [],
     categories: [], events: [], timespans: [], periods: [],
 };
+/** The uuids of the categories that are filtered out. Clicking a category in the legend changes this */
+let hiddenCategories = new Set<string>();
+/** The tags the timeline is filtered and highlighted by, which the tag modal changes */
+let tagFilter: TagFilter = {blacklist: new Set(), whitelist: new Set(), highlight: new Set()};
 /** Where the years were placed when the timeline was last drawn, or null when there was nothing to draw */
 let layout: TimelineLayout | null = null;
 /** How far zoomed in, where 1 fits the whole timeline in the visible width */
@@ -33,8 +39,15 @@ async function init(): Promise<void> {
     apiUrl = document.getElementById('timeline')!.dataset.apiUrl!;
     initModals();
 
+    // The tag field of items and the three tag lists of the filter
+    attachTagAutocomplete(getField('tags'));
+    for (const list of TAG_LISTS) {
+        attachTagAutocomplete(getTagInput(list));
+    }
+
     const response = await getData(apiUrl);
     setState(response.data.timeline);
+    applyDefaultFilter();
     showDisplayRange();
 
     // Not passive, so scrolling zooms the timeline instead of scrolling the page
@@ -53,9 +66,33 @@ async function init(): Promise<void> {
 
 function setState(newState: TimelineState): void {
     state = newState;
-    renderLegend(document.getElementById('timeline-legend')!, state.categories);
+    // Categories that were deleted can't be filtered out anymore
+    hiddenCategories = new Set([...hiddenCategories].filter(uuid => state.categories.some(category => category.uuid === uuid)));
+    drawLegend();
     fillCategoryOptions();
     renderCategoryList();
+    fillPresetSelect();
+    render();
+}
+
+function drawLegend(): void {
+    renderLegend(document.getElementById('timeline-legend')!, state.categories, hiddenCategories, toggleCategory);
+}
+
+/** Filters out the categories that are hidden by default, which is only done when the timeline is opened */
+function applyDefaultFilter(): void {
+    hiddenCategories = new Set(state.categories.filter(category => category.hidden_by_default).map(category => category.uuid));
+    drawLegend();
+    render();
+}
+
+/** Filters a category out of the timeline, or brings it back */
+function toggleCategory(uuid: string): void {
+    if (!hiddenCategories.delete(uuid)) {
+        hiddenCategories.add(uuid);
+    }
+
+    drawLegend();
     render();
 }
 
@@ -65,7 +102,7 @@ function render(): void {
 
     // Shown before drawing, as the timeline is sized to the visible width, which is zero while hidden
     scroll.classList.remove('hidden');
-    layout = renderTimeline(track, state, zoom, openItemModal);
+    layout = renderTimeline(track, state, zoom, hiddenCategories, tagFilter, openItemModal);
     const drawn = layout !== null;
 
     scroll.classList.toggle('hidden', !drawn);
@@ -355,6 +392,318 @@ async function saveSettings(): Promise<void> {
     showDisplayRange();
 }
 
+//| Tag autocomplete
+
+interface TagSuggestion {
+    tag: string;
+    /** How many items have the tag */
+    count: number;
+}
+
+/** Counts how many items have each tag, ignoring case and keeping the spelling that was seen first */
+function getTagCounts(): TagSuggestion[] {
+    const counts = new Map<string, TagSuggestion>();
+    for (const item of [...state.events, ...state.timespans, ...state.periods]) {
+        for (const tag of item.tags) {
+            const key = tag.toLowerCase();
+            const suggestion = counts.get(key) ?? {tag, count: 0};
+            suggestion.count++;
+            counts.set(key, suggestion);
+        }
+    }
+
+    return [...counts.values()];
+}
+
+/**
+ * Ranks how closely a tag matches what was typed, where lower is closer: a prefix, then somewhere within the tag, then
+ * with the typed letters in order but spread out. Everything matches when nothing was typed yet
+ * @param tag The tag
+ * @param query What was typed, in lowercase
+ * @return The rank, or null when the tag doesn't match
+ */
+function rankTagMatch(tag: string, query: string): number | null {
+    if (query === '') return 0;
+
+    const lower = tag.toLowerCase();
+    if (lower.startsWith(query)) return 0;
+    if (lower.includes(query)) return 1;
+
+    let position = 0;
+    for (const letter of lower) {
+        if (letter === query[position]) position++;
+    }
+    return position === query.length ? 2 : null;
+}
+
+/**
+ * Gets the tags to suggest for what is being typed, closest match first and then those on the most items
+ * @param query What was typed, in lowercase
+ * @param entered The tags already in the field, in lowercase, which aren't suggested again
+ */
+function getTagSuggestions(query: string, entered: Set<string>): TagSuggestion[] {
+    return getTagCounts()
+        .flatMap(suggestion => {
+            const lower = suggestion.tag.toLowerCase();
+            // A tag that has been typed out in full has nothing left to complete
+            const rank = entered.has(lower) || lower === query ? null : rankTagMatch(suggestion.tag, query);
+            return rank === null ? [] : [{suggestion, rank}];
+        })
+        .sort((a, b) => a.rank - b.rank || b.suggestion.count - a.suggestion.count || a.suggestion.tag.localeCompare(b.suggestion.tag))
+        .map(({suggestion}) => suggestion)
+        .slice(0, 8);
+}
+
+/**
+ * Suggests the tags of the timeline while typing in a field with comma separated tags. Tab picks the top suggestion,
+ * and the arrow keys and enter pick another one
+ * @param input The field to add suggestions to
+ */
+function attachTagAutocomplete(input: HTMLInputElement): void {
+    const list = document.createElement('div');
+    list.className = 'timeline-autocomplete hidden';
+    list.setAttribute('role', 'listbox');
+    input.parentElement!.classList.add('relative');
+    input.parentElement!.appendChild(list);
+    input.autocomplete = 'off';
+
+    let suggestions: TagSuggestion[] = [];
+    let active = -1;
+
+    /** Finds the tag being typed, which runs from the comma before the caret to the next comma */
+    const getSegment = () => {
+        const caret = input.selectionStart ?? input.value.length;
+        const start = input.value.lastIndexOf(',', caret - 1) + 1;
+        const comma = input.value.indexOf(',', caret);
+        return {start, caret, end: comma === -1 ? input.value.length : comma};
+    };
+
+    const hide = () => {
+        list.classList.add('hidden');
+        suggestions = [];
+        active = -1;
+    };
+
+    const highlight = () => {
+        [...list.children].forEach((child, index) => child.classList.toggle('timeline-autocomplete-active', index === active));
+        list.children[active]?.scrollIntoView({block: 'nearest'});
+    };
+
+    const accept = (suggestion: TagSuggestion) => {
+        const {start, end} = getSegment();
+        const atEnd = end === input.value.length;
+        const insert = (start > 0 ? ' ' : '') + suggestion.tag + (atEnd ? ', ' : '');
+
+        input.value = input.value.slice(0, start) + insert + input.value.slice(end);
+        const caret = start + insert.length;
+        input.setSelectionRange(caret, caret);
+        hide();
+    };
+
+    const refresh = () => {
+        const {start, caret, end} = getSegment();
+        const query = input.value.slice(start, caret).trim().toLowerCase();
+        const others = (input.value.slice(0, start) + ',' + input.value.slice(end)).split(',').map(tag => tag.trim().toLowerCase());
+
+        suggestions = getTagSuggestions(query, new Set(others));
+        active = -1;
+        list.innerHTML = '';
+        if (suggestions.length === 0) {
+            list.classList.add('hidden');
+            return;
+        }
+
+        for (const suggestion of suggestions) {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'timeline-autocomplete-option';
+            option.setAttribute('role', 'option');
+            option.tabIndex = -1;
+            option.append(suggestion.tag);
+
+            const count = document.createElement('span');
+            count.className = 'timeline-autocomplete-count';
+            count.textContent = String(suggestion.count);
+            option.appendChild(count);
+
+            // Pressing down rather than clicking, as that happens before the field loses focus and hides the list
+            option.addEventListener('mousedown', event => {
+                event.preventDefault();
+                accept(suggestion);
+            });
+            list.appendChild(option);
+        }
+        list.classList.remove('hidden');
+    };
+
+    input.addEventListener('input', refresh);
+    input.addEventListener('focus', refresh);
+    input.addEventListener('click', refresh);
+    input.addEventListener('blur', hide);
+    input.addEventListener('keydown', event => {
+        if (suggestions.length === 0) return;
+
+        switch (event.key) {
+            case 'ArrowDown':
+            case 'ArrowUp': {
+                event.preventDefault();
+                const step = event.key === 'ArrowDown' ? 1 : -1;
+                active = active === -1 ? (step === 1 ? 0 : suggestions.length - 1) : (active + step + suggestions.length) % suggestions.length;
+                highlight();
+                break;
+            }
+            case 'Enter':
+                // Only when one was picked, so enter still submits the form otherwise
+                if (active !== -1) {
+                    event.preventDefault();
+                    accept(suggestions[active]);
+                }
+                break;
+            case 'Tab':
+                if (!event.shiftKey) {
+                    event.preventDefault();
+                    accept(suggestions[Math.max(active, 0)]);
+                }
+                break;
+            case 'Escape':
+                event.stopPropagation();
+                hide();
+                break;
+        }
+    });
+}
+
+//| Tag filter modal
+
+const TAG_LISTS = ['blacklist', 'whitelist', 'highlight'] as const;
+type TagList = typeof TAG_LISTS[number];
+
+function getTagsForm(): HTMLFormElement {
+    return document.getElementById('timeline-tags-form') as HTMLFormElement;
+}
+
+function getTagInput(list: TagList): HTMLInputElement {
+    return getTagsForm().querySelector(`[name="${list}"]`) as HTMLInputElement;
+}
+
+function getPresetSelect(): HTMLSelectElement {
+    return document.getElementById('timeline-preset-select') as HTMLSelectElement;
+}
+
+function getPresetNameInput(): HTMLInputElement {
+    return document.getElementById('timeline-preset-name') as HTMLInputElement;
+}
+
+/**
+ * Splits a comma separated list of tags, without surrounding whitespace, empty entries or duplicates
+ * @param text The comma separated list
+ */
+function parseTags(text: string): string[] {
+    const seen = new Set<string>();
+    return text.split(',').map(tag => tag.trim()).filter(tag => {
+        const key = tag.toLowerCase();
+        if (tag === '' || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function openTagModal(): void {
+    openModal('timeline-tags-modal');
+    getTagInput('blacklist').focus();
+}
+
+/** Filters and highlights the timeline by the tags in the modal */
+function applyTagFilter(close: boolean = true): void {
+    const [blacklist, whitelist, highlight] = TAG_LISTS.map(list =>
+        new Set(parseTags(getTagInput(list).value).map(tag => tag.toLowerCase())));
+    tagFilter = {blacklist, whitelist, highlight};
+
+    // Shows whether the timeline is being filtered, as the modal is closed most of the time
+    const active = blacklist.size + whitelist.size + highlight.size > 0;
+    document.getElementById('timeline-tags-button')!.textContent = active ? 'Tags ●' : 'Tags';
+
+    render();
+    if (close) {
+        closeModal('timeline-tags-modal');
+    }
+}
+
+function clearTagFilter(): void {
+    for (const list of TAG_LISTS) {
+        getTagInput(list).value = '';
+    }
+    applyTagFilter(false);
+}
+
+function fillPresetSelect(): void {
+    const select = getPresetSelect();
+    const current = select.value;
+
+    select.innerHTML = '';
+    select.add(new Option(state.presets.length === 0 ? 'No saved presets' : 'Choose a preset...', ''));
+    for (const preset of state.presets) {
+        select.add(new Option(preset.name, preset.uuid));
+    }
+
+    select.value = state.presets.some(preset => preset.uuid === current) ? current : '';
+}
+
+/** Suggests the name of the chosen preset for saving, so saving again replaces it */
+function selectPreset(): void {
+    const preset = state.presets.find(preset => preset.uuid === getPresetSelect().value);
+    if (preset !== undefined) {
+        getPresetNameInput().value = preset.name;
+    }
+}
+
+/** Fills the tag lists with those of the chosen preset and filters by them */
+function loadPreset(): void {
+    const preset = state.presets.find(preset => preset.uuid === getPresetSelect().value);
+    if (preset === undefined) return;
+
+    for (const list of TAG_LISTS) {
+        getTagInput(list).value = preset[list].join(', ');
+    }
+    applyTagFilter(false);
+}
+
+async function savePreset(): Promise<void> {
+    const nameInput = getPresetNameInput();
+    const name = nameInput.value.trim();
+    if (name === '') {
+        nameInput.focus();
+        return;
+    }
+
+    const data = new FormData();
+    data.set('name', name);
+    for (const list of TAG_LISTS) {
+        data.set(list, parseTags(getTagInput(list).value).join(','));
+    }
+
+    // A preset of the same name is replaced, so make sure that is meant
+    const existing = state.presets.find(preset => preset.name.toLowerCase() === name.toLowerCase());
+    if (existing !== undefined && !window.confirm(`Replace the preset "${existing.name}"?`)) return;
+
+    const result = await post('preset/save', data);
+    if (result === null) return;
+
+    setState(result.timeline);
+    getPresetSelect().value = result.uuid;
+}
+
+async function deletePreset(): Promise<void> {
+    const preset = state.presets.find(preset => preset.uuid === getPresetSelect().value);
+    if (preset === undefined || !window.confirm(`Delete the preset "${preset.name}"?`)) return;
+
+    const result = await post(`preset/${preset.uuid}/delete`, new FormData());
+    if (result === null) return;
+
+    getPresetNameInput().value = '';
+    setState(result.timeline);
+}
+
 //| Categories modal
 
 function openCategoryModal(): void {
@@ -406,8 +755,39 @@ function renderCategoryList(): void {
         description.placeholder = 'Description...';
         description.value = category.description ?? '';
 
-        row.append(top, description);
+        const bottom = document.createElement('div');
+        bottom.className = 'flex gap-2 items-center justify-between';
+
+        const hidden = document.createElement('label');
+        hidden.className = 'flex gap-2 items-center text-sm';
+        hidden.title = 'Filters the category out when the timeline is opened. It can still be shown by clicking it';
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'checkbox';
+        hiddenInput.name = 'hidden_by_default';
+        hiddenInput.value = '1';
+        hiddenInput.checked = category.hidden_by_default;
+        hidden.append(hiddenInput, 'Hidden by default');
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'cancel_interactive px-3';
+        remove.textContent = 'Delete';
+        remove.addEventListener('click', () => void deleteCategory(category));
+        bottom.append(hidden, remove);
+
+        row.append(top, description, bottom);
         list.appendChild(row);
+    }
+}
+
+async function deleteCategory(category: Category): Promise<void> {
+    const items = [...state.events, ...state.timespans, ...state.periods].filter(item => item.category_uuid === category.uuid).length;
+    const consequence = items === 0 ? '' : ` Its ${items} ${items === 1 ? 'item stays' : 'items stay'} on the timeline without a category.`;
+    if (!window.confirm(`Delete the category "${category.name}"?${consequence}`)) return;
+
+    const result = await post(`category/${category.uuid}/delete`, new FormData());
+    if (result !== null) {
+        setState(result.timeline);
     }
 }
 
@@ -429,6 +809,13 @@ async function saveCategory(uuid: string, form: HTMLFormElement): Promise<void> 
 (<any>window).updateCategoryColor   = updateCategoryColor;
 (<any>window).openCategoryModal     = openCategoryModal;
 (<any>window).openSettingsModal     = openSettingsModal;
+(<any>window).openTagModal          = openTagModal;
+(<any>window).applyTagFilter        = () => applyTagFilter();
+(<any>window).clearTagFilter        = clearTagFilter;
+(<any>window).selectPreset          = selectPreset;
+(<any>window).loadPreset            = loadPreset;
+(<any>window).savePreset            = savePreset;
+(<any>window).deletePreset          = deletePreset;
 (<any>window).saveSettings          = saveSettings;
 (<any>window).openModal             = openModal;
 (<any>window).closeModal            = closeModal;

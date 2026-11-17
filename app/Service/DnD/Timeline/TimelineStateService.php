@@ -4,6 +4,7 @@ namespace App\Service\DnD\Timeline;
 
 use App\Models\DnD\Timeline\Category;
 use App\Models\DnD\Timeline\Event;
+use App\Models\DnD\Timeline\FilterPreset;
 use App\Models\DnD\Timeline\Interfaces\TimelineItemModel;
 use App\Models\DnD\Timeline\Period;
 use App\Models\DnD\Timeline\Timeline;
@@ -23,6 +24,7 @@ class TimelineStateService
         $events = Event::where('timeline_uuid', $timeline->uuid)->orderBy('year')->orderBy('name')->get();
         $timespans = Timespan::where('timeline_uuid', $timeline->uuid)->orderBy('start_year')->orderBy('end_year')->get();
         $periods = Period::where('timeline_uuid', $timeline->uuid)->orderBy('start_year')->orderBy('end_year')->get();
+        $presets = FilterPreset::where('timeline_uuid', $timeline->uuid)->orderBy('name')->get();
 
         return [
             'settings' => [
@@ -30,11 +32,19 @@ class TimelineStateService
                 'display_start_year' => $timeline->display_start_year,
                 'display_end_year' => $timeline->display_end_year,
             ],
+            'presets' => $presets->map(fn (FilterPreset $preset) => [
+                'uuid' => $preset->uuid,
+                'name' => $preset->name,
+                'blacklist' => $preset->getList('blacklist'),
+                'whitelist' => $preset->getList('whitelist'),
+                'highlight' => $preset->getList('highlight'),
+            ])->values()->all(),
             'categories' => $categories->map(fn (Category $category) => [
                 'uuid' => $category->uuid,
                 'name' => $category->name,
                 'description' => $category->description,
                 'color' => $category->color,
+                'hidden_by_default' => $category->hidden_by_default,
             ])->values()->all(),
             'events' => $events->map(fn (Event $event) => $this->getItem($event) + [
                 'year' => $event->year,

@@ -17,14 +17,15 @@
     <div class="flex justify-between items-center gap-4 mb-3 timeline-page">
         <div class="flex-1 flex gap-4 whitespace-nowrap">
             <a href="{{route('dnd.timeline.overview')}}" class="interactive">&larr; Timelines</a>
+            <button class="interactive px-3" onclick="zoomTimeline(1 / 1.5)" title="Zoom out" dusk="timeline-zoom-out">−</button>
+            <button class="interactive px-3" onclick="zoomTimeline(1.5)" title="Zoom in" dusk="timeline-zoom-in">+</button>
+            <button class="interactive px-3" onclick="openSettingsModal()" dusk="timeline-settings">Settings</button>
         </div>
 
         <h1 class="title">{{$timeline->name}}</h1>
 
         <div class="flex-1 flex justify-end items-center gap-2 whitespace-nowrap">
-            <button class="interactive px-3" onclick="zoomTimeline(1 / 1.5)" title="Zoom out" dusk="timeline-zoom-out">−</button>
-            <button class="interactive px-3" onclick="zoomTimeline(1.5)" title="Zoom in" dusk="timeline-zoom-in">+</button>
-            <button class="interactive px-3" onclick="openSettingsModal()" dusk="timeline-settings">Settings</button>
+            <button id="timeline-tags-button" class="interactive px-3" onclick="openTagModal()" dusk="timeline-tags">Tags</button>
             <button class="interactive px-3" onclick="openCategoryModal()" dusk="timeline-categories">Categories</button>
             <button class="interactive px-3" onclick="openItemModal()" dusk="timeline-item-create">+ Add to timeline</button>
         </div>
@@ -147,6 +148,47 @@
         <x-slot:buttons>
             <button class="cancel_interactive px-5 py-2.5" onclick="closeModal('timeline-settings-modal')">Cancel</button>
             <button class="interactive px-5 py-2.5" dusk="settings-save" onclick="saveSettings()">Save</button>
+        </x-slot:buttons>
+    </x-modal>
+
+    {{--| Tag modal. The tags are applied in the page, while presets of them are saved to the timeline |--}}
+    <x-modal id="timeline-tags-modal">
+        <h3 class="title py-1">Tags</h3>
+
+        {{--| Presets, collapsed until they are needed |--}}
+        <details class="w-full" dusk="timeline-presets">
+            <summary class="cursor-pointer select-none text-sm form_label">Presets</summary>
+            <div class="flex flex-col gap-2 w-full pt-2">
+                <div class="flex gap-2 items-center">
+                    <select id="timeline-preset-select" class="underlined flex-1" onchange="selectPreset()"></select>
+                    <button type="button" class="interactive px-3" onclick="loadPreset()" dusk="preset-load">Load</button>
+                    <button type="button" class="cancel_interactive px-3" onclick="deletePreset()" dusk="preset-delete">Delete</button>
+                </div>
+                <div class="flex gap-2 items-center">
+                    <input type="text" id="timeline-preset-name" class="underlined flex-1" maxlength="64"
+                           placeholder="Preset name..." autocomplete="off"/>
+                    <button type="button" class="interactive px-3" onclick="savePreset()" dusk="preset-save">Save</button>
+                </div>
+            </div>
+        </details>
+
+        <form id="timeline-tags-form" class="flex flex-col gap-3 w-full" onsubmit="event.preventDefault(); applyTagFilter()">
+            <x-form.input-wrapper label_text="Blacklist: hide items with any of these tags">
+                <input type="text" name="blacklist" class="underlined" placeholder="Tags..." autocomplete="off"/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Whitelist: only show items with all of these tags">
+                <input type="text" name="whitelist" class="underlined" placeholder="Tags..." autocomplete="off"/>
+            </x-form.input-wrapper>
+            <x-form.input-wrapper label_text="Highlight: highlight items with any of these tags">
+                <input type="text" name="highlight" class="underlined" placeholder="Tags..." autocomplete="off"/>
+            </x-form.input-wrapper>
+            <p class="text-sm text-gray-500">Separate tags with commas.</p>
+            <button type="submit" class="hidden"></button>
+        </form>
+
+        <x-slot:buttons>
+            <button class="cancel_interactive px-5 py-2.5" onclick="clearTagFilter()" dusk="tags-clear">Clear</button>
+            <button class="interactive px-5 py-2.5" dusk="tags-apply" onclick="applyTagFilter()">Apply</button>
         </x-slot:buttons>
     </x-modal>
 @endsection

@@ -562,7 +562,8 @@ Registered in `AppServiceProvider` and available in any `Validator::make()` call
 | Table | Description |
 |-------|-------------|
 | `dnd__timeline_timeline` | User-owned timelines with an optional cover image; the container for all categories and items |
-| `dnd__timeline_category` | Categories of a timeline, with a hex color; names are unique per timeline |
+| `dnd__timeline_category` | Categories of a timeline, with a hex color and whether they are hidden by default; names are unique per timeline |
+| `dnd__timeline_filter_preset` | Saved tag lists (blacklist, whitelist and highlight) to filter a timeline by |
 | `dnd__timeline_event` | Items that take place on a single year |
 | `dnd__timeline_timespan` | Items that take place from one year to another |
 | `dnd__timeline_period` | Like timespans, but for wider periods of time such as ages or eras |
