@@ -7,7 +7,8 @@
         @endcomponent
     @endif
 
-    @foreach ($errors->all() as $error)
+    {{--| Pages rendered outside the web middleware, such as the error pages of api routes, have no shared errors |--}}
+    @foreach (isset($errors) ? $errors->all() : [] as $error)
         @component('components.toast')
             @slot('id') error-toast-{{$loop->index + 1}} @endslot
             @slot('text') {{$error}} @endslot

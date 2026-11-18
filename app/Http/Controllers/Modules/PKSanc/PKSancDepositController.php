@@ -46,7 +46,7 @@ class PKSancDepositController extends Controller
     {
         $user = Auth::user();
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|min:4|max:255',
+            'name' => ['required', 'string', 'min:4', 'max:255', 'regex:/^[a-zA-Z0-9_\- ]+$/'],
             'csv' => 'required|mimes:csv,txt|max:480',
             'game' => 'required|exists:pksanc__game,game'
         ]);
@@ -88,10 +88,13 @@ class PKSancDepositController extends Controller
      */
     public function showDepositAttempt(string $importUuid): View
     {
-        $csv = ImportCsv::where('uuid', $importUuid)->first();
+        $user = Auth::user();
+        $csv = ImportCsv::where('uuid', $importUuid)
+            ->where('uploader_uuid', $user->uuid)
+            ->first();
+
         if ($csv === null) {
-            //TODO add error screen
-            dd(sprintf('No import csv matching the uuid %s found', $importUuid));
+            abort(404);
         }
 
         return view('modules.pksanc.stage-deposit', array_merge($this->getBaseVariables(), [
@@ -105,10 +108,13 @@ class PKSancDepositController extends Controller
      */
     public function depositCancel(string $importUuid): RedirectResponse
     {
-        $csv = ImportCsv::where('uuid', $importUuid)->first();
+        $user = Auth::user();
+        $csv = ImportCsv::where('uuid', $importUuid)
+            ->where('uploader_uuid', $user->uuid)
+            ->first();
+
         if ($csv === null) {
-            //TODO add error screen
-            dd(sprintf('No import csv matching the uuid %s found', $importUuid));
+            abort(404);
         }
 
         foreach($csv->Pokemon()->get() as $pokemon) {

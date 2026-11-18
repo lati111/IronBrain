@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Auth;
 class PKSancOverviewCardList extends AbstractPKSancOverviewCardList
 {
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         /** @var Builder $pokemonCollection */
-        $pokemonCollection = StoredPokemon::select()
+        $pokemonCollection = StoredPokemon::query()
             ->where('validated_at', '!=', null)
             ->where(StoredPokemon::getTableName().'.owner_uuid', Auth::user()->uuid);
 

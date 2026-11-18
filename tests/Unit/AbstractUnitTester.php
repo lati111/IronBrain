@@ -4,11 +4,11 @@ namespace Tests\Unit;
 
 use App\Models\Auth\User;
 use Database\Seeders\AuthSeeder;
+use App\Models\AbstractModel;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
-use Illuminate\Database\Eloquent\Model;
 use Tests\TestCase;
 
 abstract class AbstractUnitTester extends Testcase
@@ -75,7 +75,7 @@ abstract class AbstractUnitTester extends Testcase
         return $saved_identifier;
     }
 
-    protected function getRandomEntity(string $model): Model|null
+    protected function getRandomEntity(string $model): AbstractModel|null
     {
         $qb = $model::select();
 
@@ -83,19 +83,25 @@ abstract class AbstractUnitTester extends Testcase
             case User::class:
                 $qb->where('email', '!=', 'admin@test.nl');
                 break;
+            case \App\Models\Auth\Role::class:
+                $qb->where('is_admin', false);
+                break;
         }
 
         return $qb->first();
     }
 
-    protected function createRandomEntity(string $model): Model {
-        $entity = $model::factory()->makeOne();
+    protected function createRandomEntity(string $model, array $params = []): AbstractModel {
+        $entity = $model::factory()->make($params);
         $entity->save();
         return $entity;
     }
 
-    protected function createRandomEntities(string $model, int $amount, array $params = []): Collection {
-        $entities = $model::factory()->count($amount)->create($params);
-        return $entities;
+    protected function createRandomEntities(string|Factory $factory, int $amount, array $params = []): Collection {
+        if (is_string($factory)) {
+            $factory = $factory::factory();
+        }
+
+        return $factory->count($amount)->create($params);
     }
 }

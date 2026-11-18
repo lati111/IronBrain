@@ -1,0 +1,67 @@
+#top-bar-container {
+    width: 86%;
+    max-width: 1900px;
+}
+
+.mini-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.mini-icon:not(.monochrome) {
+    opacity: 60%;
+    filter: grayscale(100%);
+}
+
+.mini-icon:not(.monochrome).active {
+    opacity: 100%;
+    filter: none;
+}
+
+.mini-icon.monochrome {
+    filter: brightness(0) saturate(100%) invert(31%) sepia(19%) saturate(7%) hue-rotate(336deg) brightness(89%) contrast(89%);
+}
+
+.mini-icon.monochrome.active {
+    filter: brightness(0) saturate(100%) invert(9%) sepia(60%) saturate(6050%) hue-rotate(7deg) brightness(95%) contrast(118%);
+}
+
+.mini-icon.owned {
+    opacity: 100%;
+    filter: brightness(0) saturate(100%) invert(21%) sepia(83%) saturate(2103%) hue-rotate(341deg) brightness(92%) contrast(98%);
+}
+
+.mini-icon.vaulted {
+    opacity: 100%;
+    filter: brightness(0) saturate(100%) invert(73%) sepia(52%) saturate(900%) hue-rotate(5deg) brightness(104%);
+}
+
+.relic-popup {
+    position: fixed;
+    z-index: 9999;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    padding: 0.5rem;
+    min-width: 8rem;
+    max-width: 18rem;
+    pointer-events: none;
+}
+
+.arsenal-slot-name {
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+.arsenal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    justify-content: center;
+    max-width: 1536px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    margin-bottom: 2rem;
+}

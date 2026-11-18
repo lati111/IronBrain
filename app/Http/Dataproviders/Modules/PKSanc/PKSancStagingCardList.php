@@ -16,7 +16,7 @@ class PKSancStagingCardList extends AbstractPKSancOverviewCardList
      * { @inheritdoc }
      * @throws IronBrainException
      */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         $importUuid = $request->route()->parameter('import_uuid');
         $csv = ImportCsv::where('uuid', $importUuid)->first();

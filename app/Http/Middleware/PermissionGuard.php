@@ -24,7 +24,7 @@ class PermissionGuard
         foreach ($permissions as $permission) {
             $permission = Permission::where('permission', $permission)->first();
             if ($permission === null) {
-                continue;
+                return response(view('errors.auth.forbidden'));
             }
 
             $role = $user->role()->first();

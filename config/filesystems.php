@@ -72,8 +72,21 @@ return [
     'links' => [
         public_path('img/profile') => storage_path('app/img/profile'),
         public_path('img/modules/thumbnail') => storage_path('app/modules/thumbnail'),
+
         public_path('img/modules/pksanc/pokeball') => storage_path('app/modules/pksanc/pokeball'),
         public_path('img/modules/pksanc/pokemon') => storage_path('app/modules/pksanc/pokemon'),
+
+        public_path('img/modules/arsenal/warframe') => storage_path('app/modules/arsenal/warframe'),
+        public_path('img/modules/arsenal/weapon') => storage_path('app/modules/arsenal/weapon'),
+        public_path('img/modules/arsenal/companion') => storage_path('app/modules/arsenal/companion'),
+        public_path('img/modules/arsenal/component') => storage_path('app/modules/arsenal/component'),
+
+        public_path('img/modules/dnd/restaurant/storage') => storage_path('app/modules/dnd/restaurant/storage'),
+        public_path('img/modules/dnd/restaurant/ingredient') => storage_path('app/modules/dnd/restaurant/ingredient'),
+        public_path('img/modules/dnd/restaurant/room') => storage_path('app/modules/dnd/restaurant/room'),
+        public_path('img/modules/dnd/restaurant/employee') => storage_path('app/modules/dnd/restaurant/employee'),
+
+        public_path('img/modules/dnd/timeline/cover') => storage_path('app/modules/dnd/timeline/cover'),
     ],
 
 ];

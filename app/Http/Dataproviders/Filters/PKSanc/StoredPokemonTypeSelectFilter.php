@@ -13,7 +13,7 @@ use Lati111\LaravelDataproviders\Filters\ForeignTable;
 class StoredPokemonTypeSelectFilter extends AbstractFilter
 {
     /** { @inheritdoc } */
-    protected string $type = 'select';
+    public string $type = 'select';
 
     public function __construct() {
         parent::__construct(new StoredPokemon, 'name',

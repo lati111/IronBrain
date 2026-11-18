@@ -6,15 +6,13 @@
 @section('header')
     @vite([
         'resources/css/home.css',
-        'resources/ts/home.ts'
     ])
 @endsection
 
-@section('onload_functions', 'init()')
-
 @section('content')
     {{--| main info |--}}
-    <section class="pt-3 pb-5 text-center container">
+    <section class="relative pt-3 pb-5 text-center container">
+        <a href="{{route('changelog.show')}}" class="interactive absolute top-0 right-0 text-sm" dusk="changelog-link">Changelog</a>
         <div class="row py-lg-3">
             <div class="col-lg-7 col-md-8 mx-auto">
                 <h1 class="title">IronBrain Webtools</h1>
@@ -28,32 +26,25 @@
     </section>
 
     {{--| module cards |--}}
-    <div dusk="projects">
-        <div class="flex flex-row justify-center mb-3" dusk="form">
-            <x-datalist.cardlist.list id="module-cardlist" url="{{route('data.home.overview.cardlist')}}">
-                {{--| template |--}}
-                <x-datalist.cardlist.template dataprovider_id="module-cardlist" cls="max-w-md flex flex-col items-center gap-2">
-                    <img data-name="thumbnail" data-alt-name="name" class="max-w-sm">
+    <div class="flex flex-col items-center gap-8 mb-3" dusk="projects">
+        @if(count($overviewModules) > 0)
+            <div class="flex justify-center flex-wrap gap-6 max-w-screen-2xl w-full">
+                @foreach($overviewModules as $module)
+                    <x-modules.card :module="$module" :update="$updates[$module->code] ?? null"/>
+                @endforeach
+            </div>
+        @endif
 
-                    <div class="card-body">
-                        <h4 class="title text-center">
-                            <a data-attribute-name="route" data-settable-attribute="href" class="interactive">
-                                <span class="text-xl" data-name="name"></span>
-                            </a>
-                        </h4>
-
-                        <p class="card-text text-center">
-                            <span data-name="description"></span>
-                        </p>
-
-                        <div class="flex justify-content-between align-items-center">
-                            <small class="text-body-secondary" title="Last Updated">
-                                <span data-name="time_ago"></span>
-                            </small>
-                        </div>
-                    </div>
-                </x-datalist.cardlist.template>
-            </x-datalist.cardlist.list>
-        </div>
+        {{--| submodules, grouped under their main module |--}}
+        @foreach($overviewGroups as $group)
+            <section class="flex flex-col items-center gap-4 max-w-screen-2xl w-full" dusk="group-{{$group['module']->code}}">
+                <h2 class="title text-2xl text-center w-full border-b gray-border pb-1">{{$group['module']->name}}</h2>
+                <div class="flex justify-center flex-wrap gap-6 w-full">
+                    @foreach($group['submodules'] as $submodule)
+                        <x-modules.card :module="$submodule" :update="$updates[$group['module']->code.'.'.$submodule->code] ?? null"/>
+                    @endforeach
+                </div>
+            </section>
+        @endforeach
     </div>
 @stop

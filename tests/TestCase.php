@@ -44,7 +44,8 @@ abstract class TestCase extends BaseTestCase
      * @return User The permissions for this user
      */
     protected function getRandomUser(array $permissions = []): User {
-        $user = User::where('username', '!=', 'test_admin')->first();
+        // Only the admin is seeded, so a fresh test database gets a regular user made, which the test rolls back
+        $user = User::where('username', '!=', 'test_admin')->first() ?? User::factory()->make();
 
         if (empty($permissions) === false) {
             $role = new Role();

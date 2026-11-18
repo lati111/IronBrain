@@ -57,11 +57,11 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
             return $this->respond($e->getCode(), $e->publicMessage);
         }
 
-        return $this->respond(Response::HTTP_OK, GenericStringEnum::DATA_RETRIEVED, $data);
+        return $this->respondWithItems($request, $data);
     }
 
     /** { @inheritdoc } */
-    protected function getContent(Request $request): Builder
+    protected function getContent(Request $request, bool $dataQuery = true): Builder
     {
         $user = Auth::user();
 
@@ -84,18 +84,18 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
         $markedAsRead = PokedexMarking::selectRaw('count(*)')
             ->whereRaw(sprintf("`%s`.`pokedex_id` = `%s`.`pokedex_id`", PokedexMarking::getTableName(), Pokemon::getTableName()))
             ->whereRaw(sprintf("`%s`.`form_index` = `%s`.`form_index`", PokedexMarking::getTableName(), Pokemon::getTableName()))
-            ->whereRaw(sprintf("`%s`.`marking` = '%s'", PokedexMarking::getTableName(), PokedexMarkings::CAUGHT))
-            ->whereRaw(sprintf("`%s`.`user_uuid` = '%s'", PokedexMarking::getTableName(), $user->uuid))
-            ->toSql();
+            ->whereRaw(sprintf("`%s`.`marking` = ?", PokedexMarking::getTableName()), [PokedexMarkings::CAUGHT])
+            ->whereRaw(sprintf("`%s`.`user_uuid` = ?", PokedexMarking::getTableName()), [$user->uuid])
+            ->toRawSql();
 
 
         // marked as hidden
         $markedAsHidden = PokedexMarking::selectRaw('count(*)')
             ->whereRaw(sprintf("`%s`.`pokedex_id` = `%s`.`pokedex_id`", PokedexMarking::getTableName(), Pokemon::getTableName()))
             ->whereRaw(sprintf("`%s`.`form_index` = `%s`.`form_index`", PokedexMarking::getTableName(), Pokemon::getTableName()))
-            ->whereRaw(sprintf("`%s`.`marking` = '%s'", PokedexMarking::getTableName(), PokedexMarkings::HIDDEN))
-            ->whereRaw(sprintf("`%s`.`user_uuid` = '%s'", PokedexMarking::getTableName(), $user->uuid))
-            ->toSql();
+            ->whereRaw(sprintf("`%s`.`marking` = ?", PokedexMarking::getTableName()), [PokedexMarkings::HIDDEN])
+            ->whereRaw(sprintf("`%s`.`user_uuid` = ?", PokedexMarking::getTableName()), [$user->uuid])
+            ->toRawSql();
 
         /** @var Builder $pokemonCollection */
         $pokemonCollection = Pokemon::selectRaw(sprintf(
@@ -140,9 +140,9 @@ class PKSancPokedexCardList extends AbstractCardlist implements FilterableDatapr
         $markedAsHidden = PokedexMarking::selectRaw('count(*)')
             ->whereRaw(sprintf("`%s`.`pokedex_id` = `%s`.`pokedex_id`", PokedexMarking::getTableName(), Pokemon::getTableName()))
             ->whereRaw(sprintf("`%s`.`form_index` = `%s`.`form_index`", PokedexMarking::getTableName(), Pokemon::getTableName()))
-            ->whereRaw(sprintf("`%s`.`marking` = '%s'", PokedexMarking::getTableName(), PokedexMarkings::HIDDEN))
-            ->whereRaw(sprintf("`%s`.`user_uuid` = '%s'", PokedexMarking::getTableName(), $user->uuid))
-            ->toSql();
+            ->whereRaw(sprintf("`%s`.`marking` = ?", PokedexMarking::getTableName()), [PokedexMarkings::HIDDEN])
+            ->whereRaw(sprintf("`%s`.`user_uuid` = ?", PokedexMarking::getTableName()), [$user->uuid])
+            ->toRawSql();
         $selector = new CustomColumn(sprintf('(%s)', $markedAsHidden), 'hidden');
         $filters['hidden'] = new IsFilter(new Pokemon(), $selector, 0);
 

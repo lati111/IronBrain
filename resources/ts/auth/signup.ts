@@ -12,8 +12,9 @@ async function attemptSignup() {
     const formdata = new FormData(form);
     const response = await postData('/api/auth/signup', formdata);
     response?.announce();
-    if (response?.ok) {
-        window.location = response.headers.get('Location');
+    const location = response?.ok ? response.headers.get('Location') : null;
+    if (location !== null) {
+        window.location.href = location;
     }
 }
 

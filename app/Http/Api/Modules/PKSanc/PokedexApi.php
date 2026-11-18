@@ -30,7 +30,7 @@ class PokedexApi extends AbstractApi
         ]);
 
         if ($validator->fails()) {
-            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
         $user = Auth::user();
@@ -69,7 +69,7 @@ class PokedexApi extends AbstractApi
         ]);
 
         if ($validator->fails()) {
-            $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
+            return $this->respond(Response::HTTP_BAD_REQUEST, ErrorEnum::VALIDATION_FAIL, $validator->errors());
         }
 
         $user = Auth::user();

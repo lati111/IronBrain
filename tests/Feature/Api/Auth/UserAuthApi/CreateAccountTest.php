@@ -1,6 +1,6 @@
 <?php
 
-namespace Api\Auth\UserAuthApi;
+namespace Tests\Feature\Api\Auth\UserAuthApi;
 
 use App\Enum\Auth\UserEnum;
 use App\Models\Auth\User;

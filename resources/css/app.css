@@ -132,6 +132,8 @@
     --tertiary-grey: #E5E7EB;
     --main-black: #000000;
     --sub-white: #f8f8f8;
+
+    --page-width: 1120px;
 }
 
 body {
@@ -140,6 +142,16 @@ body {
 
 #logo {
     margin-top: -0.25rem;
+}
+
+header > div > div {
+    max-width: var(--page-width);
+    width: 100%;
+}
+
+#container {
+    max-width: var(--page-width);
+    width: 100%;
 }
 
 .title {
@@ -254,4 +266,21 @@ h4 {
 
 h5 {
     font-size: 1.2em;
+}
+
+/*| Filters */
+.filter-btn.selected {
+    background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+    --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.filter-btn img {
+    filter: brightness(0) saturate(100%) invert(31%) sepia(19%) saturate(7%) hue-rotate(336deg) brightness(89%) contrast(89%);
+    width: 25px;
+    height: 25px;
+}
+
+.filter-btn.selected img {
+    filter: brightness(0) saturate(100%) invert(9%) sepia(60%) saturate(6050%) hue-rotate(7deg) brightness(95%) contrast(118%);
 }

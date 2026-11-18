@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\ChangelogController;
+use App\Http\Controllers\Config\RoleController;
+use App\Http\Controllers\Config\UserController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Modules\Compendium\StatblockController;
 use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
@@ -13,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('/')->group(function() {
     Route::get('/', [HomeController::class, 'show'])->name("home");
 });
+
+//| changelog
+Route::get('/changelog', [ChangelogController::class, 'show'])->name("changelog.show");
 
 //| authentication
 Route::prefix('/auth')->group(function() {
@@ -35,16 +41,33 @@ Route::prefix('/config')
         Route::prefix('/user')
             ->middleware('auth.permission:config.user.view')
             ->group(function() {
-                Route::get('/', [\App\Http\Controllers\Config\UserController::class, 'overview'])
+                Route::get('/', [UserController::class, 'overview'])
                     ->name("config.user.overview");
+                Route::post('/{uuid}/deactivate', [UserController::class, 'deactivate'])
+                    ->name("config.user.delete");
+                Route::post('/{uuid}/role/set', [UserController::class, 'setRole'])
+                    ->name("config.user.role.set");
             });
 
         //| role
         Route::prefix('/role')
             ->middleware('auth.permission:config.role.view')
             ->group(function() {
-                Route::get('/', [\App\Http\Controllers\Config\RoleController::class, 'overview'])
+                Route::get('/', [RoleController::class, 'overview'])
                     ->name("config.role.overview");
+                Route::middleware('auth.permission:config.role.edit')
+                    ->group(function() {
+                        Route::get('/new', [RoleController::class, 'new'])
+                            ->name("config.role.new");
+                        Route::get('/{id}/modify', [RoleController::class, 'modify'])
+                            ->name("config.role.modify");
+                        Route::post('/save', [RoleController::class, 'save'])
+                            ->name("config.role.save");
+                        Route::post('/{id}/delete', [RoleController::class, 'delete'])
+                            ->name("config.role.delete");
+                    });
+                Route::post('/{role_id}/permission/{permission_id}/toggle', [RoleController::class, 'togglePermission'])
+                    ->name("config.role.permission.toggle");
             });
     });
 
@@ -53,7 +76,6 @@ Route::prefix('/config')
 Route::prefix('/pksanc')
     ->middleware('auth:sanctum')
     ->group(function() {
-    // pages
     Route::get('/', [PKSancController::class, 'showOverview'])
         ->name('pksanc.home.show');
 
@@ -76,6 +98,57 @@ Route::prefix('/pksanc')
         });
     });
 });
+
+//| arsenal
+Route::prefix('/arsenal')
+    ->middleware('auth:sanctum')
+    ->group(function() {
+        Route::get('/', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showOverview'])
+            ->name('arsenal.home.show');
+
+        Route::get('/armory', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showArmory'])
+            ->name('arsenal.armory.show');
+
+        Route::get('/foundry', [\App\Http\Controllers\Modules\Arsenal\ArsenalController::class, 'showFoundry'])
+            ->name('arsenal.foundry.show');
+    });
+
+//| dnd restaurant
+// Players of a restaurant may only see the pages that opt out of the manager guard
+Route::prefix('/dnd/restaurant')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_restaurant.access', 'dnd.restaurant.manager'])
+    ->group(function() {
+        Route::get('/', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showOverview'])
+            ->name('dnd.restaurant.overview');
+
+        Route::get('/{restaurant_uuid}/management', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManagement'])
+            ->name('dnd.restaurant.management')
+            ->withoutMiddleware('dnd.restaurant.manager');
+
+        Route::get('/{restaurant_uuid}/manage', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showManage'])
+            ->name('dnd.restaurant.manage');
+
+        Route::get('/{restaurant_uuid}/finances', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showFinances'])
+            ->name('dnd.restaurant.finances')
+            ->withoutMiddleware('dnd.restaurant.manager');
+
+        Route::get('/{restaurant_uuid}/service', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'showService'])
+            ->name('dnd.restaurant.service')
+            ->withoutMiddleware('dnd.restaurant.manager');
+        Route::post('/{restaurant_uuid}/service/start', [\App\Http\Controllers\Modules\DnD\Restaurant\DndRestaurantController::class, 'startService'])
+            ->name('dnd.restaurant.service.start');
+    });
+
+//| dnd timeline
+Route::prefix('/dnd/timeline')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_timeline.access'])
+    ->group(function() {
+        Route::get('/', [\App\Http\Controllers\Modules\DnD\Timeline\DndTimelineController::class, 'showOverview'])
+            ->name('dnd.timeline.overview');
+
+        Route::get('/{timeline_uuid}', [\App\Http\Controllers\Modules\DnD\Timeline\DndTimelineController::class, 'showTimeline'])
+            ->name('dnd.timeline.show');
+    });
 
 //| compendium
 Route::prefix('/compendium')

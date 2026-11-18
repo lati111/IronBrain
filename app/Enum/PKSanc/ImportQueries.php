@@ -83,6 +83,7 @@ class ImportQueries
         '    form_index: form_order'.
         '    form_name: form_name'.
         '    details: pokemon_v2_pokemon {'.
+        '      species_id: pokemon_species_id'.
         '      species: pokemon_v2_pokemonspecy {'.
         '        species: name'.
         '        name: pokemon_v2_pokemonspeciesnames(where: {pokemon_v2_language: {name: {_eq: "en"}}}) {'.

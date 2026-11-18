@@ -30,6 +30,31 @@ class RoleControllerTest extends AbstractControllerUnitTester
         $this->assertView($response, 'config.role.modify');
     }
 
+    public function testNewRoleRequiresEditPermission(): void
+    {
+        $role = new Role();
+        $role->name = 'Role viewer';
+        $role->description = 'Can only view roles';
+        $role->save();
+
+        $link = new RolePermission();
+        $link->role_id = $role->id;
+        $link->permission_id = Permission::where('permission', 'config.role.view')->first()->id;
+        $link->save();
+
+        /** @var User $user */
+        $user = $this->createRandomEntity(User::class, ['role_id' => $role->id]);
+
+        $this->actingAs($user)
+            ->get(route('config.role.overview'))
+            ->assertViewIs('config.role.overview')
+            ->assertDontSee('New role');
+
+        $this->actingAs($user)
+            ->get(route('config.role.new'))
+            ->assertViewIs('errors.auth.forbidden');
+    }
+
     //| show modify role tests
     public function testModifyRoleShow(): void
     {
