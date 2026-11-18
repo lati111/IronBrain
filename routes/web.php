@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\Config\RoleController;
 use App\Http\Controllers\Config\UserController;
 use App\Http\Controllers\HomeController;
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('/')->group(function() {
     Route::get('/', [HomeController::class, 'show'])->name("home");
 });
+
+//| changelog
+Route::get('/changelog', [ChangelogController::class, 'show'])->name("changelog.show");
 
 //| authentication
 Route::prefix('/auth')->group(function() {

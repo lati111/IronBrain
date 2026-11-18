@@ -11,7 +11,8 @@
 
 @section('content')
     {{--| main info |--}}
-    <section class="pt-3 pb-5 text-center container">
+    <section class="relative pt-3 pb-5 text-center container">
+        <a href="{{route('changelog.show')}}" class="interactive absolute top-0 right-0 text-sm" dusk="changelog-link">Changelog</a>
         <div class="row py-lg-3">
             <div class="col-lg-7 col-md-8 mx-auto">
                 <h1 class="title">IronBrain Webtools</h1>
