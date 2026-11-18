@@ -26,13 +26,58 @@ class ChangelogService
      */
     public function getReleases(?User $user, ?string $module = null, ?string $submodule = null): array
     {
+        return array_values(array_filter(array_map(
+            fn (array $release) => $this->filterRelease($release, $user, $module, $submodule),
+            $this->loadReleases(),
+        )));
+    }
+
+    /**
+     * Gets the date of the newest release that has a change for each module and submodule, whoever may see it
+     * @return array<string, array{date: string, submodules: array<string, string>}> The dates, by module name and then submodule name
+     */
+    public function getLatestChangeDates(): array
+    {
+        $dates = [];
+        foreach ($this->loadReleases() as $release) {
+            $date = $release['date'] ?? null;
+            if (!is_string($date) || $date === '') {
+                continue;
+            }
+
+            foreach ($release['modules'] ?? [] as $module => $groups) {
+                $groups = (array) $groups;
+                foreach (array_is_list($groups) ? ['' => $groups] : $groups as $submodule => $group) {
+                    $group = (array) $group;
+                    if ((array_is_list($group) ? $group : (array) ($group['changes'] ?? [])) === []) {
+                        continue;
+                    }
+
+                    // The releases are newest first, so the first date found for each is the latest
+                    $dates[$module]['date'] ??= $date;
+                    if ($submodule !== '') {
+                        $dates[$module]['submodules'][(string) $submodule] ??= $date;
+                    }
+                }
+            }
+        }
+
+        return array_map(fn (array $module) => $module + ['submodules' => []], $dates);
+    }
+
+    /**
+     * Reads the releases from the changelog, newest first
+     * @return array[] The releases
+     */
+    private function loadReleases(): array
+    {
         $json = Storage::json(self::CHANGELOG_PATH);
         $releases = is_array($json) ? array_values(array_filter($json, 'is_array')) : [];
 
         usort($releases, fn (array $a, array $b) => [$b['date'] ?? '', $b['version'] ?? ''] <=> [$a['date'] ?? '', $a['version'] ?? '']
             ?: version_compare($b['version'] ?? '0', $a['version'] ?? '0'));
 
-        return array_values(array_filter(array_map(fn (array $release) => $this->filterRelease($release, $user, $module, $submodule), $releases)));
+        return $releases;
     }
 
     /**
