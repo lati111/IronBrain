@@ -38,11 +38,21 @@
         "requires_login": true,
         "submodules": [
             {
+                "code": "compendium",
+                "name": "Compendium",
+                "description": "A compendium of statblocks, creature templates and traits for your Dungeons & Dragons campaign.",
+                "thumbnail": null,
+                "order": 1,
+                "route": "dnd.compendium.test",
+                "permission": null,
+                "in_overview": true
+            },
+            {
                 "code": "timeline",
                 "name": "Fantasy Timeline",
                 "description": "A timeline tool for worldbuilding, to keep track of the history of your world online.",
                 "thumbnail": null,
-                "order": 1,
+                "order": 2,
                 "route": "dnd.timeline.overview",
                 "permission": "dnd_timeline.access",
                 "in_overview": true

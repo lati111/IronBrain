@@ -1,8 +1,8 @@
-import {getData} from "../../main";
+import {getData} from "../../../main";
 import {Statblock} from "./data/Statblock";
 
 async function test() {
-    const data = await getData('/compendium/data');
+    const data = await getData('/dnd/compendium/data');
     const statblock = new Statblock(data);
 }
 

@@ -15,7 +15,7 @@ class StatblockController extends Controller
 {
     public function showStatblock(): View
     {
-        return view('modules.compendium.test', $this->getBaseVariables());
+        return view('modules.dnd.compendium.test', $this->getBaseVariables());
     }
 
     public function getData() {

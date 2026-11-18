@@ -150,12 +150,12 @@ Route::prefix('/dnd/timeline')
             ->name('dnd.timeline.show');
     });
 
-//| compendium
-Route::prefix('/compendium')
+//| dnd compendium
+Route::prefix('/dnd/compendium')
     ->group(function() {
         Route::get('/test', [StatblockController::class, 'showStatblock'])
-            ->name("compendium.test");
+            ->name("dnd.compendium.test");
 
         Route::get('/data', [StatblockController::class, 'getData'])
-            ->name("compendium.data");
+            ->name("dnd.compendium.data");
     });

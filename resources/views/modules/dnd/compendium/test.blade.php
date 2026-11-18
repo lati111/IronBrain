@@ -6,7 +6,7 @@
 @section('onloadFunction', 'test()')
 
 @section('header')
-    @vite(['resources/ts/modules/compendium/core.ts'])
+    @vite(['resources/ts/modules/dnd/compendium/core.ts'])
 @endsection
 
 @section('content')
