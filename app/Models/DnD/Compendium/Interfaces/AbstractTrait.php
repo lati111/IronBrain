@@ -1,23 +1,22 @@
 <?php
 
-namespace App\Models\Compendium\Interfaces;
+namespace App\Models\DnD\Compendium\Interfaces;
 
-use App\Models\AbstractModel;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\DnD\Compendium\Traits\CompendiumTrait;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @inheritDoc
- * @property string uuid
+ * The base for the tables that add a specific kind of effect to a trait
+ * @inheritdoc
  * @property string trait_uuid The uuid of the trait this applies to
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
  */
-
-abstract class AbstractTrait extends AbstractModel
+abstract class AbstractTrait extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
-
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    /**
+     * The relationship for the trait this applies to
+     * @return BelongsTo
+     */
+    public function Trait(): BelongsTo {
+        return $this->belongsTo(CompendiumTrait::class, 'trait_uuid', 'uuid');
+    }
 }

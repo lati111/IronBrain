@@ -1,27 +1,38 @@
 <?php
 
-namespace App\Models\Compendium;
+namespace App\Models\DnD\Compendium;
 
-use App\Models\AbstractModel;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\DnD\Compendium\Interfaces\DndCompendiumModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @inheritDoc
- * @property string uuid
- * @property string creature_template The creature template to apply the resistance modifier to
+ * A link between a creature template and a resistance modifier it applies
+ * @inheritdoc
+ * @property string creature_template The code of the creature template to apply the resistance modifier to
  * @property string resistance_modifier_uuid The uuid of the resistance modifier to add
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
  */
-
-class CreatureTemplateResistance extends AbstractModel
+class CreatureTemplateResistance extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_creature_template_resistance_modifier';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
-    /** { @inheritdoc } */
-    protected $table = 'compendium__creature_template_resistance_modifier';
+    //| Relationships
 
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    /**
+     * The relationship for the creature template this link belongs to
+     * @return BelongsTo
+     */
+    public function CreatureTemplate(): BelongsTo {
+        return $this->belongsTo(CreatureTemplate::class, 'creature_template', 'code');
+    }
+
+    /**
+     * The relationship for the resistance modifier that is applied
+     * @return BelongsTo
+     */
+    public function ResistanceModifier(): BelongsTo {
+        return $this->belongsTo(ResistanceModifier::class, 'resistance_modifier_uuid', 'uuid');
+    }
 }

@@ -1,29 +1,39 @@
 <?php
 
-namespace App\Models\Compendium;
+namespace App\Models\DnD\Compendium;
 
-use App\Models\AbstractModel;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\DnD\Compendium\Interfaces\DndCompendiumModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @inheritDoc
- * @property string uuid
+ * Makes an action require a resource to use
+ * @inheritdoc
  * @property string action_uuid The uuid of the action this cost is for
  * @property string resource_uuid The uuid of the resource that is decreased
  * @property string cost_formula The formula used to determine the change in resources
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
  */
-
-class ActionCost extends AbstractModel
+class ActionCost extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_action_cost';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
-    /** { @inheritdoc } */
-    protected $table = 'compendium__action_cost';
+    //| Relationships
 
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    /**
+     * The relationship for the action this cost is for
+     * @return BelongsTo
+     */
+    public function Action(): BelongsTo {
+        return $this->belongsTo(Action::class, 'action_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the resource that is spent
+     * @return BelongsTo
+     */
+    public function Resource(): BelongsTo {
+        return $this->belongsTo(Resource::class, 'resource_uuid', 'uuid');
+    }
 }

@@ -5,7 +5,7 @@ use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\Config\RoleController;
 use App\Http\Controllers\Config\UserController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Modules\Compendium\StatblockController;
+use App\Http\Controllers\Modules\DnD\Compendium\StatblockController;
 use App\Http\Controllers\Modules\PKSanc\PKSancContributionController;
 use App\Http\Controllers\Modules\PKSanc\PKSancController;
 use App\Http\Controllers\Modules\PKSanc\PKSancDepositController;

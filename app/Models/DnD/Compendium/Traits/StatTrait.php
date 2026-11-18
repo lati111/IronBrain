@@ -1,17 +1,19 @@
 <?php
 
-namespace App\Models\Compendium\Traits;
+namespace App\Models\DnD\Compendium\Traits;
 
-use App\Models\Compendium\Interfaces\AbstractTrait;
+use App\Models\DnD\Compendium\Interfaces\AbstractTrait;
 
 /**
- * @inheritDoc
+ * A trait that modifies a stat on a statblock
+ * @inheritdoc
  * @property string stat The stat to apply this trait to
  * @property string formula The formula to apply to the stat
  */
-
 class StatTrait extends AbstractTrait
 {
-    /** { @inheritdoc } */
-    protected $table = 'compendium__stat_trait';
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_stat_trait';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 }

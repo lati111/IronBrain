@@ -1,14 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Modules\Compendium;
+namespace App\Http\Controllers\Modules\DnD\Compendium;
 
 use App\Http\Controllers\Controller;
-use App\Models\Compendium\Action;
-use App\Models\Compendium\CreatureTemplate;
-use App\Models\Compendium\CreatureTemplateResistance;
-use App\Models\Compendium\ResistanceModifier;
-use App\Models\Compendium\Statblock;
-use App\Models\Compendium\StatblockCreatureTemplate;
+use App\Models\DnD\Compendium\Statblock;
 use Illuminate\View\View;
 
 class StatblockController extends Controller

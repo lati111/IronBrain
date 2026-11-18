@@ -1,28 +1,26 @@
 <?php
 
-namespace App\Models\Compendium;
+namespace App\Models\DnD\Compendium;
 
-use App\Models\AbstractModel;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\DnD\Compendium\Interfaces\DndCompendiumModel;
 
 /**
- * @inheritDoc
- * @property string uuid
+ * A modifier to the resistance or weakness to the given element
+ * @inheritdoc
  * @property string element The element code for this modifier
  * @property int stage The amount to modify this resistance by
  * @property bool is_base Whether this sets the base resistance, or modifies it
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
  */
-
-class ResistanceModifier extends AbstractModel
+class ResistanceModifier extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_resistance_modifier';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
-    /** { @inheritdoc } */
-    protected $table = 'compendium__resistance_modifier';
-
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    /** @inheritdoc */
+    protected $casts = [
+        'stage' => 'integer',
+        'is_base' => 'boolean',
+    ];
 }

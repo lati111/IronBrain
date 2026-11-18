@@ -1,32 +1,38 @@
 <?php
 
-namespace App\Models\Compendium;
+namespace App\Models\DnD\Compendium;
 
-use App\Models\AbstractModel;
-use App\Models\Compendium\Traits\CompendiumTrait;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\DnD\Compendium\Interfaces\DndCompendiumModel;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * @inheritDoc
- * @property string uuid
- * @property string name The display for this action
+ * An action that can be taken by a creature
+ * @inheritdoc
+ * @property string name The display name for this action
  * @property int type What kind of action it is. 0=free action, 1=action, 2=bonus action, 3=reaction, 4=legendary action
  * @property string description The description for this action
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
  */
-
-class Action extends AbstractModel
+class Action extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_action';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
-    /** { @inheritdoc } */
-    protected $table = 'compendium__action';
+    /** @inheritdoc */
+    protected $casts = [
+        'type' => 'integer',
+    ];
 
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    //| Relationships
+
+    /**
+     * The relationship for the effect links of this action
+     * @return HasMany
+     */
+    public function Effects(): HasMany {
+        return $this->hasMany(ActionEffect::class, 'action_uuid', 'uuid');
+    }
 
     /**
      * The relationship used to retrieve the action costs
@@ -38,7 +44,6 @@ class Action extends AbstractModel
             ->select([
                 sprintf('%s.action_uuid', ActionCost::getTableName()),
                 sprintf('%s.resource_uuid', ActionCost::getTableName()),
-                sprintf('%s.code as resource_code', Resource::getTableName()),
                 sprintf('%s.code as resource_code', Resource::getTableName()),
                 sprintf('%s.cost_formula', ActionCost::getTableName()),
             ]);

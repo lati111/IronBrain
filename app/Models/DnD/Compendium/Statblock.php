@@ -1,24 +1,23 @@
 <?php
 
-namespace App\Models\Compendium;
+namespace App\Models\DnD\Compendium;
 
-use App\Models\AbstractModel;
-use App\Models\Compendium\Traits\ActionTrait;
-use App\Models\Compendium\Traits\CompendiumTrait;
-use App\Models\Compendium\Traits\ProficiencyTrait;
-use App\Models\Compendium\Traits\ResistanceModifierTrait;
-use App\Models\Compendium\Traits\ResourceTrait;
-use App\Models\Compendium\Traits\RollModifierTrait;
-use App\Models\Compendium\Traits\StatTrait;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\DnD\Compendium\Interfaces\DndCompendiumModel;
+use App\Models\DnD\Compendium\Traits\ActionTrait;
+use App\Models\DnD\Compendium\Traits\CompendiumTrait;
+use App\Models\DnD\Compendium\Traits\ProficiencyTrait;
+use App\Models\DnD\Compendium\Traits\ResistanceModifierTrait;
+use App\Models\DnD\Compendium\Traits\ResourceTrait;
+use App\Models\DnD\Compendium\Traits\RollModifierTrait;
+use App\Models\DnD\Compendium\Traits\StatTrait;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * @inheritDoc
- * @property string uuid
- * @property string name The display for this statblock
+ * A statblock for a character, monster or NPC
+ * @inheritdoc
+ * @property string name The display name for this statblock
  * @property string|null alignment The alignment for the creature, if any
+ * @property int base_size The base size for this creature before modifications, where 0 is medium
  * @property int base_ac The base AC for this creature
  * @property int base_hp The base HP value for this creature
  * @property int temp_hp The temp HP value for this creature
@@ -26,26 +25,40 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int base_dexterity The base dexterity stat for this creature
  * @property int base_constitution The base constitution stat for this creature
  * @property int base_intelligence The base intelligence stat for this creature
- * @property int base_wisdom The base wisdom stat this for creature
+ * @property int base_wisdom The base wisdom stat for this creature
  * @property int base_charisma The base charisma stat for this creature
  * @property int base_walk_speed The base walk speed for this creature
- * @property int base_swim_speed The base swim speed for this creature
- * @property int base_climb_speed The base climb speed for this creature
- * @property int base_fly_speed The base fly speed for this creature
- * @property int base_burrow_speed The base burrow speed for this creature
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
+ * @property int|null base_swim_speed The base swim speed for this creature
+ * @property int|null base_climb_speed The base climb speed for this creature
+ * @property int|null base_fly_speed The base fly speed for this creature
+ * @property int|null base_burrow_speed The base burrow speed for this creature
  */
-
-class Statblock extends AbstractModel
+class Statblock extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_statblock';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
-    /** { @inheritdoc } */
-    protected $table = 'compendium__statblock';
+    //| Relationships
 
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    /**
+     * The relationship for the trait links of this statblock
+     * @return HasMany
+     */
+    public function Traits(): HasMany {
+        return $this->hasMany(StatblockTrait::class, 'statblock_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the creature template links of this statblock
+     * @return HasMany
+     */
+    public function CreatureTemplates(): HasMany {
+        return $this->hasMany(StatblockCreatureTemplate::class, 'statblock_uuid', 'uuid');
+    }
+
+    //| Actions
 
     /**
      * Add a creature template to this statblock

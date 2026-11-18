@@ -1,27 +1,39 @@
 <?php
 
-namespace App\Models\Compendium;
+namespace App\Models\DnD\Compendium;
 
-use App\Models\AbstractModel;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\DnD\Compendium\Interfaces\DndCompendiumModel;
+use App\Models\DnD\Compendium\Traits\CompendiumTrait;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @inheritDoc
- * @property string uuid
- * @property string statblock_uuid The uuid of the statblock this creature template applies to
+ * A linking table granting a trait to a statblock
+ * @inheritdoc
+ * @property string statblock_uuid The uuid of the statblock the trait is granted to
  * @property string trait_uuid The uuid of the trait to apply
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
  */
-
-class StatblockTrait extends AbstractModel
+class StatblockTrait extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_statblock_trait';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
-    /** { @inheritdoc } */
-    protected $table = 'compendium__statblock_trait';
+    //| Relationships
 
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    /**
+     * The relationship for the statblock the trait is granted to
+     * @return BelongsTo
+     */
+    public function Statblock(): BelongsTo {
+        return $this->belongsTo(Statblock::class, 'statblock_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the trait that is granted
+     * @return BelongsTo
+     */
+    public function Trait(): BelongsTo {
+        return $this->belongsTo(CompendiumTrait::class, 'trait_uuid', 'uuid');
+    }
 }

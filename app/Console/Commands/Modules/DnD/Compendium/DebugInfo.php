@@ -1,20 +1,15 @@
 <?php
 
-namespace App\Console\Commands\Modules\Compendium;
+namespace App\Console\Commands\Modules\DnD\Compendium;
 
-use App\Enum\Compendium\Elements;
-use App\Models\Compendium\Action;
-use App\Models\Compendium\ActionCost;
-use App\Models\Compendium\CreatureTemplate;
-use App\Models\Compendium\Resource;
-use App\Models\Compendium\Statblock;
-use App\Models\Compendium\Traits\ActionTrait;
-use App\Models\Compendium\Traits\CompendiumTrait;
-use App\Models\Compendium\Traits\ProficiencyTrait;
-use App\Models\Compendium\Traits\ResourceTrait;
-use App\Models\Compendium\Traits\RollModifierTrait;
-use App\Models\Compendium\Traits\StatTrait;
-use App\Service\Compendium\CompendiumFactory;
+use App\Enum\DnD\Compendium\Elements;
+use App\Models\DnD\Compendium\Action;
+use App\Models\DnD\Compendium\ActionCost;
+use App\Models\DnD\Compendium\CreatureTemplate;
+use App\Models\DnD\Compendium\Resource;
+use App\Models\DnD\Compendium\Statblock;
+use App\Models\DnD\Compendium\Traits\CompendiumTrait;
+use App\Service\DnD\Compendium\CompendiumFactory;
 use Illuminate\Console\Command;
 
 class DebugInfo extends Command
@@ -32,7 +27,7 @@ class DebugInfo extends Command
         $statblock = new Statblock();
         $statblock->name = 'River Serpent';
         $statblock->base_ac = 10;
-        $statblock->base_hp = '16';
+        $statblock->base_hp = 16;
         $statblock->base_strength = 8;
         $statblock->base_dexterity = 14;
         $statblock->base_constitution = 13;

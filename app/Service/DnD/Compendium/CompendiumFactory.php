@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Service\Compendium;
+namespace App\Service\DnD\Compendium;
 
-use App\Models\Compendium\ResistanceModifier;
+use App\Models\DnD\Compendium\ResistanceModifier;
 
 class CompendiumFactory
 {

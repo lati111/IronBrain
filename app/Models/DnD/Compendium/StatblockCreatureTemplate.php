@@ -1,27 +1,38 @@
 <?php
 
-namespace App\Models\Compendium;
+namespace App\Models\DnD\Compendium;
 
-use App\Models\AbstractModel;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\DnD\Compendium\Interfaces\DndCompendiumModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @inheritDoc
- * @property string uuid
- * @property string statblock_uuid The uuid of the statblock this creature template applies to
- * @property string creature_template The creature template to apply to the statblock
- * @property string created_at The creation date of the model as a string
- * @property string updated_at The date this model was last updated
+ * Linking table between a statblock and a creature template
+ * @inheritdoc
+ * @property string statblock_uuid The uuid of the statblock the creature template applies to
+ * @property string creature_template The code of the creature template to apply
  */
-
-class StatblockCreatureTemplate extends AbstractModel
+class StatblockCreatureTemplate extends DndCompendiumModel
 {
-    use HasUuids, HasTimestamps;
+    /** @inheritdoc */
+    public const string TABLE_NAME = 'dnd__compendium_statblock_creature_template';
+    /** @inheritdoc */
+    protected $table = self::TABLE_NAME;
 
-    /** { @inheritdoc } */
-    protected $table = 'compendium__statblock_creature_template';
+    //| Relationships
 
-    /** { @inheritdoc } */
-    protected $primaryKey = 'uuid';
+    /**
+     * The relationship for the statblock the creature template applies to
+     * @return BelongsTo
+     */
+    public function Statblock(): BelongsTo {
+        return $this->belongsTo(Statblock::class, 'statblock_uuid', 'uuid');
+    }
+
+    /**
+     * The relationship for the creature template that is applied
+     * @return BelongsTo
+     */
+    public function CreatureTemplate(): BelongsTo {
+        return $this->belongsTo(CreatureTemplate::class, 'creature_template', 'code');
+    }
 }

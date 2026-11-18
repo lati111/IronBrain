@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enum\Compendium;
+namespace App\Enum\DnD\Compendium;
 
 class Elements
 {
