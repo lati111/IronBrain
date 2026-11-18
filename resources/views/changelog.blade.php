@@ -5,7 +5,10 @@
 
 @section('content')
     <section class="pt-3 pb-5 container max-w-3xl mx-auto flex flex-col gap-4" dusk="changelog">
-        <h1 class="title text-center">Changelog</h1>
+        <h1 class="title text-center">Changelog{{$subject !== null ? ' - '.$subject : ''}}</h1>
+        @if($subject !== null || request()->filled('module'))
+            <a href="{{route('changelog.show')}}" class="interactive text-center text-sm" dusk="changelog-all">Show the full changelog</a>
+        @endif
 
         @forelse($releases as $release)
             {{--| only the latest version is expanded by default |--}}

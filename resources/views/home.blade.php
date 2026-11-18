@@ -30,7 +30,7 @@
         @if(count($overviewModules) > 0)
             <div class="flex justify-center flex-wrap gap-6 max-w-screen-2xl w-full">
                 @foreach($overviewModules as $module)
-                    <x-modules.card :module="$module"/>
+                    <x-modules.card :module="$module" :update="$updates[$module->code] ?? null"/>
                 @endforeach
             </div>
         @endif
@@ -41,7 +41,7 @@
                 <h2 class="title text-2xl text-center w-full border-b gray-border pb-1">{{$group['module']->name}}</h2>
                 <div class="flex justify-center flex-wrap gap-6 w-full">
                     @foreach($group['submodules'] as $submodule)
-                        <x-modules.card :module="$submodule"/>
+                        <x-modules.card :module="$submodule" :update="$updates[$group['module']->code.'.'.$submodule->code] ?? null"/>
                     @endforeach
                 </div>
             </section>
