@@ -2,17 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 
-//| Home
-
-Route::prefix('/home/overview')->group(function() {
-    Route::get('/', [\App\Http\Dataproviders\Config\Module\ModuleOverviewCardlist::class, 'data'])
-        ->name('data.home.overview.cardlist');
-
-    Route::get('/pages', [\App\Http\Dataproviders\Config\Module\ModuleOverviewCardlist::class, 'count'])
-        ->name('data.home.overview.pages');
-});
-
-
 //| Config
 
 Route::prefix('/config')->group(function() {
@@ -94,4 +83,14 @@ Route::prefix('/dnd/restaurant/data')
     ->group(function() {
         Route::dataprovider('/overview', 'data.dnd.restaurant.overview',
             \App\Http\Dataproviders\Modules\DnD\Restaurant\RestaurantOverviewCardlist::class);
+    });
+
+
+//| DnD Timeline
+
+Route::prefix('/dnd/timeline/data')
+    ->middleware(['auth:sanctum', 'auth.permission:dnd_timeline.access'])
+    ->group(function() {
+        Route::dataprovider('/overview', 'data.dnd.timeline.overview',
+            \App\Http\Dataproviders\Modules\DnD\Timeline\TimelineOverviewCardlist::class);
     });

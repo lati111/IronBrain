@@ -13,17 +13,22 @@
             <ul class="flex justify-center items-center gap-2" dusk="nav">
                 @isset($modules)
                     @foreach ($modules as $module)
-                        <li dusk="{{$module->name}}">
-                            @if(count($module->submodules) > 0)
-                                <x-lists.dropdown.main id="nav-{{$module->uuid}}" title="{{$module->name}}" cls="@if (Route::is($submenu->route))active @endif">
-                                    @foreach ($module->submodules as $submenu)
-                                        <x-lists.dropdown.option href="{{route($submenu->route)}}">{{$submenu->name}}</x-lists.dropdown.option>
+                        {{--| modules without accessible submodules or a route of their own have nothing to show |--}}
+                        @if(count($module->submodules) > 0)
+                            <li dusk="{{$module->name}}">
+                                <x-lists.dropdown.main id="nav-{{$module->code}}" title="{{$module->name}}"
+                                                       :cls="$module->submodules->contains(fn ($submodule) => Route::is($submodule->route)) ? 'active' : ''">
+                                    @foreach ($module->submodules as $submodule)
+                                        <x-lists.dropdown.option href="{{route($submodule->route)}}">{{$submodule->name}}</x-lists.dropdown.option>
                                     @endforeach
                                 </x-lists.dropdown.main>
-                            @elseif ($module->route !== null)
-                                <x-lists.dropdown.false-dropdown href="{{route($module->route)}}" title="{{$module->name}}" cls="@if (Route::is($submenu->route))active @endif"/>
-                            @endif
-                        </li>
+                            </li>
+                        @elseif ($module->route !== null)
+                            <li dusk="{{$module->name}}">
+                                <x-lists.dropdown.false-dropdown href="{{route($module->route)}}" title="{{$module->name}}"
+                                                                 :cls="Route::is($module->route) ? 'active' : ''"/>
+                            </li>
+                        @endif
                     @endforeach
                 @endisset
             </ul>

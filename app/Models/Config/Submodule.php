@@ -15,7 +15,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int module_id The id of the module this submodule belongs to
  * @property string code The unique code identifying this module
  * @property string name The display name for the module
+ * @property string|null description The description given to the module in the home overview
+ * @property string|null thumbnail The thumbnail used for the module in the home overview
  * @property int order The sorting order for this module used during displaying
+ * @property bool in_overview Whether this module should be visible on the overview, grouped under its main module
  * @property string|null route The route leading to the main page for this module
  * @property int|null permission_id The id for permission a user needs to have to access the module, if any
  * @property bool requires_login Whether this route requires the user to be logged in to access

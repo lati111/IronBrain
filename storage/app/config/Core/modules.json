@@ -26,17 +26,38 @@
         "submodules": []
     },
     {
-        "code": "dnd_restaurant",
-        "name": "DnD Restaurant Simulator",
-        "description": "A simulator for running a restaurant within your Dungeons & Dragons campaign.",
-        "thumbnail": "dnd_restaurant",
-        "route": "dnd.restaurant.overview",
-        "permission": "dnd_restaurant.access",
+        "code": "dnd",
+        "name": "DnD",
+        "description": "Tools for running and building the world of your Dungeons & Dragons campaign.",
+        "thumbnail": null,
+        "route": null,
+        "permission": null,
         "order": 3,
         "in_overview": true,
         "in_nav": true,
         "requires_login": true,
-        "submodules": []
+        "submodules": [
+            {
+                "code": "timeline",
+                "name": "Fantasy Timeline",
+                "description": "A timeline tool for worldbuilding, to keep track of the history of your world online.",
+                "thumbnail": null,
+                "order": 1,
+                "route": "dnd.timeline.overview",
+                "permission": "dnd_timeline.access",
+                "in_overview": true
+            },
+            {
+                "code": "restaurant",
+                "name": "Restaurant Simulator",
+                "description": "A simulator for running a restaurant within your Dungeons & Dragons campaign.",
+                "thumbnail": "dnd_restaurant.png",
+                "order": 12,
+                "route": "dnd.restaurant.overview",
+                "permission": "dnd_restaurant.access",
+                "in_overview": true
+            }
+        ]
     },
     {
         "code": "config",

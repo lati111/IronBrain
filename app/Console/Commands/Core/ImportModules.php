@@ -75,7 +75,10 @@ class ImportModules extends Command
             'json.*.submodules' => 'nullable|array',
             'json.*.submodules.*.code' => 'required|string',
             'json.*.submodules.*.name' => 'required|string',
+            'json.*.submodules.*.description' => 'nullable|string',
+            'json.*.submodules.*.thumbnail' => 'nullable|string',
             'json.*.submodules.*.order' => 'required|integer',
+            'json.*.submodules.*.in_overview' => 'nullable|boolean',
             'json.*.submodules.*.route' => 'nullable|string',
             'json.*.submodules.*.permission' => 'nullable|string',
             'json.*.submodules.*.requires_login' => 'nullable|boolean',
@@ -135,7 +138,10 @@ class ImportModules extends Command
             $wasRestored = $submodule->trashed();
             $submodule->deleted_at = null;
             $submodule->name = $submoduleData['name'];
+            $submodule->description = $submoduleData['description'] ?? null;
+            $submodule->thumbnail = $submoduleData['thumbnail'] ?? null;
             $submodule->order = $submoduleData['order'];
+            $submodule->in_overview = $submoduleData['in_overview'] ?? false;
             $submodule->requires_login = $submoduleData['requires_login'] ?? $data['requires_login'] ?? false;
             $submodule->route = $this->validateRoute($submoduleData['route'], $code);
             $submodule->permission_id = $this->getPermissionId($submoduleData['permission'], $code);
