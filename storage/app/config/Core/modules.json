@@ -60,6 +60,19 @@
         ]
     },
     {
+        "code": "changelog",
+        "name": "Changelog",
+        "description": "An overview of the updates made to the website.",
+        "thumbnail": null,
+        "route": "changelog.show",
+        "permission": null,
+        "order": 998,
+        "in_overview": false,
+        "in_nav": true,
+        "requires_login": false,
+        "submodules": []
+    },
+    {
         "code": "config",
         "name": "Config",
         "description": "The wrapper for the various configs used to configure the website",

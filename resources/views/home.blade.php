@@ -11,7 +11,8 @@
 
 @section('content')
     {{--| main info |--}}
-    <section class="pt-3 pb-5 text-center container">
+    <section class="relative pt-3 pb-5 text-center container">
+        <a href="{{route('changelog.show')}}" class="interactive absolute top-0 right-0 text-sm" dusk="changelog-link">Changelog</a>
         <div class="row py-lg-3">
             <div class="col-lg-7 col-md-8 mx-auto">
                 <h1 class="title">IronBrain Webtools</h1>
@@ -29,7 +30,7 @@
         @if(count($overviewModules) > 0)
             <div class="flex justify-center flex-wrap gap-6 max-w-screen-2xl w-full">
                 @foreach($overviewModules as $module)
-                    <x-modules.card :module="$module"/>
+                    <x-modules.card :module="$module" :update="$updates[$module->code] ?? null"/>
                 @endforeach
             </div>
         @endif
@@ -40,7 +41,7 @@
                 <h2 class="title text-2xl text-center w-full border-b gray-border pb-1">{{$group['module']->name}}</h2>
                 <div class="flex justify-center flex-wrap gap-6 w-full">
                     @foreach($group['submodules'] as $submodule)
-                        <x-modules.card :module="$submodule"/>
+                        <x-modules.card :module="$submodule" :update="$updates[$group['module']->code.'.'.$submodule->code] ?? null"/>
                     @endforeach
                 </div>
             </section>

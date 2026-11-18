@@ -1,0 +1,202 @@
+[
+    {
+        "version": "2.2.0",
+        "date": "2026-11-18",
+        "modules": {
+            "Core": {
+                "General": [
+                    "Added a changelog page listing the updates made to the website",
+                    {
+                        "text": "Packages are now updated for security fixes",
+                        "permission": "admin"
+                    }
+                ]
+            },
+            "DnD": {
+                "Fantasy Timeline": {
+                    "permission": "dnd_timeline.access",
+                    "changes": [
+                        "Added the new Fantasy Timeline module"
+                    ]
+                },
+                "Restaurant Simulator": {
+                    "permission": "dnd_restaurant.access",
+                    "changes": [
+                        "Unknown customers now have their names hidden by default, until the owner reveals them",
+                        "Customers now tip automatically based upon the satisfaction level, with their own expectation, rate and cap",
+                        "Meal quality now depends on how well the cookers are attended, with meals that nobody cooks losing quality",
+                        "Equipment now adds a quality bonus and multiplier to the meals made with it",
+                        "Boosts now also affect the quality of meals",
+                        "Cooks now prep at half speed while they also look after the cookers",
+                        "Seating a customer now immediately sends the waiter to take their order, combining serving and taking an order into one flow",
+                        "Players with the service page open now count as online"
+                    ]
+                }
+            }
+        }
+    },
+    {
+        "version": "2.1.0",
+        "date": "2026-10-31",
+        "modules": {
+            "Core": {
+                "Roles": {
+                    "permission": "config.role.view",
+                    "changes": [
+                        "Roles can now be created and edited from their own page, behind their own permission"
+                    ]
+                },
+                "Users": {
+                    "permission": "config.user.view",
+                    "changes": [
+                        "The user list now also shows users without a role"
+                    ]
+                },
+                "General": [
+                    {
+                        "text": "Dependencies have been updated for a security fix",
+                        "permission": "admin"
+                    },
+                    {
+                        "text": "Imports are now more strictly validated",
+                        "permission": "admin"
+                    }
+                ]
+            },
+            "DnD": {
+                "Restaurant Simulator": {
+                    "permission": "dnd_restaurant.access",
+                    "changes": [
+                        "Added the new Restaurant Simulator module"
+                    ]
+                }
+            },
+            "PKSanc": {
+                "Deposit": [
+                    "Deposits now support the newer Pokemon imports"
+                ]
+            },
+            "Arsenal": {
+                "Import": [
+                    {
+                        "text": "The Warframe importer is now more robust",
+                        "permission": "admin"
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "version": "2.0",
+        "date": "2026-06-13",
+        "modules": {
+            "Core": {
+                "General": [
+                    {
+                        "text": "Upgraded to Laravel 12",
+                        "permission": "admin"
+                    },
+                    {
+                        "text": "Security has been sharpened",
+                        "permission": "admin"
+                    },
+                    {
+                        "text": "Packages have been updated",
+                        "permission": "admin"
+                    },
+                    "Added a placeholder homepage",
+                    {
+                        "text": "Existing tests have been reworked to Pest",
+                        "permission": "admin"
+                    }
+                ]
+            },
+            "Arsenal": {
+                "General": [
+                    "Added the new Arsenal module"
+                ]
+            }
+        }
+    },
+    {
+        "version": "1.1",
+        "date": "2026-03-31",
+        "modules": {
+            "Core": {
+                "General": [
+                    {
+                        "text": "Dependencies have been updated",
+                        "permission": "admin"
+                    },
+                    {
+                        "text": "The test framework has been updated",
+                        "permission": "admin"
+                    },
+                    {
+                        "text": "Added feature tests for user authentication",
+                        "permission": "admin"
+                    },
+                    {
+                        "text": "Language files are now published",
+                        "permission": "admin"
+                    },
+                    {
+                        "text": "Fixed database migrations",
+                        "permission": "admin"
+                    }
+                ]
+            },
+            "PKSanc": {
+                "Deposit": [
+                    "Fixed a deposit issue"
+                ]
+            }
+        }
+    },
+    {
+        "version": "1.0",
+        "date": "2024-08-08",
+        "modules": {
+            "Core": {
+                "General": [
+                    "Projects are now modules, with a module importer",
+                    "Modules can now require a login",
+                    {
+                        "text": "Login and signup now use an API structure",
+                        "permission": "admin"
+                    },
+                    "Cardlists now support filtering"
+                ],
+                "Users": {
+                    "permission": "config.user.view",
+                    "changes": [
+                        "Overhauled user configuration"
+                    ]
+                },
+                "Roles": {
+                    "permission": "config.role.view",
+                    "changes": [
+                        "Overhauled role configuration",
+                        {
+                            "text": "Permissions are now imported",
+                            "permission": "admin"
+                        }
+                    ]
+                }
+            },
+            "PKSanc": {
+                "Pokedex": [
+                    "Added a basic Pokedex with filters and a marking system",
+                    "Pokemon can now be hidden from the Pokedex",
+                    "Fixed box filters"
+                ],
+                "Deposit": [
+                    "Added deposits, with support for the PKSanc v2 CSV",
+                    "Deposits now show updated and new Pokemon, and allow exclusions",
+                    "Deposited Pokemon are now versioned",
+                    "Added an error screen for deposits"
+                ]
+            }
+        }
+    }
+]
